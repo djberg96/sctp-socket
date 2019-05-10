@@ -2,6 +2,7 @@ require 'rake'
 require 'rake/clean'
 require 'rbconfig'
 require 'rspec/core/rake_task'
+require 'rake/extensiontask'
 include RbConfig
 
 CLEAN.include(
@@ -14,14 +15,9 @@ CLEAN.include(
   "**/*.#{CONFIG['DLEXT']}" # C shared object
 )
 
-desc "Build the sctp-socket library"
-task :build => [:clean] do
-  require 'devkit' if CONFIG['host_os'] =~ /mingw|cygwin/i
-  Dir.chdir('ext') do
-    ruby "extconf.rb"
-    sh 'make'
-    cp 'socket.so', 'sctp' # For testing
-  end
+Rake::ExtensionTask.new('socket') do |t|
+  t.ext_dir = 'ext/sctp'
+  t.lib_dir = 'lib/sctp'
 end
 
 RSpec::Core::RakeTask.new(:spec) do |t|
