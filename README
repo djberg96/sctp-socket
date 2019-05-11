@@ -1,0 +1,7 @@
+= Description
+
+A Ruby interface for SCTP sockets.
+
+= Prerequisites
+
+You will need the sctp development headers installed.
