@@ -38,5 +38,20 @@ module SCTP
 	      :sinfo_assoc_id, :sctp_assoc_t
       )
     end
+
+    class SctpEventSubscribe < FFI::Struct
+      layout(
+        :sctp_data_io_event, :uint8,
+        :sctp_association_event, :uint8,
+        :sctp_address_event, :uint8,
+        :sctp_send_failure_event, :uint8,
+        :sctp_peer_error_event, :uint8,
+        :sctp_shutdown_event, :uint8,
+        :sctp_partial_delivery_event, :uint8,
+        :sctp_adaptation_layer_event, :uint8,
+        :sctp_authentication_event, :uint8,
+        :sctp_sender_dry_event, :uint8
+      )
+    end
   end
 end
