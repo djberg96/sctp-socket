@@ -25,7 +25,7 @@ module SCTP
       )
     end
 
-    class SctpSndrcvinfo < FFI::Struct
+    class SctpSndRcvInfo < FFI::Struct
       layout(
 	      :sinfo_stream, :uint16,
 	      :sinfo_ssn, :uint16,
