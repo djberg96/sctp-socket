@@ -1,5 +1,10 @@
 module SCTP
   module Constants
+    IPPROTO_SCTP = 132
+
+    SCTP_BINDX_ADD_ADDR = 1
+    SCTP_BINDX_REM_ADDR = 2
+
     SCTP_RTOINFO = 0
     SCTP_ASSOCINFO = 1
     SCTP_INITMSG = 2
