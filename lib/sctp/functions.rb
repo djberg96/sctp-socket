@@ -21,5 +21,6 @@ module SCTP
     ffi_lib :libc
 
     attach_function :shutdown, [:int, :int], :int
+    attach_function :socket, [:int, :int, :int], :int
   end
 end
