@@ -36,8 +36,10 @@ class SCTPSocket
       sock_addr[:sin_addr][:s_addr] = inet_addr(addresses[i])
     end
 
-    if sctp_bindx(sock_fd, sockaddrs, sockaddrs.size, SCTP_BINDX_ADD_ADDR) < 0
-      raise SystemCallError.new('bindx', FFI.errno)
+    FFI::MemoryPointer.new(sockaddrs, sockaddrs.size) do |ptr|
+      if sctp_bindx(sock_fd, ptr, ptr.size, SCTP_BINDX_ADD_ADDR) < 0
+        raise SystemCallError.new('bindx', FFI.errno)
+      end
     end
 
     self
