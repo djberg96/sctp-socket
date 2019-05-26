@@ -23,10 +23,23 @@ class SCTPSocket
     end
   end
 
-  def bindx(addresses:, port:)
+  def bindx(addresses:, port:, family: Socket::AF_INET)
+    addrs = FFI::MemoryPointer.new(SCTP::Structs::SockAddrIn, addresses.size)
+
+    sockaddrs = addrs.size.times.collect do |i|
+      SCTP::Structs::SockAddrIn.new(addr + i * SCTP::Structs::SockAddrIn.size)
+    end
+
+    sockaddrs.each_with_index do |sockaddr, i|
+      sock_addr[:sin_family] = family
+      sock_addr[:sin_port] = 0
+      sock_addr[:sin_addr][:s_addr] = inet_addr(addresses[i])
+    end
+
     if sctp_bindx(sock_fd, sockaddrs, sockaddrs.size, SCTP_BINDX_ADD_ADDR) < 0
       raise SystemCallError.new('bindx', FFI.errno)
     end
+
     self
   end
 
@@ -39,10 +52,6 @@ end
 
 if $0 == __FILE__
   socket = SCTPSocket.new
-
-  addr1 = SCTP::Structs::SockAddrIn.new
-  addr2 = SCTP::Structs::SockAddrIn.new
-
   socket.bindx(addresses: [addr1, addr2], port: 3000)
   socket.closex
 end
