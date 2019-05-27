@@ -20,9 +20,11 @@ module SCTP
 
     ffi_lib :libc
 
+    attach_function :bind, [:int, :pointer, :socklen_t], :int
     attach_function :close, [:int], :int
     attach_function :inet_addr, [:string], :in_addr_t
     attach_function :shutdown, [:int, :int], :int
     attach_function :socket, [:int, :int, :int], :int
+    attach_function :strerror, [:int], :string
   end
 end

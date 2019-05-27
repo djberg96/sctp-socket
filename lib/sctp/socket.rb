@@ -24,21 +24,33 @@ class SCTPSocket
   end
 
   def bindx(addresses:, port:, family: Socket::AF_INET)
-    addr = FFI::MemoryPointer.new(SCTP::Structs::SockAddrIn, addresses.size)
+    first_address = addresses.shift
+    sockaddr_in = SCTP::Structs::SockAddrIn.new
+    sockaddr_in[:sin_family] = family
+    sockaddr_in[:sin_port] = port
+    sockaddr_in[:sin_addr][:s_addr] = 0
 
-    sockaddrs = addresses.size.times.collect do |i|
-      SCTP::Structs::SockAddrIn.new(addr + (i * SCTP::Structs::SockAddrIn.size))
+    if bind(sock_fd, sockaddr_in, SCTP::Structs::SockAddrIn.size) < 0
+      raise SystemCallError.new('bind', FFI.errno)
     end
 
-    sockaddrs.each_with_index do |sock_addr, i|
-      sock_addr[:sin_family] = family
-      sock_addr[:sin_port] = port
-      sock_addr[:sin_addr][:s_addr] = inet_addr(addresses[i])
-    end
+    if addresses.size > 0
+      addr = FFI::MemoryPointer.new(SCTP::Structs::SockAddrIn, addresses.size)
 
-    FFI::MemoryPointer.new(sockaddrs, sockaddrs.size) do |ptr|
-      if sctp_bindx(sock_fd, ptr, ptr.size, SCTP_BINDX_ADD_ADDR) < 0
-        raise SystemCallError.new('bindx', FFI.errno)
+      sockaddrs = addresses.size.times.collect do |i|
+        SCTP::Structs::SockAddrIn.new(addr + (i * SCTP::Structs::SockAddrIn.size))
+      end
+
+      sockaddrs.each_with_index do |sock_addr, i|
+        sock_addr[:sin_family] = family
+        sock_addr[:sin_port] = port
+        sock_addr[:sin_addr][:s_addr] = 0 #inet_addr(addresses[i])
+      end
+
+      FFI::MemoryPointer.new(sockaddrs, sockaddrs.size) do |ptr|
+        if sctp_bindx(sock_fd, ptr, ptr.size, SCTP_BINDX_ADD_ADDR) < 0
+          raise SystemCallError.new('bindx', FFI.errno)
+        end
       end
     end
 
@@ -56,5 +68,6 @@ if $0 == __FILE__
   socket = SCTPSocket.new
   #socket.bindx(addresses: ['127.0.0.1', '127.0.0.2'], port: 3000)
   socket.bindx(addresses: ['127.0.0.1'], port: 3000)
+  #socket.bindx(addresses: ['localhost'], port: 3000)
   socket.closex
 end
