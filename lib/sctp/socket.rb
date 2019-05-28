@@ -23,7 +23,7 @@ class SCTPSocket
     end
   end
 
-  def bind(address: 0, port:, family: Socket::AF_INET)
+  def bind(address: 0, port: 0, family: Socket::AF_INET)
     sockaddr_in = SCTP::Structs::SockAddrIn.new
     sockaddr_in[:sin_family] = family
     sockaddr_in[:sin_port] = port
@@ -36,7 +36,7 @@ class SCTPSocket
     self
   end
 
-  def bindx(addresses: [], port:, family: Socket::AF_INET)
+  def bindx(addresses: [], port: 0, family: Socket::AF_INET)
     bind(address: addresses.shift, port: port, family: family)
 
     if addresses.size > 0
@@ -49,7 +49,7 @@ class SCTPSocket
       sockaddrs.each_with_index do |sock_addr, i|
         sock_addr[:sin_family] = family
         sock_addr[:sin_port] = port
-        sock_addr[:sin_addr][:s_addr] = 0 #inet_addr(addresses[i])
+        sock_addr[:sin_addr][:s_addr] = c_inet_addr(addresses[i])
       end
 
       FFI::MemoryPointer.new(sockaddrs, sockaddrs.size) do |ptr|
