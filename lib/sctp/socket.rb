@@ -16,23 +16,28 @@ class SCTPSocket
   def initialize(domain: Socket::AF_INET, type: Socket::SOCK_SEQPACKET)
     @domain = domain
     @type = type
-    @sock_fd = socket(domain, type, IPPROTO_SCTP)
+    @sock_fd = c_socket(domain, type, IPPROTO_SCTP)
 
     if @sock_fd < 0
       raise SystemCallError.new('socket', FFI.errno)
     end
   end
 
-  def bindx(addresses:, port:, family: Socket::AF_INET)
-    first_address = addresses.shift
+  def bind(address: 0, port:, family: Socket::AF_INET)
     sockaddr_in = SCTP::Structs::SockAddrIn.new
     sockaddr_in[:sin_family] = family
     sockaddr_in[:sin_port] = port
-    sockaddr_in[:sin_addr][:s_addr] = 0
+    sockaddr_in[:sin_addr][:s_addr] = c_inet_addr(address)
 
-    if bind(sock_fd, sockaddr_in, SCTP::Structs::SockAddrIn.size) < 0
+    if c_bind(sock_fd, sockaddr_in, SCTP::Structs::SockAddrIn.size) < 0
       raise SystemCallError.new('bind', FFI.errno)
     end
+
+    self
+  end
+
+  def bindx(addresses: [], port:, family: Socket::AF_INET)
+    bind(address: addresses.shift, port: port, family: family)
 
     if addresses.size > 0
       addr = FFI::MemoryPointer.new(SCTP::Structs::SockAddrIn, addresses.size)
@@ -58,7 +63,7 @@ class SCTPSocket
   end
 
   def closex
-    if close(sock_fd) < 0
+    if c_close(sock_fd) < 0
       raise SystemCallError.new('bindx', FFI.errno)
     end
   end
