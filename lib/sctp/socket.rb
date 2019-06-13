@@ -62,9 +62,9 @@ class SCTPSocket
     self
   end
 
-  def closex
+  def close
     if c_close(sock_fd) < 0
-      raise SystemCallError.new('bindx', FFI.errno)
+      raise SystemCallError.new('close', FFI.errno)
     end
   end
 end
@@ -74,5 +74,5 @@ if $0 == __FILE__
   #socket.bindx(addresses: ['127.0.0.1', '127.0.0.2'], port: 3000)
   socket.bindx(addresses: ['127.0.0.1'], port: 3000)
   #socket.bindx(addresses: ['localhost'], port: 3000)
-  socket.closex
+  socket.close
 end
