@@ -6,7 +6,7 @@
 VALUE mSCTP;
 VALUE cSocket;
 
-static VALUE sctp_init(int argc, VALUE* argv, VALUE self){
+static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
   int sock_fd;
   VALUE v_domain, v_type;
 
@@ -30,7 +30,14 @@ static VALUE sctp_init(int argc, VALUE* argv, VALUE self){
   return self;
 }
 
-static VALUE sctp_close(VALUE self){
+static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
+  VALUE v_addresses, v_port, v_family;
+  rb_scan_args(argc, argv, "12", &v_addresses, &v_port, &v_family);
+
+  return self;
+}
+
+static VALUE rsctp_close(VALUE self){
   VALUE v_sock_fd = rb_iv_get(self, "@sock_fd");
 
   if(close(NUM2INT(v_sock_fd)))
@@ -43,8 +50,10 @@ void Init_socket(){
   mSCTP   = rb_define_module("SCTP");
   cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
 
-  rb_define_method(cSocket, "initialize", sctp_init, -1);
-  rb_define_method(cSocket, "close", sctp_close, 0);
+  rb_define_method(cSocket, "initialize", rsctp_init, -1);
+
+  rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
+  rb_define_method(cSocket, "close", rsctp_close, 0);
 
   rb_define_attr(cSocket, "domain", 1, 1);
   rb_define_attr(cSocket, "type", 1, 1);
