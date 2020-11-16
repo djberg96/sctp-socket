@@ -45,4 +45,8 @@ void Init_socket(){
 
   rb_define_method(cSocket, "initialize", sctp_init, -1);
   rb_define_method(cSocket, "close", sctp_close, 0);
+
+  rb_define_attr(cSocket, "domain", 1, 1);
+  rb_define_attr(cSocket, "type", 1, 1);
+  rb_define_attr(cSocket, "sock_fd", 1, 1);
 }
