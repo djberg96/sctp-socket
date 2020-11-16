@@ -1,6 +1,7 @@
 #include "ruby.h"
 #include <string.h>
 #include <errno.h>
+#include <arpa/inet.h>
 #include <netinet/sctp.h>
 
 VALUE mSCTP;
@@ -31,8 +32,27 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
 }
 
 static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
+  int i;
   VALUE v_addresses, v_port, v_family;
+  VALUE v_address;
+  struct sockaddr_in addrs[2];
+
+  memset(addrs, 0, sizeof(struct sockaddr_in) * 2);
+
   rb_scan_args(argc, argv, "12", &v_addresses, &v_port, &v_family);
+
+  if(NIL_P(v_port))
+    v_port = INT2NUM(0);
+
+  if(NIL_P(v_family))
+    v_family = INT2NUM(AF_INET);
+
+  for(i = 0; i < RARRAY_LEN(v_addresses); i++){
+    v_address = RARRAY_PTR(v_addresses)[i];
+    addrs[i].sin_family = NUM2INT(v_family);
+    addrs[i].sin_port = htons(NUM2INT(v_port));
+    addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
+  }
 
   return self;
 }
