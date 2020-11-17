@@ -32,7 +32,7 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
 }
 
 static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
-  int i;
+  int i, sock_fd;
   VALUE v_addresses, v_port, v_family;
   VALUE v_address;
   struct sockaddr_in addrs[2];
@@ -53,6 +53,11 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
     addrs[i].sin_port = htons(NUM2INT(v_port));
     addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
   }
+
+  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+
+  if(sctp_bindx(sock_fd, (struct sockaddr *) addrs, 2, SCTP_BINDX_ADD_ADDR) != 0)
+    rb_raise(rb_eSystemCallError, "sctp_bindx: %s", strerror(errno));
 
   return self;
 }
