@@ -48,7 +48,7 @@ class SCTPSocket
 
       sockaddrs.each_with_index do |sock_addr, i|
         sock_addr[:sin_family] = family
-        sock_addr[:sin_port] = port
+        sock_addr[:sin_port] = c_htons(port)
         sock_addr[:sin_addr][:s_addr] = c_inet_addr(addresses[i])
       end
 
