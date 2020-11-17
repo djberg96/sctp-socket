@@ -37,7 +37,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   VALUE v_address;
   struct sockaddr_in addrs[2];
 
-  memset(addrs, 0, sizeof(struct sockaddr_in) * 2);
+  bzero(&addrs, sizeof(addrs));
 
   rb_scan_args(argc, argv, "12", &v_addresses, &v_port, &v_family);
 
