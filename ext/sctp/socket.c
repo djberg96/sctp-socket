@@ -32,10 +32,10 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
 }
 
 static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
-  int i, sock_fd;
+  int i, sock_fd, num_ip;
   VALUE v_addresses, v_port, v_family;
   VALUE v_address;
-  struct sockaddr_in addrs[2];
+  struct sockaddr_in addrs[8];
 
   bzero(&addrs, sizeof(addrs));
 
@@ -55,8 +55,9 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   }
 
   sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  num_ip  = RARRAY_LEN(v_addresses);
 
-  if(sctp_bindx(sock_fd, (struct sockaddr *) addrs, 2, SCTP_BINDX_ADD_ADDR) != 0)
+  if(sctp_bindx(sock_fd, (struct sockaddr *) addrs, num_ip, SCTP_BINDX_ADD_ADDR) != 0)
     rb_raise(rb_eSystemCallError, "sctp_bindx: %s", strerror(errno));
 
   return self;
