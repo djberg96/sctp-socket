@@ -1,9 +1,12 @@
-require_relative '../ext/sctp/socket'
+require 'rspec'
+require 'sctp/socket'
+require 'mkmf/lite'
 
 RSpec.describe SCTP::Socket do
-  context "basic" do
-    example "basic" do
-      expect(described_class).to be(described_class)
+  context "structs" do
+    include Mkmf::Lite
+    example "SCTP::Struct::SockAddrIn is the expected size" do
+      expect(check_sizeof("struct sockaddr_in", "arpa/inet.h")).to eq(SCTP::Structs::SockAddrIn.size)
     end
   end
 end
