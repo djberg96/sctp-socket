@@ -47,7 +47,9 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   if(NIL_P(v_family))
     v_family = INT2NUM(AF_INET);
 
-  for(i = 0; i < RARRAY_LEN(v_addresses); i++){
+  num_ip = RARRAY_LEN(v_addresses);
+
+  for(i = 0; i < num_ip; i++){
     v_address = RARRAY_PTR(v_addresses)[i];
     addrs[i].sin_family = NUM2INT(v_family);
     addrs[i].sin_port = htons(NUM2INT(v_port));
@@ -55,10 +57,33 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   }
 
   sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
-  num_ip  = RARRAY_LEN(v_addresses);
 
   if(sctp_bindx(sock_fd, (struct sockaddr *) addrs, num_ip, SCTP_BINDX_ADD_ADDR) != 0)
     rb_raise(rb_eSystemCallError, "sctp_bindx: %s", strerror(errno));
+
+  return self;
+}
+
+static VALUE rsctp_connectx(VALUE self, VALUE v_addresses){
+  struct sockaddr_in addrs[8];
+  int i, num_ip, sock_fd;
+  VALUE v_address;
+
+  num_ip = RARRAY_LEN(v_addresses);
+  bzero(&addrs, sizeof(addrs));
+
+  for(i = 0; i < num_ip; i++){
+    v_address = RARRAY_PTR(v_addresses)[i];
+    addrs[i].sin_family = NUM2INT(rb_iv_get(self, "@v_family"));
+    addrs[i].sin_port = 0; // TODO: should this be set?
+    addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
+  }
+
+  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+
+  // TODO: add support for association
+  if(sctp_connectx(sock_fd, (struct sockaddr *) addrs, num_ip, NULL) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_connectx: %s", strerror(errno));
 
   return self;
 }
@@ -72,6 +97,7 @@ static VALUE rsctp_close(VALUE self){
   return self;
 }
 
+
 void Init_socket(){
   mSCTP   = rb_define_module("SCTP");
   cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
@@ -80,6 +106,7 @@ void Init_socket(){
 
   rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
   rb_define_method(cSocket, "close", rsctp_close, 0);
+  rb_define_method(cSocket, "connectx", rsctp_connectx, 0);
 
   rb_define_attr(cSocket, "domain", 1, 1);
   rb_define_attr(cSocket, "type", 1, 1);
