@@ -27,6 +27,7 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
   rb_iv_set(self, "@domain", v_domain);
   rb_iv_set(self, "@type", v_type);
   rb_iv_set(self, "@sock_fd", INT2NUM(sock_fd));
+  rb_iv_set(self, "@association_id", INT2NUM(0));
 
   return self;
 }
@@ -67,6 +68,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
 static VALUE rsctp_connectx(VALUE self, VALUE v_addresses){
   struct sockaddr_in addrs[8];
   int i, num_ip, sock_fd;
+  sctp_assoc_t assoc;
   VALUE v_address;
 
   num_ip = RARRAY_LEN(v_addresses);
@@ -81,9 +83,10 @@ static VALUE rsctp_connectx(VALUE self, VALUE v_addresses){
 
   sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
 
-  // TODO: add support for association
-  if(sctp_connectx(sock_fd, (struct sockaddr *) addrs, num_ip, NULL) < 0)
+  if(sctp_connectx(sock_fd, (struct sockaddr *) addrs, num_ip, &assoc) < 0)
     rb_raise(rb_eSystemCallError, "sctp_connectx: %s", strerror(errno));
+
+  rb_iv_set(self, "@assocation_id", INT2NUM(assoc));
 
   return self;
 }
@@ -111,4 +114,5 @@ void Init_socket(){
   rb_define_attr(cSocket, "domain", 1, 1);
   rb_define_attr(cSocket, "type", 1, 1);
   rb_define_attr(cSocket, "sock_fd", 1, 1);
+  rb_define_attr(cSocket, "association_id", 1, 1);
 }
