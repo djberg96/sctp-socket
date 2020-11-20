@@ -113,16 +113,45 @@ static VALUE rsctp_getpeernames(VALUE self){
 
   num_addrs = sctp_getpaddrs(sock_fd, assoc_id, &addrs);
 
-  if(num_addrs < 0)
+  if(num_addrs < 0){
+    sctp_freepaddrs(addrs);
     rb_raise(rb_eSystemCallError, "sctp_getpaddrs: %s", strerror(errno));
+  }
 
   for(i = 0; i < num_addrs; i++){
     // TODO: Create and return array of IpAddr objects
   }
 
+  sctp_freepaddrs(addrs);
+
   return self;
 }
 
+static VALUE rsctp_getlocalnames(VALUE self){
+  sctp_assoc_t assoc_id;
+  struct sockaddr* addrs;
+  int i, sock_fd, num_addrs;
+
+  bzero(&addrs, sizeof(addrs));
+
+  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@assocation_id"));
+
+  num_addrs = sctp_getladdrs(sock_fd, assoc_id, &addrs);
+
+  if(num_addrs < 0){
+    sctp_freeladdrs(addrs);
+    rb_raise(rb_eSystemCallError, "sctp_getladdrs: %s", strerror(errno));
+  }
+
+  for(i = 0; i < num_addrs; i++){
+    // TODO: Create and return array of IpAddr objects
+  }
+
+  sctp_freeladdrs(addrs);
+
+  return self;
+}
 
 void Init_socket(){
   mSCTP   = rb_define_module("SCTP");
@@ -134,6 +163,7 @@ void Init_socket(){
   rb_define_method(cSocket, "close", rsctp_close, 0);
   rb_define_method(cSocket, "connectx", rsctp_connectx, 0);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, 0);
+  rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, 0);
 
   rb_define_attr(cSocket, "domain", 1, 1);
   rb_define_attr(cSocket, "type", 1, 1);
