@@ -280,11 +280,28 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
   if(!NIL_P(v_timeout))
     initmsg.sinit_max_init_timeo = NUM2INT(v_timeout);
 
-  if(setsockopt(sock_fd, IPPROTO_SCTP, SCTP_INITMSG, &initmsg, sizeof(initmsg)) < 0){
-    rsctp_close(self);
+  if(setsockopt(sock_fd, IPPROTO_SCTP, SCTP_INITMSG, &initmsg, sizeof(initmsg)) < 0)
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
-  }
 
+  return self;
+}
+
+static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
+  VALUE v_backlog;
+  int backlog, sock_fd;
+
+  rb_scan_args(argc, argv, "01", &v_backlog);
+
+  if(NIL_P(v_backlog))
+    backlog = 1024;
+  else
+    backlog = NUM2INT(v_backlog);
+
+  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+
+  if(listen(sock_fd, backlog) < 0)
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+  
   return self;
 }
 
@@ -299,6 +316,7 @@ void Init_socket(){
   rb_define_method(cSocket, "connectx", rsctp_connectx, 2);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, 0);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, 0);
+  rb_define_method(cSocket, "listen", rsctp_listen, -1);
   rb_define_method(cSocket, "recvmsgx", rsctp_recvmsgx, 0);
   rb_define_method(cSocket, "sendmsgx", rsctp_sendmsgx, -1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
