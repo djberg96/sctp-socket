@@ -212,6 +212,29 @@ static VALUE rsctp_sendmsgx(int argc, VALUE* argv, VALUE self){
   return INT2NUM(num_bytes);
 }
 
+static VALUE rsctp_recvmsgx(int argc, VALUE* argv, VALUE self){
+  VALUE v_flags;
+  struct sctp_sndrcvinfo sndrcvinfo;
+  int flags, bytes, sock_fd;
+  char buffer[1024]; // TODO: Let this be configurable?
+
+  rb_scan_args(argc, argv, "01", &v_flags);
+
+  if(NIL_P(v_flags))
+    flags = 0;
+  else
+    flags = NUM2INT(v_flags);  
+
+  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+
+  bytes = sctp_recvmsg(sock_fd, buffer, sizeof(buffer), NULL, 0, &sndrcvinfo, &flags);
+
+  if(bytes < 0)
+    rb_raise(rb_eSystemCallError, "sctp_recvmsg: %s", strerror(errno));
+
+  return rb_str_new2(buffer);
+}
+
 void Init_socket(){
   mSCTP   = rb_define_module("SCTP");
   cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
@@ -220,10 +243,11 @@ void Init_socket(){
 
   rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
   rb_define_method(cSocket, "close", rsctp_close, 0);
-  rb_define_method(cSocket, "connectx", rsctp_connectx, 0);
+  rb_define_method(cSocket, "connectx", rsctp_connectx, 2);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, 0);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, 0);
-  rb_define_method(cSocket, "sendmsgx", rsctp_sendmsgx, 0);
+  rb_define_method(cSocket, "recvmsgx", rsctp_recvmsgx, 0);
+  rb_define_method(cSocket, "sendmsgx", rsctp_sendmsgx, -1);
 
   rb_define_attr(cSocket, "domain", 1, 1);
   rb_define_attr(cSocket, "type", 1, 1);
