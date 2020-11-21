@@ -265,6 +265,7 @@ static VALUE rsctp_recvmsgx(int argc, VALUE* argv, VALUE self){
  *    :input_streams  => 3,
  *    :max_attempts   => 5,
  *    :timeout        => 30
+ *  }
  */
 static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
   int sock_fd;
@@ -293,6 +294,45 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
     initmsg.sinit_max_init_timeo = NUM2INT(v_timeout);
 
   if(setsockopt(sock_fd, IPPROTO_SCTP, SCTP_INITMSG, &initmsg, sizeof(initmsg)) < 0)
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+
+  return self;
+}
+
+/*
+ * {
+ *   :data_io => true,
+ *   :association => true,
+ *   :address => true,
+ *   :send_failure => true,
+ *   :peer_error => true,
+ *   :shutdown => true,
+ *   :partial_delivery => true,
+ *   :adaptation_layer => true,
+ *   :authentication_event => true,
+ *   :sender_dry => true
+ * }
+ *
+ */
+static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
+  int sock_fd;
+  struct sctp_event_subscribe events;
+
+  bzero(&events, sizeof(events));
+  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+
+  events.sctp_data_io_event = NUM2INT(rb_hash_aref2(v_options, "data_io"));
+  events.sctp_association_event = NUM2INT(rb_hash_aref2(v_options, "association"));
+  events.sctp_address_event = NUM2INT(rb_hash_aref2(v_options, "address"));
+  events.sctp_send_failure_event = NUM2INT(rb_hash_aref2(v_options, "send_failure"));
+  events.sctp_peer_error_event = NUM2INT(rb_hash_aref2(v_options, "peer_error"));
+  events.sctp_shutdown_event = NUM2INT(rb_hash_aref2(v_options, "shutdown"));
+  events.sctp_partial_delivery_event = NUM2INT(rb_hash_aref2(v_options, "partial_delivery"));
+  events.sctp_adaptation_layer_event = NUM2INT(rb_hash_aref2(v_options, "adaptation_layer"));
+  events.sctp_authentication_event = NUM2INT(rb_hash_aref2(v_options, "authentication"));
+  events.sctp_sender_dry_event = NUM2INT(rb_hash_aref2(v_options, "sender_dry"));
+
+  if(setsockopt(sock_fd, IPPROTO_SCTP, SCTP_EVENTS, &events, sizeof(events)) < 0)
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   return self;
@@ -332,6 +372,7 @@ void Init_socket(){
   rb_define_method(cSocket, "recvmsgx", rsctp_recvmsgx, 0);
   rb_define_method(cSocket, "sendmsgx", rsctp_sendmsgx, -1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
+  rb_define_method(cSocket, "subscribe", rsctp_subscribe, 1);
 
   rb_define_attr(cSocket, "domain", 1, 1);
   rb_define_attr(cSocket, "type", 1, 1);
