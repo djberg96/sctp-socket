@@ -321,16 +321,35 @@ static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
   bzero(&events, sizeof(events));
   sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
 
-  events.sctp_data_io_event = NUM2INT(rb_hash_aref2(v_options, "data_io"));
-  events.sctp_association_event = NUM2INT(rb_hash_aref2(v_options, "association"));
-  events.sctp_address_event = NUM2INT(rb_hash_aref2(v_options, "address"));
-  events.sctp_send_failure_event = NUM2INT(rb_hash_aref2(v_options, "send_failure"));
-  events.sctp_peer_error_event = NUM2INT(rb_hash_aref2(v_options, "peer_error"));
-  events.sctp_shutdown_event = NUM2INT(rb_hash_aref2(v_options, "shutdown"));
-  events.sctp_partial_delivery_event = NUM2INT(rb_hash_aref2(v_options, "partial_delivery"));
-  events.sctp_adaptation_layer_event = NUM2INT(rb_hash_aref2(v_options, "adaptation_layer"));
-  events.sctp_authentication_event = NUM2INT(rb_hash_aref2(v_options, "authentication"));
-  events.sctp_sender_dry_event = NUM2INT(rb_hash_aref2(v_options, "sender_dry"));
+  if(RTEST(rb_hash_aref2(v_options, "data_io")))
+    events.sctp_data_io_event = 1;
+
+  if(RTEST(rb_hash_aref2(v_options, "association")))
+    events.sctp_association_event = 1;
+
+  if(RTEST(rb_hash_aref2(v_options, "address")))
+    events.sctp_address_event = 1;
+
+  if(RTEST(rb_hash_aref2(v_options, "send_failure")))
+    events.sctp_send_failure_event = 1;
+
+  if(RTEST(rb_hash_aref2(v_options, "peer_error")))
+    events.sctp_peer_error_event = 1;
+
+  if(RTEST(rb_hash_aref2(v_options, "shutdown")))
+    events.sctp_shutdown_event = 1;
+
+  if(RTEST(rb_hash_aref2(v_options, "partial_delivery")))
+    events.sctp_partial_delivery_event = 1;
+
+  if(RTEST(rb_hash_aref2(v_options, "adaptation_layer")))
+    events.sctp_adaptation_layer_event = 1;
+
+  if(RTEST(rb_hash_aref2(v_options, "authentication")))
+    events.sctp_authentication_event = 1;
+
+  if(RTEST(rb_hash_aref2(v_options, "sender_dry")))
+    events.sctp_sender_dry_event = 1;
 
   if(setsockopt(sock_fd, IPPROTO_SCTP, SCTP_EVENTS, &events, sizeof(events)) < 0)
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
