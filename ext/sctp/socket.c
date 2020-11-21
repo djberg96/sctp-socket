@@ -81,14 +81,16 @@ static VALUE rsctp_connectx(VALUE self, VALUE v_port, VALUE v_addresses){
   struct sockaddr_in addrs[8];
   int i, num_ip, sock_fd;
   sctp_assoc_t assoc;
-  VALUE v_address;
+  VALUE v_address, v_domain;
+
+  v_domain = rb_iv_get(self, "@domain");
 
   num_ip = RARRAY_LEN(v_addresses);
   bzero(&addrs, sizeof(addrs));
 
   for(i = 0; i < num_ip; i++){
     v_address = RARRAY_PTR(v_addresses)[i];
-    addrs[i].sin_family = NUM2INT(rb_iv_get(self, "@v_family"));
+    addrs[i].sin_family = NUM2INT(v_domain);
     addrs[i].sin_port = NUM2INT(v_port);
     addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
   }
