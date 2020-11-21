@@ -388,7 +388,7 @@ void Init_socket(){
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, 0);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, 0);
   rb_define_method(cSocket, "listen", rsctp_listen, -1);
-  rb_define_method(cSocket, "recvmsgx", rsctp_recvmsgx, 0);
+  rb_define_method(cSocket, "recvmsgx", rsctp_recvmsgx, -1);
   rb_define_method(cSocket, "sendmsgx", rsctp_sendmsgx, -1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
   rb_define_method(cSocket, "subscribe", rsctp_subscribe, 1);
