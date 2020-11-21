@@ -153,6 +153,65 @@ static VALUE rsctp_getlocalnames(VALUE self){
   return self;
 }
 
+/*
+ *  socket.connectx
+ *  socket.sendmsgx(message, stream_number, flags, time_to_live, ppid, context)
+ */
+static VALUE rsctp_sendmsgx(int argc, VALUE* argv, VALUE self){
+  VALUE v_msg, v_ppid, v_flags, v_stream, v_ttl, v_context;
+  uint16_t stream;
+  uint32_t ppid, flags, timetolive, context;
+  ssize_t num_bytes;
+  int sock_fd;
+
+  rb_scan_args(argc, argv, "15", &v_msg, &v_stream, &v_flags, &v_ttl, &v_ppid, &v_context);
+
+  if(NIL_P(v_stream))
+    stream = 0;
+  else
+    stream = NUM2INT(v_stream);
+
+  if(NIL_P(v_flags))
+    flags = 0;
+  else
+    flags = NUM2INT(v_stream);
+
+  if(NIL_P(v_ttl))
+    timetolive = 0;
+  else
+    timetolive = NUM2INT(v_ttl);
+
+  if(NIL_P(v_ppid))
+    ppid = 0;
+  else
+    ppid = NUM2INT(v_ppid);
+
+  if(NIL_P(v_context))
+    context = 0;
+  else
+    context = NUM2INT(v_context);
+
+  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+
+  num_bytes = sctp_sendmsg(
+    sock_fd,
+    StringValueCStr(v_msg),
+    RSTRING_LEN(v_msg),
+    NULL,
+    0,
+    ppid,
+    flags,
+    stream,
+    timetolive,
+    context
+  );
+
+  if(num_bytes < 0)
+    rb_raise(rb_eSystemCallError, "sctp_sendmsg: %s", strerror(errno));
+
+  return INT2NUM(num_bytes);
+}
+
 void Init_socket(){
   mSCTP   = rb_define_module("SCTP");
   cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
@@ -164,6 +223,7 @@ void Init_socket(){
   rb_define_method(cSocket, "connectx", rsctp_connectx, 0);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, 0);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, 0);
+  rb_define_method(cSocket, "sendmsgx", rsctp_sendmsgx, 0);
 
   rb_define_attr(cSocket, "domain", 1, 1);
   rb_define_attr(cSocket, "type", 1, 1);
