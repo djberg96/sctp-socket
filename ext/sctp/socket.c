@@ -7,6 +7,18 @@
 VALUE mSCTP;
 VALUE cSocket;
 
+VALUE rb_hash_aref2(VALUE v_hash, const char* key){
+  VALUE v_key, v_val;
+
+  v_key = rb_str_new2(key);
+  v_val = rb_hash_aref(v_hash, v_key);
+
+  if(NIL_P(v_val))
+    v_val = rb_hash_aref(v_hash, ID2SYM(rb_intern(key)));
+
+  return v_val;
+}
+
 static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
   int sock_fd;
   VALUE v_domain, v_type;
@@ -235,6 +247,47 @@ static VALUE rsctp_recvmsgx(int argc, VALUE* argv, VALUE self){
   return rb_str_new2(buffer);
 }
 
+/*
+ *  {
+ *    :output_streams => 2,
+ *    :input_streams  => 3,
+ *    :max_attempts   => 5,
+ *    :timeout        => 30
+ */
+static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
+  int sock_fd;
+  struct sctp_initmsg initmsg;
+  VALUE v_output, v_input, v_attempts, v_timeout;
+
+  bzero(&initmsg, sizeof(initmsg));
+
+  v_output   = rb_hash_aref2(v_options, "output_streams");
+  v_input    = rb_hash_aref2(v_options, "input_streams");
+  v_attempts = rb_hash_aref2(v_options, "max_attempts");
+  v_timeout  = rb_hash_aref2(v_options, "timeout");
+
+  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+
+  if(!NIL_P(v_output))
+    initmsg.sinit_num_ostreams = NUM2INT(v_output);
+
+  if(!NIL_P(v_input))
+    initmsg.sinit_max_instreams = NUM2INT(v_input);
+
+  if(!NIL_P(v_attempts))
+    initmsg.sinit_max_attempts = NUM2INT(v_attempts);
+
+  if(!NIL_P(v_timeout))
+    initmsg.sinit_max_init_timeo = NUM2INT(v_timeout);
+
+  if(setsockopt(sock_fd, IPPROTO_SCTP, SCTP_INITMSG, &initmsg, sizeof(initmsg)) < 0){
+    rsctp_close(self);
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+  }
+
+  return self;
+}
+
 void Init_socket(){
   mSCTP   = rb_define_module("SCTP");
   cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
@@ -248,6 +301,7 @@ void Init_socket(){
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, 0);
   rb_define_method(cSocket, "recvmsgx", rsctp_recvmsgx, 0);
   rb_define_method(cSocket, "sendmsgx", rsctp_sendmsgx, -1);
+  rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
 
   rb_define_attr(cSocket, "domain", 1, 1);
   rb_define_attr(cSocket, "type", 1, 1);
