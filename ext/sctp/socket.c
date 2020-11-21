@@ -227,8 +227,10 @@ static VALUE rsctp_sendmsgx(int argc, VALUE* argv, VALUE self){
 static VALUE rsctp_recvmsgx(int argc, VALUE* argv, VALUE self){
   VALUE v_flags;
   struct sctp_sndrcvinfo sndrcvinfo;
+  struct sockaddr_in clientaddr;
   int flags, bytes, sock_fd;
   char buffer[1024]; // TODO: Let this be configurable?
+  socklen_t length;
 
   rb_scan_args(argc, argv, "01", &v_flags);
 
@@ -238,12 +240,22 @@ static VALUE rsctp_recvmsgx(int argc, VALUE* argv, VALUE self){
     flags = NUM2INT(v_flags);  
 
   sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  length = sizeof(struct sockaddr_in);
 
-  bytes = sctp_recvmsg(sock_fd, buffer, sizeof(buffer), NULL, 0, &sndrcvinfo, &flags);
+  bytes = sctp_recvmsg(
+    sock_fd,
+    buffer,
+    sizeof(buffer),
+    (struct sockaddr*)&clientaddr,
+    &length,
+    &sndrcvinfo,
+    &flags
+  );
 
   if(bytes < 0)
     rb_raise(rb_eSystemCallError, "sctp_recvmsg: %s", strerror(errno));
 
+  // TODO: Return a struct with clienaddr info, plus buffer.
   return rb_str_new2(buffer);
 }
 
