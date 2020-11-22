@@ -44,7 +44,7 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
   return self;
 }
 
-static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
+static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
   int i, sock_fd, num_ip;
   VALUE v_addresses, v_port, v_family;
   VALUE v_address;
@@ -77,7 +77,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   return self;
 }
 
-static VALUE rsctp_connectx(VALUE self, VALUE v_port, VALUE v_addresses){
+static VALUE rsctp_connect(VALUE self, VALUE v_port, VALUE v_addresses){
   struct sockaddr_in addrs[8];
   int i, num_ip, sock_fd;
   sctp_assoc_t assoc;
@@ -168,10 +168,10 @@ static VALUE rsctp_getlocalnames(VALUE self){
 }
 
 /*
- *  socket.connectx
- *  socket.sendmsgx(message, stream_number, flags, time_to_live, ppid, context)
+ *  socket.connect
+ *  socket.sendmsg(message, stream_number, flags, time_to_live, ppid, context)
  */
-static VALUE rsctp_sendmsgx(int argc, VALUE* argv, VALUE self){
+static VALUE rsctp_sendmsg(int argc, VALUE* argv, VALUE self){
   VALUE v_msg, v_ppid, v_flags, v_stream, v_ttl, v_context;
   uint16_t stream;
   uint32_t ppid, flags, timetolive, context;
@@ -226,7 +226,7 @@ static VALUE rsctp_sendmsgx(int argc, VALUE* argv, VALUE self){
   return INT2NUM(num_bytes);
 }
 
-static VALUE rsctp_recvmsgx(int argc, VALUE* argv, VALUE self){
+static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   VALUE v_flags;
   struct sctp_sndrcvinfo sndrcvinfo;
   struct sockaddr_in clientaddr;
@@ -398,15 +398,15 @@ void Init_socket(){
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
 
-  rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
+  rb_define_method(cSocket, "bind", rsctp_bind, -1);
   rb_define_method(cSocket, "close", rsctp_close, 0);
-  rb_define_method(cSocket, "connectx", rsctp_connectx, 2);
+  rb_define_method(cSocket, "connect", rsctp_connect, 2);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, 0);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, 0);
   rb_define_method(cSocket, "listen", rsctp_listen, -1);
   rb_define_method(cSocket, "peeloff", rsctp_peeloff, 1);
-  rb_define_method(cSocket, "recvmsgx", rsctp_recvmsgx, -1);
-  rb_define_method(cSocket, "sendmsgx", rsctp_sendmsgx, -1);
+  rb_define_method(cSocket, "recvmsg", rsctp_recvmsg, -1);
+  rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, -1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
   rb_define_method(cSocket, "subscribe", rsctp_subscribe, 1);
 
