@@ -379,6 +379,19 @@ static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
   return self;
 }
 
+static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
+  int sock_fd;
+  sctp_assoc_t assoc_id;
+    
+  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  assoc_id = NUM2INT(v_assoc_id);
+
+  if(sctp_peeloff(sock_fd, assoc_id) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_peeloff: %s", strerror(errno));
+
+  return self;
+}
+
 void Init_socket(){
   mSCTP   = rb_define_module("SCTP");
   cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
@@ -391,6 +404,7 @@ void Init_socket(){
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, 0);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, 0);
   rb_define_method(cSocket, "listen", rsctp_listen, -1);
+  rb_define_method(cSocket, "peeloff", rsctp_peeloff, 1);
   rb_define_method(cSocket, "recvmsgx", rsctp_recvmsgx, -1);
   rb_define_method(cSocket, "sendmsgx", rsctp_sendmsgx, -1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
