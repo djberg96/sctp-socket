@@ -1,12 +1,12 @@
-= Description
+## Description
 
 A Ruby interface for SCTP sockets.
 
-= Prerequisites
+## Prerequisites
 
 You will need the sctp development headers installed.
 
-= About SCTP
+## About SCTP
 
 The Stream Control Transmission Protocol (SCTP) is a message oriented, reliable
 transport protocol with direct support for multihoming that runs on top of ip,
@@ -19,3 +19,25 @@ ordered and unordered message delivery, multi-streaming and multi-homing.
 Detection of data corruption, loss of data and duplication of data is achieved
 by using checksums and sequence numbers. A selective retransmission mechanism
 is applied to correct loss or corruption of data.
+
+## Example
+
+# sample_server.rb
+require 'sctp/socket'
+
+begin
+  port = 62324
+  socket = SCTP::Socket.new
+  socket.bindx(['10.0.5.4', '10.0.6.4'], port)
+  socket.set_initmsg(:output_streams => 5, :input_streams => 5, :max_attempts => 4)
+  socket.subscribe(:data_io => true)
+  socket.listen
+
+  while true
+    data = socket.recvmsgx
+    puts data
+    sleep 1
+  end
+ensure
+  socket.close
+end
