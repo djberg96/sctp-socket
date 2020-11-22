@@ -7,6 +7,7 @@
 VALUE mSCTP;
 VALUE cSocket;
 
+// Helper function to get a hash value via string or symbol.
 VALUE rb_hash_aref2(VALUE v_hash, const char* key){
   VALUE v_key, v_val;
 
@@ -19,6 +20,16 @@ VALUE rb_hash_aref2(VALUE v_hash, const char* key){
   return v_val;
 }
 
+/*
+ * Create and return a new SCTP::Socket instance. You may optionally pass in
+ * a domain (aka family) value and socket type. By default these are AF_INET
+ * and SOCK_SEQPACKET, respectively.
+ *
+ * Example:
+ *
+ *   socket1 = SCTP::Socket.new
+ *   socket2 = SCTP::Socket.new(Socket::AF_INET, Socket::SOCK_STREAM)
+ */
 static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
   int sock_fd;
   VALUE v_domain, v_type;
