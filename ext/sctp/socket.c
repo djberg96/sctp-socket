@@ -243,6 +243,7 @@ static VALUE rsctp_recvmsgx(int argc, VALUE* argv, VALUE self){
 
   sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
   length = sizeof(struct sockaddr_in);
+  bzero(buffer, sizeof(buffer));
 
   bytes = sctp_recvmsg(
     sock_fd,
@@ -258,7 +259,7 @@ static VALUE rsctp_recvmsgx(int argc, VALUE* argv, VALUE self){
     rb_raise(rb_eSystemCallError, "sctp_recvmsg: %s", strerror(errno));
 
   // TODO: Return a struct with clienaddr info, plus buffer.
-  return rb_str_new2(buffer);
+  return rb_str_new(buffer, bytes);
 }
 
 /*
