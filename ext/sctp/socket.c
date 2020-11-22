@@ -91,7 +91,7 @@ static VALUE rsctp_connectx(VALUE self, VALUE v_port, VALUE v_addresses){
   for(i = 0; i < num_ip; i++){
     v_address = RARRAY_PTR(v_addresses)[i];
     addrs[i].sin_family = NUM2INT(v_domain);
-    addrs[i].sin_port = NUM2INT(v_port);
+    addrs[i].sin_port = htons(NUM2INT(v_port));
     addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
   }
 
