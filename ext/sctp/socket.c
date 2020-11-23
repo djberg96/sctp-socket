@@ -55,6 +55,23 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
   return self;
 }
 
+/*
+ *  Bind a subset of IP addresses associated with the host system on the
+ *  given +port+. You can both add or remove an address to or from the
+ *  socket using the SCTP_BINDX_ADD_ADDR or SCTP_BINDX_REM_ADDR, respectively.
+ *  This method adds them by default.
+ *
+ *  Example:
+ *
+ *    socket = SCTP::Socket.new
+ *
+ *    # Add 2 addresses
+ *    socket.bind(:port => 64325, :addresses => ['10.0.4.5', '10.0.5.5'])
+ *
+ *    # Remove 1 later
+ *    socket.bind(:addresses => ['10.0.4.5'], :flags => SCTP::Socket::BINDX_REM_ADDR)
+ *
+ */
 static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
   int i, sock_fd, num_ip;
   VALUE v_addresses, v_port, v_family;
@@ -63,7 +80,7 @@ static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
 
   bzero(&addrs, sizeof(addrs));
 
-  rb_scan_args(argc, argv, "12", &v_addresses, &v_port, &v_family);
+  rb_scan_args(argc, argv, "12", &v_addresses, &v_port, &v_flags);
 
   if(NIL_P(v_port))
     v_port = INT2NUM(0);
