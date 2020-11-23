@@ -5,6 +5,6 @@ source 'https://rubygems.org' do
   end
 
   group 'development' do
-    gem 'rake-compiler' '~> 1.1'
+    gem 'rake-compiler', '~> 1.1'
   end
 end
