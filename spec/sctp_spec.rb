@@ -1,4 +1,4 @@
-require_relative '../ext/sctp/socket'
+require 'sctp/socket'
 
 RSpec.describe SCTP::Socket do
   context "basic" do
