@@ -197,6 +197,14 @@ static VALUE rsctp_connect(int argc, VALUE* argv, VALUE self){
   return self;
 }
 
+/*
+ * Close the socket. You should always do this.
+ *
+ * Example:
+ *
+ *   socket = SCTP::Socket.new
+ *   socket.close
+ */
 static VALUE rsctp_close(VALUE self){
   VALUE v_sock_fd = rb_iv_get(self, "@sock_fd");
 
@@ -260,17 +268,30 @@ static VALUE rsctp_getlocalnames(VALUE self){
 }
 
 /*
- *  socket.connect
- *  socket.sendmsg(message, stream_number, flags, time_to_live, ppid, context)
+ *  socket.sendmsg(
+ *    :message => message,
+ *    :stream  => stream_number,
+ *    :flags   => flags,
+ *    :ttl,    => time_to_live,
+ *    :ppid    => ppid,
+ *    :context => context
+ *  )
  */
-static VALUE rsctp_sendmsg(int argc, VALUE* argv, VALUE self){
+static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   VALUE v_msg, v_ppid, v_flags, v_stream, v_ttl, v_context;
   uint16_t stream;
   uint32_t ppid, flags, timetolive, context;
   ssize_t num_bytes;
   int sock_fd;
 
-  rb_scan_args(argc, argv, "15", &v_msg, &v_stream, &v_flags, &v_ttl, &v_ppid, &v_context);
+  Check_Type(v_options, T_HASH);
+
+  v_msg     = rb_hash_aref2(v_options, "message");
+  v_stream  = rb_hash_aref2(v_options, "stream");
+  v_ppid    = rb_hash_aref2(v_options, "ppid");
+  v_context = rb_hash_aref2(v_options, "context");
+  v_flags   = rb_hash_aref2(v_options, "flags");
+  v_ttl     = rb_hash_aref2(v_options, "ttl");
 
   if(NIL_P(v_stream))
     stream = 0;
@@ -498,7 +519,7 @@ void Init_socket(){
   rb_define_method(cSocket, "listen", rsctp_listen, -1);
   rb_define_method(cSocket, "peeloff", rsctp_peeloff, 1);
   rb_define_method(cSocket, "recvmsg", rsctp_recvmsg, -1);
-  rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, -1);
+  rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, 1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
   rb_define_method(cSocket, "subscribe", rsctp_subscribe, 1);
 
