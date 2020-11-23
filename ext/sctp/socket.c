@@ -142,11 +142,38 @@ static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
   return INT2NUM(port);
 }
 
-static VALUE rsctp_connect(VALUE self, VALUE v_port, VALUE v_addresses){
+/*
+ * Connect the socket to a multihomed peer via the provided array of addresses
+ * using the domain specified in the constructor. You must also specify the port.
+ *
+ * Example:
+ *
+ *   socket = SCTP::Socket.new
+ *   socket.connect(:port => 62354, :addresses => ['10.0.4.5', '10.0.5.5'])
+ *
+ * Note that this will also set/update the object's association_id.
+ */
+static VALUE rsctp_connect(int argc, VALUE* argv, VALUE self){
   struct sockaddr_in addrs[8];
   int i, num_ip, sock_fd;
   sctp_assoc_t assoc;
-  VALUE v_address, v_domain;
+  VALUE v_address, v_domain, v_options, v_addresses, v_port;
+
+  rb_scan_args(argc, argv, "01", &v_options);
+
+  if(NIL_P(v_options))
+    rb_raise(rb_eArgError, "you must specify an array of addresses");
+
+  Check_Type(v_options, T_HASH);
+
+  v_addresses = rb_hash_aref2(v_options, "addresses");
+  v_port = rb_hash_aref2(v_options, "port");
+
+  if(NIL_P(v_addresses) || RARRAY_LEN(v_addresses) == 0)
+    rb_raise(rb_eArgError, "you must specify an array of addresses containing at least one address");
+
+  if(NIL_P(v_port))
+    rb_raise(rb_eArgError, "you must specify a port");
 
   v_domain = rb_iv_get(self, "@domain");
 
@@ -465,7 +492,7 @@ void Init_socket(){
 
   rb_define_method(cSocket, "bind", rsctp_bind, -1);
   rb_define_method(cSocket, "close", rsctp_close, 0);
-  rb_define_method(cSocket, "connect", rsctp_connect, 2);
+  rb_define_method(cSocket, "connect", rsctp_connect, -1);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, 0);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, 0);
   rb_define_method(cSocket, "listen", rsctp_listen, -1);
@@ -479,4 +506,5 @@ void Init_socket(){
   rb_define_attr(cSocket, "type", 1, 1);
   rb_define_attr(cSocket, "sock_fd", 1, 1);
   rb_define_attr(cSocket, "association_id", 1, 1);
+  rb_define_attr(cSocket, "port", 1, 1);
 }
