@@ -268,30 +268,51 @@ static VALUE rsctp_getlocalnames(VALUE self){
 }
 
 /*
- *  socket.sendmsg(
- *    :message => message,
- *    :stream  => stream_number,
- *    :flags   => flags,
- *    :ttl,    => time_to_live,
- *    :ppid    => ppid,
- *    :context => context
- *  )
+ * Transmit a message to an SCTP endpoint. The following hash of options
+ * is permitted:
+ *
+ *  :message -> The message to send to the endpoint. Mandatory.
+ *  :stream  -> The SCTP stream number you wish to send the message on.
+ *  :to      -> An array of addresses to send the message to.
+ *  :context -> An opaque integer used in the event the message cannot be set.
+ *  :ppid    -> An opaque integer that is passed transparently through the stack to the peer endpoint. 
+ *  :flags   -> A bitwise integer that contain one or more values that control behavior.
+ *
+ *  Note that the :to option is not mandatory in a one-to-one (SOCK_STREAM)
+ *  socket connection. However, it must have been set previously via the
+ *  connect method.
+ *
+ *  Example:
+ *
+ *    socket = SCTP::Socket.new
+ *
+ *    socket.sendmsg(
+ *      :message => "Hello World!",
+ *      :stream  => 3,
+ *      :flags   => SCTP::Socket::SCTP_UNORDERED | SCTP::Socket::SCTP_SENDALL,
+ *      :ttl     => 100,
+ *      :to      => ['10.0.5.4', '10.0.6.4']
+ *    )
  */
 static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
-  VALUE v_msg, v_ppid, v_flags, v_stream, v_ttl, v_context;
+  VALUE v_msg, v_ppid, v_flags, v_stream, v_ttl, v_context, v_addresses;
   uint16_t stream;
-  uint32_t ppid, flags, timetolive, context;
+  uint32_t ppid, flags, ttl, context;
   ssize_t num_bytes;
-  int sock_fd;
+  struct sockaddr_in addrs[8];
+  int sock_fd, size;
 
   Check_Type(v_options, T_HASH);
 
-  v_msg     = rb_hash_aref2(v_options, "message");
-  v_stream  = rb_hash_aref2(v_options, "stream");
-  v_ppid    = rb_hash_aref2(v_options, "ppid");
-  v_context = rb_hash_aref2(v_options, "context");
-  v_flags   = rb_hash_aref2(v_options, "flags");
-  v_ttl     = rb_hash_aref2(v_options, "ttl");
+  bzero(&addrs, sizeof(addrs));
+
+  v_msg       = rb_hash_aref2(v_options, "message");
+  v_stream    = rb_hash_aref2(v_options, "stream");
+  v_ppid      = rb_hash_aref2(v_options, "ppid");
+  v_context   = rb_hash_aref2(v_options, "context");
+  v_flags     = rb_hash_aref2(v_options, "flags");
+  v_ttl       = rb_hash_aref2(v_options, "ttl");
+  v_addresses = rb_hash_aref2(v_options, "addresses");
 
   if(NIL_P(v_stream))
     stream = 0;
@@ -304,9 +325,9 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
     flags = NUM2INT(v_stream);
 
   if(NIL_P(v_ttl))
-    timetolive = 0;
+    ttl = 0;
   else
-    timetolive = NUM2INT(v_ttl);
+    ttl = NUM2INT(v_ttl);
 
   if(NIL_P(v_ppid))
     ppid = 0;
@@ -318,18 +339,32 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   else
     context = NUM2INT(v_context);
 
+  if(!NIL_P(v_addresses)){
+    int i, num_ip;
+    VALUE v_address;
+    num_ip = RARRAY_LEN(v_addresses);
+
+    for(i = 0; i < num_ip; i++){
+      v_address = RARRAY_PTR(v_addresses)[i];
+      addrs[i].sin_family = NUM2INT(rb_iv_get(self, "@domain"));
+      addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
+    }
+
+    size = sizeof(addrs);
+  }
+
   sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
 
-  num_bytes = sctp_sendmsg(
+  num_bytes = sctp_sendmsgx(
     sock_fd,
     StringValueCStr(v_msg),
     RSTRING_LEN(v_msg),
-    NULL,
-    0,
+    addrs,
+    size,
     ppid,
     flags,
     stream,
-    timetolive,
+    ttl,
     context
   );
 
