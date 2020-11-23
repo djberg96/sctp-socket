@@ -20,8 +20,7 @@ Rake::ExtensionTask.new('socket') do |t|
   t.lib_dir = 'lib/sctp'
 end
 
-RSpec::Core::RakeTask.new(:spec) do |t|
-  task :spec => :build
-end
+RSpec::Core::RakeTask.new
 
+task :spec => :compile
 task :default => :spec
