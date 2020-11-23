@@ -57,28 +57,38 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
 
 /*
  *  Bind a subset of IP addresses associated with the host system on the
- *  given +port+. You can both add or remove an address to or from the
- *  socket using the SCTP_BINDX_ADD_ADDR or SCTP_BINDX_REM_ADDR, respectively.
- *  This method adds them by default.
+ *  given port, or a port assigned by the operating system if none is provided.
+ *
+ *  Note that you can both add or remove an address to or from the socket
+ *  using the SCTP_BINDX_ADD_ADDR (default) or SCTP_BINDX_REM_ADDR constants,
+ *  respectively.
  *
  *  Example:
  *
  *    socket = SCTP::Socket.new
  *
- *    # Add 2 addresses
+ *    # Bind 2 addresses
  *    socket.bind(:port => 64325, :addresses => ['10.0.4.5', '10.0.5.5'])
  *
  *    # Remove 1 later
  *    socket.bind(:addresses => ['10.0.4.5'], :flags => SCTP::Socket::BINDX_REM_ADDR)
  *
- *  If no addresses are specified, then it will bind to all available interfaces.
+ *  If no addresses are specified, then it will bind to all available interfaces. If
+ *  no port is specified, then one will be assigned by the host.
+ *
+ *  Returns the port that it was bound to.
  */
-static VALUE rsctp_bind(VALUE self, VALUE v_options){
+static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
   struct sockaddr_in addrs[8];
   int i, sock_fd, num_ip, flags, domain, port;
-  VALUE v_addresses, v_port, v_flags, v_address;
+  VALUE v_addresses, v_port, v_flags, v_address, v_options;
+
+  rb_scan_args(argc, argv, "01", &v_options);
 
   bzero(&addrs, sizeof(addrs));
+
+  if(NIL_P(v_options))
+    v_options = rb_hash_new();
 
   v_addresses = rb_hash_aref2(v_options, "addresses");
   v_flags = rb_hash_aref2(v_options, "flags");
@@ -119,7 +129,17 @@ static VALUE rsctp_bind(VALUE self, VALUE v_options){
   if(sctp_bindx(sock_fd, (struct sockaddr *) addrs, num_ip, flags) != 0)
     rb_raise(rb_eSystemCallError, "sctp_bindx: %s", strerror(errno));
 
-  return self;
+  if(port == 0){
+    struct sockaddr_in sin;
+    socklen_t len = sizeof(sin);
+
+    if(getsockname(sock_fd, (struct sockaddr *)&sin, &len) == -1)
+      rb_raise(rb_eSystemCallError, "getsockname: %s", strerror(errno));
+
+    port = sin.sin_port;
+  }
+
+  return INT2NUM(port);
 }
 
 static VALUE rsctp_connect(VALUE self, VALUE v_port, VALUE v_addresses){
@@ -443,7 +463,7 @@ void Init_socket(){
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
 
-  rb_define_method(cSocket, "bind", rsctp_bind, 1);
+  rb_define_method(cSocket, "bind", rsctp_bind, -1);
   rb_define_method(cSocket, "close", rsctp_close, 0);
   rb_define_method(cSocket, "connect", rsctp_connect, 2);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, 0);
