@@ -71,35 +71,52 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
  *    # Remove 1 later
  *    socket.bind(:addresses => ['10.0.4.5'], :flags => SCTP::Socket::BINDX_REM_ADDR)
  *
+ *  If no addresses are specified, then it will bind to all available interfaces.
  */
-static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
-  int i, sock_fd, num_ip;
-  VALUE v_addresses, v_port, v_family;
-  VALUE v_address;
+static VALUE rsctp_bind(VALUE self, VALUE v_options){
   struct sockaddr_in addrs[8];
+  int i, sock_fd, num_ip, flags, domain, port;
+  VALUE v_addresses, v_port, v_flags, v_address;
 
   bzero(&addrs, sizeof(addrs));
 
-  rb_scan_args(argc, argv, "12", &v_addresses, &v_port, &v_flags);
+  v_addresses = rb_hash_aref2(v_options, "addresses");
+  v_flags = rb_hash_aref2(v_options, "flags");
+  v_port = rb_hash_aref2(v_options, "port");
 
   if(NIL_P(v_port))
-    v_port = INT2NUM(0);
+    port = 0;
+  else
+    port = NUM2INT(v_port);
 
-  if(NIL_P(v_family))
-    v_family = INT2NUM(AF_INET);
+  if(NIL_P(v_flags))
+    flags = SCTP_BINDX_ADD_ADDR;
+  else
+    flags = NUM2INT(v_flags);
 
-  num_ip = RARRAY_LEN(v_addresses);
+  if(NIL_P(v_addresses))
+    num_ip = 1;
+  else
+    num_ip = RARRAY_LEN(v_addresses);
 
-  for(i = 0; i < num_ip; i++){
-    v_address = RARRAY_PTR(v_addresses)[i];
-    addrs[i].sin_family = NUM2INT(v_family);
-    addrs[i].sin_port = htons(NUM2INT(v_port));
-    addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
-  }
-
+  domain = NUM2INT(rb_iv_get(self, "@domain"));
   sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
 
-  if(sctp_bindx(sock_fd, (struct sockaddr *) addrs, num_ip, SCTP_BINDX_ADD_ADDR) != 0)
+  if(num_ip > 1){
+    for(i = 0; i < num_ip; i++){
+      v_address = RARRAY_PTR(v_addresses)[i];
+      addrs[i].sin_family = domain;
+      addrs[i].sin_port = htons(port);
+      addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
+    }
+  }
+  else{
+    addrs[0].sin_family = domain;
+    addrs[0].sin_port = htons(port);
+    addrs[0].sin_addr.s_addr = htonl(INADDR_ANY);
+  }
+
+  if(sctp_bindx(sock_fd, (struct sockaddr *) addrs, num_ip, flags) != 0)
     rb_raise(rb_eSystemCallError, "sctp_bindx: %s", strerror(errno));
 
   return self;
@@ -426,7 +443,7 @@ void Init_socket(){
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
 
-  rb_define_method(cSocket, "bind", rsctp_bind, -1);
+  rb_define_method(cSocket, "bind", rsctp_bind, 1);
   rb_define_method(cSocket, "close", rsctp_close, 0);
   rb_define_method(cSocket, "connect", rsctp_connect, 2);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, 0);
