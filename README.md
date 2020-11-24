@@ -43,7 +43,7 @@ begin
   socket.listen
 
   while true
-    data = socket.recvmsgx
+    data = socket.recvmsg
     puts data
   end
 ensure
