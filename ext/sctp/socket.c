@@ -438,6 +438,30 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
     rb_raise(rb_eSystemCallError, "sctp_recvmsg: %s", strerror(errno));
 
   // TODO: Check for MSG_NOTIFICATION, return different structs for events.
+  /*
+  if(flags & MSG_NOTIFICATION){
+    union sctp_notification* snp;
+    snp = (union sctp_notification*)buffer;
+
+    switch(snp->sn_type){
+      case SCTP_ASSOC_CHANGE:
+        break;
+      case SCTP_PEER_ADDR_CHANGE:
+        break;
+      case SCTP_REMOTE_ERROR:
+        break;
+      case SCTP_SEND_FAILED:
+        break;
+      case SCTP_SHUTDOWN_EVENT:
+        break;
+      case SCTP_ADAPTATION_INDICATION:
+        break;
+      case SCTP_PARTIAL_DELIVERY_EVENT:
+        break;
+    }
+  }
+  */
+
   return rb_struct_new(v_sndrcv_struct,
     rb_str_new(buffer, bytes),
     UINT2NUM(sndrcvinfo.sinfo_stream),
@@ -566,15 +590,23 @@ static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
   return self;
 }
 
+/*
+ * Extracts an association contained by a one-to-many socket connection into
+ * a one-to-one style socket. Note that this modifies the underlying sock_fd.
+ */
 static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
-  int sock_fd;
+  int sock_fd, new_sock_fd;
   sctp_assoc_t assoc_id;
     
   sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
   assoc_id = NUM2INT(v_assoc_id);
 
-  if(sctp_peeloff(sock_fd, assoc_id) < 0)
+  new_sock_fd = sctp_peeloff(sock_fd, assoc_id);
+
+  if(new_sock_fd < 0)
     rb_raise(rb_eSystemCallError, "sctp_peeloff: %s", strerror(errno));
+
+  rb_iv_set(self, "@sock_fd", INT2NUM(new_sock_fd));
 
   return self;
 }
@@ -596,7 +628,7 @@ void Init_socket(){
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, 0);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, 0);
   rb_define_method(cSocket, "listen", rsctp_listen, -1);
-  rb_define_method(cSocket, "peeloff", rsctp_peeloff, 1);
+  rb_define_method(cSocket, "peeloff!", rsctp_peeloff, 1);
   rb_define_method(cSocket, "recvmsg", rsctp_recvmsg, -1);
   rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, 1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
