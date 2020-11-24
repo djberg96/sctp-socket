@@ -1,4 +1,5 @@
 * CHANGES.md
+* certs/djberg96_pub.pem
 * examples/client_example.rb
 * examples/server_example.rb
 * ext/sctp/socket.c
