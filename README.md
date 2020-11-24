@@ -2,7 +2,7 @@
 
 A Ruby interface for SCTP sockets.
 
-WARNING: THIS IS CURRENTLY AN ALPHA PRODUCT.
+WARNING: THIS IS CURRENTLY AN ALPHA PRODUCT. NOT RECOMMENDED FOR PRODUCTION USE AT THIS TIME.
 
 ## Prerequisites
 
@@ -54,6 +54,7 @@ end
 ## Future Plans
 
 * Check for notification data and return it if encountered.
+* Add specs.
 
 ## Known Issues
 

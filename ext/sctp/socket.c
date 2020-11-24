@@ -673,4 +673,7 @@ void Init_socket(){
   rb_define_attr(cSocket, "sock_fd", 1, 1);
   rb_define_attr(cSocket, "association_id", 1, 1);
   rb_define_attr(cSocket, "port", 1, 1);
+
+  /* 0.0.1: The version of this library */
+  rb_define_const(cSocket, "VERSION", rb_str_new2("0.0.1"));
 }
