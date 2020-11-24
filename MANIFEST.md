@@ -1,0 +1,11 @@
+* CHANGES.md
+* examples/client_example.rb
+* examples/server_example.rb
+* ext/sctp/socket.c
+* ext/sctp/socket.h
+* Gemfile
+* LICENSE
+* Rakefile
+* README.md
+* sctp-socket.gemspec
+* spec/sctp_spec.rb
