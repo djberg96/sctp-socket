@@ -514,19 +514,39 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
 }
 
 /*
- * {
- *   :data_io => true,
- *   :association => true,
- *   :address => true,
- *   :send_failure => true,
- *   :peer_error => true,
- *   :shutdown => true,
- *   :partial_delivery => true,
- *   :adaptation_layer => true,
- *   :authentication_event => true,
- *   :sender_dry => true
- * }
+ * Subscribe to various notification types, which will generate additional
+ * data that the socket may receive. The possible notification types are
+ * as follows:
  *
+ *   :association
+ *   - A change has occurred to an assocation, either a new one has begun or an existing one has end.
+ *
+ *   :address
+ *   - The state of one of the peer's addresses has experienced a change.
+ *
+ *   :send_failure
+ *   - The message could not be delivered to a peer.
+ *
+ *   :shutdown
+ *   - The peer has sent a shutdown to the local endpoint.
+ *
+ *   Others:
+ *
+ *   :adaptation_layer
+ *   :authentication_event
+ *   :data_io
+ *   :peer_error
+ *   :partial_delivery
+ *   :sender_dry
+ *
+ * By default only data_io is subscribed to.
+ *
+ * Example:
+ * 
+ *   socket = SCTP::Socket.new
+ *
+ *   socket.bind(:port => port, :addresses => ['127.0.0.1'])
+ *   socket.subscribe(:shutdown => true, :send_failure => true)
  */
 static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
   int sock_fd;
@@ -571,6 +591,20 @@ static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
   return self;
 }
 
+/*
+ * Marks the socket referred to by sockfd as a passive socket, i.e. a socket that
+ * will be used to accept incoming connection requests.
+ *
+ * The backlog argument defines the maximum length to which the queue of
+ * pending connections for sockfd may grow. The default is 1024.
+ *
+ * Example:
+ *
+ *  socket = SCTP::Socket.new
+ *  socket.bind(:port => 62534, :addresses => ['127.0.0.1'])
+ *  socket.listen
+ *
+ */
 static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
   VALUE v_backlog;
   int backlog, sock_fd;
