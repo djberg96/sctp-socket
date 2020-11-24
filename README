@@ -2,9 +2,17 @@
 
 A Ruby interface for SCTP sockets.
 
+WARNING: THIS IS CURRENTLY AN ALPHA PRODUCT.
+
 ## Prerequisites
 
 You will need the sctp development headers installed.
+
+On some systems, such as RHEL8, you may need to enable the sctp module.
+
+## Installation
+
+  `gem install sctp-socket`
 
 ## About SCTP
 
@@ -20,15 +28,16 @@ Detection of data corruption, loss of data and duplication of data is achieved
 by using checksums and sequence numbers. A selective retransmission mechanism
 is applied to correct loss or corruption of data.
 
-## Example
+## Synopsis
 
+```
 # sample_server.rb
 require 'sctp/socket'
 
 begin
   port = 62324
   socket = SCTP::Socket.new
-  socket.bindx(['10.0.5.4', '10.0.6.4'], port)
+  socket.bind(:port => port, :addresses => ['10.0.5.4', '10.0.6.4'])
   socket.set_initmsg(:output_streams => 5, :input_streams => 5, :max_attempts => 4)
   socket.subscribe(:data_io => true)
   socket.listen
@@ -36,8 +45,32 @@ begin
   while true
     data = socket.recvmsgx
     puts data
-    sleep 1
   end
 ensure
   socket.close
 end
+```
+
+## Future Plans
+
+* Check for notification data and return it if encountered.
+
+## Known Issues
+
+Please report any issues on the github project page.
+
+  https://github.com/djberg96/sctp-socket
+
+## License
+
+Apache-2.0
+
+## Copyright
+
+(C) 2020, Daniel J. Berger
+Al Rights Reserved
+
+## Author
+
+Daniel J. Berger
+djberg96 at gmail dot com
