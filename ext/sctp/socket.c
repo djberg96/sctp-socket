@@ -437,6 +437,7 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   if(bytes < 0)
     rb_raise(rb_eSystemCallError, "sctp_recvmsg: %s", strerror(errno));
 
+  // TODO: Check for MSG_NOTIFICATION, return different structs for events.
   return rb_struct_new(v_sndrcv_struct,
     rb_str_new(buffer, bytes),
     UINT2NUM(sndrcvinfo.sinfo_stream),
