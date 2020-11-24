@@ -6,6 +6,7 @@
 
 VALUE mSCTP;
 VALUE cSocket;
+VALUE v_sndrcv_struct;
 
 // Helper function to get a hash value via string or symbol.
 VALUE rb_hash_aref2(VALUE v_hash, const char* key){
@@ -274,8 +275,8 @@ static VALUE rsctp_getlocalnames(VALUE self){
  *  :message -> The message to send to the endpoint. Mandatory.
  *  :stream  -> The SCTP stream number you wish to send the message on.
  *  :to      -> An array of addresses to send the message to.
- *  :context -> An opaque integer used in the event the message cannot be set.
- *  :ppid    -> An opaque integer that is passed transparently through the stack to the peer endpoint. 
+ *  :context -> The default context used for the sendmsg call if the send fails.
+ *  :ppid    -> The payload protocol identifier that is passed to the peer endpoint. 
  *  :flags   -> A bitwise integer that contain one or more values that control behavior.
  *
  *  Note that the :to option is not mandatory in a one-to-one (SOCK_STREAM)
@@ -385,6 +386,25 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   return INT2NUM(num_bytes);
 }
 
+/*
+ * Receive a message from another SCTP endpoint.
+ *
+ * Example:
+ *
+ *   begin
+ *     socket = SCTP::Socket.new
+ *     socket.bind(:port => 62534, :addresses => ['10.0.4.5', '10.0.5.5'])
+ *     socket.subscribe(:data_io => 1)
+ *     socket.listen
+ *
+ *     while true
+ *       info = socket.recvmsg
+ *       puts "Received message: #{info.message}"
+ *     end
+ *   ensure
+ *     socket.close
+ *   end
+ */
 static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   VALUE v_flags;
   struct sctp_sndrcvinfo sndrcvinfo;
@@ -417,8 +437,15 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   if(bytes < 0)
     rb_raise(rb_eSystemCallError, "sctp_recvmsg: %s", strerror(errno));
 
-  // TODO: Return a struct with clienaddr info, plus buffer.
-  return rb_str_new(buffer, bytes);
+  return rb_struct_new(v_sndrcv_struct,
+    rb_str_new(buffer, bytes),
+    UINT2NUM(sndrcvinfo.sinfo_stream),
+    UINT2NUM(sndrcvinfo.sinfo_flags),
+    UINT2NUM(sndrcvinfo.sinfo_ppid),
+    UINT2NUM(sndrcvinfo.sinfo_context),
+    UINT2NUM(sndrcvinfo.sinfo_timetolive),
+    UINT2NUM(sndrcvinfo.sinfo_assoc_id)
+  );
 }
 
 /*
@@ -554,6 +581,11 @@ static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
 void Init_socket(){
   mSCTP   = rb_define_module("SCTP");
   cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
+
+  v_sndrcv_struct = rb_struct_define(
+    "SndRecvInfo", "message", "stream", "flags",
+    "ppid", "context", "ttl", "assoc_id", NULL
+  );
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
 
