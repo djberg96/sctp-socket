@@ -340,26 +340,37 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
     context = NUM2INT(v_context);
 
   if(!NIL_P(v_addresses)){
-    int i, num_ip;
-    VALUE v_address;
+    int i, num_ip, port;
+    VALUE v_address, v_port;
+
     num_ip = RARRAY_LEN(v_addresses);
+    v_port = rb_hash_aref2(v_options, "port");
+
+    if(NIL_P(v_port))
+      port = 0;
+    else
+      port = NUM2INT(v_port);
 
     for(i = 0; i < num_ip; i++){
       v_address = RARRAY_PTR(v_addresses)[i];
       addrs[i].sin_family = NUM2INT(rb_iv_get(self, "@domain"));
+      addrs[i].sin_port = htons(port);
       addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
     }
 
     size = sizeof(addrs);
   }
+  else{
+    size = 0;
+  }
 
   sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
 
-  num_bytes = sctp_sendmsgx(
+  num_bytes = sctp_sendmsg(
     sock_fd,
     StringValueCStr(v_msg),
     RSTRING_LEN(v_msg),
-    addrs,
+    (struct sockaddr*)addrs,
     size,
     ppid,
     flags,
