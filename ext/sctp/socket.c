@@ -493,12 +493,21 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
 }
 
 /*
- *  {
- *    :output_streams => 2,
- *    :input_streams  => 3,
- *    :max_attempts   => 5,
- *    :timeout        => 30
- *  }
+ * Set the initial parameters used by the socket when sending out the INIT message.
+ *
+ * Example:
+ *
+ *  socket = SCTP::Socket.new
+ *  socket.set_initmsg(:output_streams => 5, :input_streams => 5, :max_attempts => 4, :timeout => 30)
+ *
+ * The following parameters can be configured:
+ *
+ * :output_streams - The number of outbound SCTP streams an application would like to request.
+ * :input_streams - The maximum number of inbound streams an application is prepared to allow.
+ * :max_attempts - How many times the the SCTP stack should send the initial INIT message before it's considered unreachable.
+ * :timeout - The maximum RTO value for the INIT timer.
+ *
+ * By default these values are set to zero (i.e. ignored).
  */
 static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
   int sock_fd;
