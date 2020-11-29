@@ -215,10 +215,15 @@ static VALUE rsctp_close(VALUE self){
   return self;
 }
 
+/*
+ *  Return an array of all addresses of a peer.
+ */
 static VALUE rsctp_getpeernames(VALUE self){
   sctp_assoc_t assoc_id;
   struct sockaddr* addrs;
   int i, sock_fd, num_addrs;
+  char str[16];
+  VALUE v_array = rb_ary_new();
 
   bzero(&addrs, sizeof(addrs));
 
@@ -232,15 +237,15 @@ static VALUE rsctp_getpeernames(VALUE self){
     rb_raise(rb_eSystemCallError, "sctp_getpaddrs: %s", strerror(errno));
   }
 
-  printf("NUM_PEERS: %i\n", num_addrs);
-
   for(i = 0; i < num_addrs; i++){
-    // TODO: Create and return array of IpAddr objects
+    inet_ntop(AF_INET, &(((struct sockaddr_in *)&addrs[i])->sin_addr), str, sizeof(str));
+    rb_ary_push(v_array, rb_str_new2(str));
+    bzero(&str, sizeof(str));
   }
 
   sctp_freepaddrs(addrs);
 
-  return self;
+  return v_array;
 }
 
 /*
@@ -256,7 +261,7 @@ static VALUE rsctp_getlocalnames(VALUE self){
   sctp_assoc_t assoc_id;
   struct sockaddr* addrs;
   int i, sock_fd, num_addrs;
-  char str[20];
+  char str[16];
   VALUE v_array = rb_ary_new();
 
   bzero(&addrs, sizeof(addrs));
