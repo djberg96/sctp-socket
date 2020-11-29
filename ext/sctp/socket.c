@@ -232,6 +232,8 @@ static VALUE rsctp_getpeernames(VALUE self){
     rb_raise(rb_eSystemCallError, "sctp_getpaddrs: %s", strerror(errno));
   }
 
+  printf("NUM_PEERS: %i\n", num_addrs);
+
   for(i = 0; i < num_addrs; i++){
     // TODO: Create and return array of IpAddr objects
   }
@@ -241,10 +243,21 @@ static VALUE rsctp_getpeernames(VALUE self){
   return self;
 }
 
+/*
+ * Return an array of local addresses that are part of the association.
+ *
+ * Example:
+ *
+ *  socket = SCTP::Socket.new
+ *  socket.bind(:addresses => ['10.0.4.5', '10.0.5.5'])
+ *  socket.getlocalnames # => ['10.0.4.5', '10.0.5.5'])
+ */
 static VALUE rsctp_getlocalnames(VALUE self){
   sctp_assoc_t assoc_id;
   struct sockaddr* addrs;
   int i, sock_fd, num_addrs;
+  char str[20];
+  VALUE v_array = rb_ary_new();
 
   bzero(&addrs, sizeof(addrs));
 
@@ -259,12 +272,14 @@ static VALUE rsctp_getlocalnames(VALUE self){
   }
 
   for(i = 0; i < num_addrs; i++){
-    // TODO: Create and return array of IpAddr objects
+    inet_ntop(AF_INET, &(((struct sockaddr_in *)&addrs[i])->sin_addr), str, sizeof(str));
+    rb_ary_push(v_array, rb_str_new2(str));
+    bzero(&str, sizeof(str));
   }
 
   sctp_freeladdrs(addrs);
 
-  return self;
+  return v_array;
 }
 
 /*
