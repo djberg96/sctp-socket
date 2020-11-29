@@ -216,10 +216,10 @@ static VALUE rsctp_close(VALUE self){
 }
 
 static VALUE rsctp_getpeernames(VALUE self){
-  VALUE v_assoc_id = rb_iv_get(self, "@assocation_id"); 
   sctp_assoc_t assoc_id;
   struct sockaddr* addrs;
   int i, sock_fd, num_addrs;
+  VALUE v_assoc_id = rb_iv_get(self, "@assocation_id");
 
   bzero(&addrs, sizeof(addrs));
 
@@ -250,7 +250,7 @@ static VALUE rsctp_getlocalnames(VALUE self){
   bzero(&addrs, sizeof(addrs));
 
   sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
-  assoc_id = NUM2INT(rb_iv_get(self, "@assocation_id"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
 
   num_addrs = sctp_getladdrs(sock_fd, assoc_id, &addrs);
 
@@ -673,7 +673,7 @@ void Init_socket(){
 
   v_sndrcv_struct = rb_struct_define(
     "SndRecvInfo", "message", "stream", "flags",
-    "ppid", "context", "ttl", "assoc_id", NULL
+    "ppid", "context", "ttl", "association_id", NULL
   );
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
