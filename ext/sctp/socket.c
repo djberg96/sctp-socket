@@ -645,6 +645,28 @@ static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
   return self;
 }
 
+static VALUE rsctp_shutdown(int argc, VALUE* argv, VALUE self){
+  int how, sock_fd;
+  VALUE v_how;
+
+  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+
+  rb_scan_args(argc, argv, "01", &v_how);
+
+  if(NIL_P(v_how)){
+    how = SHUT_RDWR;
+  }
+  else{
+    Check_Type(v_how, T_FIXNUM);
+    how = NUM2INT(v_how);
+  }
+
+  if(shutdown(sock_fd, how) < 0)
+    rb_raise(rb_eSystemCallError, "shutdown: %s", strerror(errno));
+
+  return self;
+}
+
 void Init_socket(){
   mSCTP   = rb_define_module("SCTP");
   cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
@@ -666,6 +688,7 @@ void Init_socket(){
   rb_define_method(cSocket, "recvmsg", rsctp_recvmsg, -1);
   rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, 1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
+  rb_define_method(cSocket, "shutdown", rsctp_shutdown, -1);
   rb_define_method(cSocket, "subscribe", rsctp_subscribe, 1);
 
   rb_define_attr(cSocket, "domain", 1, 1);
@@ -674,6 +697,6 @@ void Init_socket(){
   rb_define_attr(cSocket, "association_id", 1, 1);
   rb_define_attr(cSocket, "port", 1, 1);
 
-  /* 0.0.1: The version of this library */
-  rb_define_const(cSocket, "VERSION", rb_str_new2("0.0.1"));
+  /* 0.0.2: The version of this library */
+  rb_define_const(cSocket, "VERSION", rb_str_new2("0.0.2"));
 }
