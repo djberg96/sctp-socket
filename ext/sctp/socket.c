@@ -219,12 +219,11 @@ static VALUE rsctp_getpeernames(VALUE self){
   sctp_assoc_t assoc_id;
   struct sockaddr* addrs;
   int i, sock_fd, num_addrs;
-  VALUE v_assoc_id = rb_iv_get(self, "@assocation_id");
 
   bzero(&addrs, sizeof(addrs));
 
   sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
-  assoc_id = NUM2INT(v_assoc_id);
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
 
   num_addrs = sctp_getpaddrs(sock_fd, assoc_id, &addrs);
 
