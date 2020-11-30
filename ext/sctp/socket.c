@@ -462,8 +462,11 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   v_notification = Qnil;
 
   if(flags & MSG_NOTIFICATION){
+    uint32_t i;
     char str[16];
     union sctp_notification* snp;
+    VALUE* v_temp;
+
     snp = (union sctp_notification*)buffer;
 
     switch(snp->sn_header.sn_type){
@@ -496,15 +499,18 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
         );
         break;
       case SCTP_REMOTE_ERROR:
+        v_temp = ALLOCA_N(VALUE, snp->sn_remote_error.sre_length);
+
+        for(i = 0; i < snp->sn_remote_error.sre_length; i++){
+          v_temp[i] = UINT2NUM(snp->sn_remote_error.sre_data[i]);
+        }
+
         v_notification = rb_struct_new(v_remote_error_struct,
           UINT2NUM(snp->sn_remote_error.sre_type),
           UINT2NUM(snp->sn_remote_error.sre_length),
           UINT2NUM(snp->sn_remote_error.sre_error),
           UINT2NUM(snp->sn_remote_error.sre_assoc_id),
-          rb_ary_new4(
-            sizeof(snp->sn_remote_error.sre_data),
-            (VALUE*)snp->sn_remote_error.sre_data
-          )
+          rb_ary_new4(snp->sn_remote_error.sre_length, v_temp)
         );
         break;
       case SCTP_SEND_FAILED:
