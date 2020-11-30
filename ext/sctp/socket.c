@@ -10,6 +10,7 @@ VALUE v_sndrcv_struct;
 VALUE v_assoc_change_struct;
 VALUE v_peeraddr_change_struct;
 VALUE v_remote_error_struct;
+VALUE v_send_failed_struct;
 
 // Helper function to get a hash value via string or symbol.
 VALUE rb_hash_aref2(VALUE v_hash, const char* key){
@@ -521,6 +522,20 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
         );
         break;
       case SCTP_SEND_FAILED:
+        v_temp = ALLOCA_N(VALUE, snp->sn_send_failed.ssf_length);
+
+        for(i = 0; i < snp->sn_send_failed.ssf_length; i++){
+          v_temp[i] = UINT2NUM(snp->sn_send_failed.ssf_data[i]);
+        }
+
+        v_notification = rb_struct_new(v_send_failed_struct,
+          UINT2NUM(snp->sn_send_failed.ssf_type),
+          UINT2NUM(snp->sn_send_failed.ssf_length),
+          UINT2NUM(snp->sn_send_failed.ssf_error),
+          // TODO: Add sndrcvinfo here
+          UINT2NUM(snp->sn_send_failed.ssf_assoc_id),
+          rb_ary_new4(snp->sn_send_failed.ssf_length, v_temp)
+        );
         break;
       case SCTP_SHUTDOWN_EVENT:
         break;
@@ -767,6 +782,10 @@ void Init_socket(){
 
   v_remote_error_struct = rb_struct_define(
     "RemoteError", "type", "length", "error", "association_id", "data", NULL
+  );
+
+  v_send_failed_struct = rb_struct_define(
+    "SendFailed", "type", "length", "error", "association_id", "data", NULL
   );
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
