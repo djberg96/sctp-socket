@@ -9,6 +9,7 @@ VALUE cSocket;
 VALUE v_sndrcv_struct;
 VALUE v_assoc_change_struct;
 VALUE v_peeraddr_change_struct;
+VALUE v_remote_error_struct;
 
 // Helper function to get a hash value via string or symbol.
 VALUE rb_hash_aref2(VALUE v_hash, const char* key){
@@ -495,6 +496,16 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
         );
         break;
       case SCTP_REMOTE_ERROR:
+        v_notification = rb_struct_new(v_remote_error_struct,
+          UINT2NUM(snp->sn_remote_error.sre_type),
+          UINT2NUM(snp->sn_remote_error.sre_length),
+          UINT2NUM(snp->sn_remote_error.sre_error),
+          UINT2NUM(snp->sn_remote_error.sre_assoc_id),
+          rb_ary_new4(
+            sizeof(snp->sn_remote_error.sre_data),
+            (void*)snp->sn_remote_error.sre_data
+          )
+        );
         break;
       case SCTP_SEND_FAILED:
         break;
@@ -739,6 +750,10 @@ void Init_socket(){
   v_peeraddr_change_struct = rb_struct_define(
     "PeerAddrChange", "type", "length", "ip_address",
     "state", "error", "association_id", NULL
+  );
+
+  v_remote_error_struct = rb_struct_define(
+    "RemoteError", "type", "length", "error", "association_id", "data", NULL
   );
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
