@@ -503,7 +503,7 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
           UINT2NUM(snp->sn_remote_error.sre_assoc_id),
           rb_ary_new4(
             sizeof(snp->sn_remote_error.sre_data),
-            (void*)snp->sn_remote_error.sre_data
+            (VALUE*)snp->sn_remote_error.sre_data
           )
         );
         break;
