@@ -430,7 +430,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
  *   end
  */
 static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
-  VALUE v_flags, v_notification;
+  VALUE v_flags, v_notification, v_message;
   struct sctp_sndrcvinfo sndrcvinfo;
   struct sockaddr_in clientaddr;
   int flags, bytes, sock_fd;
@@ -552,8 +552,13 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
     }
   }
 
+  if(NIL_P(v_notification))
+    v_message = rb_str_new(buffer, bytes);
+  else
+    v_message = Qnil;
+
   return rb_struct_new(v_sndrcv_struct,
-    rb_str_new(buffer, bytes),
+    v_message,
     UINT2NUM(sndrcvinfo.sinfo_stream),
     UINT2NUM(sndrcvinfo.sinfo_flags),
     UINT2NUM(sndrcvinfo.sinfo_ppid),
