@@ -469,7 +469,6 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
       case SCTP_ASSOC_CHANGE:
         v_notification = rb_struct_new(v_assoc_change_struct,
           UINT2NUM(snp->sn_assoc_change.sac_type),
-          UINT2NUM(snp->sn_assoc_change.sac_flags),
           UINT2NUM(snp->sn_assoc_change.sac_length),
           UINT2NUM(snp->sn_assoc_change.sac_state),
           UINT2NUM(snp->sn_assoc_change.sac_error),
@@ -488,7 +487,6 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
 
         v_notification = rb_struct_new(v_peeraddr_change_struct,
           UINT2NUM(snp->sn_paddr_change.spc_type),
-          UINT2NUM(snp->sn_paddr_change.spc_flags),
           UINT2NUM(snp->sn_paddr_change.spc_length),
           rb_str_new2(str),
           UINT2NUM(snp->sn_paddr_change.spc_state),
@@ -734,12 +732,12 @@ void Init_socket(){
   );
 
   v_assoc_change_struct = rb_struct_define(
-    "AssocChange", "type", "flags", "length", "state", "error",
+    "AssocChange", "type", "length", "state", "error",
     "outbound_streams", "inbound_streams", "association_id", NULL
   );
 
   v_peeraddr_change_struct = rb_struct_define(
-    "PeerAddrChange", "type", "flags", "length", "ip_address",
+    "PeerAddrChange", "type", "length", "ip_address",
     "state", "error", "association_id", NULL
   );
 
