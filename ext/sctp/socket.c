@@ -480,7 +480,7 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
         break;
       case SCTP_PEER_ADDR_CHANGE:
         inet_ntop(
-          AF_INET,
+          ((struct sockaddr_in *)&snp->sn_paddr_change.spc_aaddr)->sin_family,
           &(((struct sockaddr_in *)&snp->sn_paddr_change.spc_aaddr)->sin_addr),
           str,
           sizeof(str)
