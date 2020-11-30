@@ -471,6 +471,12 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
 
     switch(snp->sn_header.sn_type){
       case SCTP_ASSOC_CHANGE:
+        v_temp = ALLOCA_N(VALUE, snp->sn_assoc_change.sac_length);
+
+        for(i = 0; i < snp->sn_assoc_change.sac_length; i++){
+          v_temp[i] = UINT2NUM(snp->sn_assoc_change.sac_info[i]);
+        }
+
         v_notification = rb_struct_new(v_assoc_change_struct,
           UINT2NUM(snp->sn_assoc_change.sac_type),
           UINT2NUM(snp->sn_assoc_change.sac_length),
@@ -478,7 +484,8 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
           UINT2NUM(snp->sn_assoc_change.sac_error),
           UINT2NUM(snp->sn_assoc_change.sac_outbound_streams),
           UINT2NUM(snp->sn_assoc_change.sac_inbound_streams),
-          UINT2NUM(snp->sn_assoc_change.sac_assoc_id)
+          UINT2NUM(snp->sn_assoc_change.sac_assoc_id),
+          rb_ary_new4(snp->sn_assoc_change.sac_length, v_temp)
         );
         break;
       case SCTP_PEER_ADDR_CHANGE:
@@ -750,7 +757,7 @@ void Init_socket(){
 
   v_assoc_change_struct = rb_struct_define(
     "AssocChange", "type", "length", "state", "error",
-    "outbound_streams", "inbound_streams", "association_id", NULL
+    "outbound_streams", "inbound_streams", "association_id", "info", NULL
   );
 
   v_peeraddr_change_struct = rb_struct_define(
