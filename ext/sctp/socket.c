@@ -8,6 +8,7 @@ VALUE mSCTP;
 VALUE cSocket;
 VALUE v_sndrcv_struct;
 VALUE v_assoc_change_struct;
+VALUE v_peeraddr_change_struct;
 
 // Helper function to get a hash value via string or symbol.
 VALUE rb_hash_aref2(VALUE v_hash, const char* key){
@@ -460,6 +461,7 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   v_notification = Qnil;
 
   if(flags & MSG_NOTIFICATION){
+    char str[16];
     union sctp_notification* snp;
     snp = (union sctp_notification*)buffer;
 
@@ -477,6 +479,22 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
         );
         break;
       case SCTP_PEER_ADDR_CHANGE:
+        inet_ntop(
+          AF_INET,
+          &(((struct sockaddr_in *)&snp->sn_paddr_change.spc_aaddr)->sin_addr),
+          str,
+          sizeof(str)
+        );
+
+        v_notification = rb_struct_new(v_peeraddr_change_struct,
+          UINT2NUM(snp->sn_paddr_change.spc_type),
+          UINT2NUM(snp->sn_paddr_change.spc_flags),
+          UINT2NUM(snp->sn_paddr_change.spc_length),
+          rb_str_new2(str),
+          UINT2NUM(snp->sn_paddr_change.spc_state),
+          UINT2NUM(snp->sn_paddr_change.spc_error),
+          UINT2NUM(snp->sn_paddr_change.spc_assoc_id)
+        );
         break;
       case SCTP_REMOTE_ERROR:
         break;
@@ -718,6 +736,11 @@ void Init_socket(){
   v_assoc_change_struct = rb_struct_define(
     "AssocChange", "type", "flags", "length", "state", "error",
     "outbound_streams", "inbound_streams", "association_id", NULL
+  );
+
+  v_peeraddr_change_struct = rb_struct_define(
+    "PeerAddrChange", "type", "flags", "length", "ip_address",
+    "state", "error", "association_id", NULL
   );
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
