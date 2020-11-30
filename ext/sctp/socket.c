@@ -11,6 +11,7 @@ VALUE v_assoc_change_struct;
 VALUE v_peeraddr_change_struct;
 VALUE v_remote_error_struct;
 VALUE v_send_failed_struct;
+VALUE v_shutdown_event_struct;
 
 // Helper function to get a hash value via string or symbol.
 VALUE rb_hash_aref2(VALUE v_hash, const char* key){
@@ -538,6 +539,11 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
         );
         break;
       case SCTP_SHUTDOWN_EVENT:
+        v_notification = rb_struct_new(v_shutdown_event_struct,
+          UINT2NUM(snp->sn_shutdown_event.sse_type),
+          UINT2NUM(snp->sn_shutdown_event.sse_length),
+          UINT2NUM(snp->sn_shutdown_event.sse_assoc_id)
+        );
         break;
       case SCTP_ADAPTATION_INDICATION:
         break;
@@ -786,6 +792,10 @@ void Init_socket(){
 
   v_send_failed_struct = rb_struct_define(
     "SendFailed", "type", "length", "error", "association_id", "data", NULL
+  );
+
+  v_shutdown_event_struct = rb_struct_define(
+    "ShutdownEvent", "type", "length", "association_id", NULL
   );
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
