@@ -7,6 +7,7 @@
 VALUE mSCTP;
 VALUE cSocket;
 VALUE v_sndrcv_struct;
+VALUE v_assoc_change_struct;
 
 // Helper function to get a hash value via string or symbol.
 VALUE rb_hash_aref2(VALUE v_hash, const char* key){
@@ -425,7 +426,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
  *   end
  */
 static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
-  VALUE v_flags;
+  VALUE v_flags, v_notification;
   struct sctp_sndrcvinfo sndrcvinfo;
   struct sockaddr_in clientaddr;
   int flags, bytes, sock_fd;
@@ -456,14 +457,24 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   if(bytes < 0)
     rb_raise(rb_eSystemCallError, "sctp_recvmsg: %s", strerror(errno));
 
-  // TODO: Check for MSG_NOTIFICATION, return different structs for events.
-  /*
+  v_notification = Qnil;
+
   if(flags & MSG_NOTIFICATION){
     union sctp_notification* snp;
     snp = (union sctp_notification*)buffer;
 
-    switch(snp->sn_type){
+    switch(snp->sn_header.sn_type){
       case SCTP_ASSOC_CHANGE:
+        v_notification = rb_struct_new(v_assoc_change_struct,
+          UINT2NUM(snp->sn_assoc_change.sac_type),
+          UINT2NUM(snp->sn_assoc_change.sac_flags),
+          UINT2NUM(snp->sn_assoc_change.sac_length),
+          UINT2NUM(snp->sn_assoc_change.sac_state),
+          UINT2NUM(snp->sn_assoc_change.sac_error),
+          UINT2NUM(snp->sn_assoc_change.sac_outbound_streams),
+          UINT2NUM(snp->sn_assoc_change.sac_inbound_streams),
+          UINT2NUM(snp->sn_assoc_change.sac_assoc_id)
+        );
         break;
       case SCTP_PEER_ADDR_CHANGE:
         break;
@@ -479,7 +490,6 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
         break;
     }
   }
-  */
 
   return rb_struct_new(v_sndrcv_struct,
     rb_str_new(buffer, bytes),
@@ -488,7 +498,8 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
     UINT2NUM(sndrcvinfo.sinfo_ppid),
     UINT2NUM(sndrcvinfo.sinfo_context),
     UINT2NUM(sndrcvinfo.sinfo_timetolive),
-    UINT2NUM(sndrcvinfo.sinfo_assoc_id)
+    UINT2NUM(sndrcvinfo.sinfo_assoc_id),
+    v_notification
   );
 }
 
@@ -701,7 +712,12 @@ void Init_socket(){
 
   v_sndrcv_struct = rb_struct_define(
     "SndRecvInfo", "message", "stream", "flags",
-    "ppid", "context", "ttl", "association_id", NULL
+    "ppid", "context", "ttl", "association_id", "notification", NULL
+  );
+
+  v_assoc_change_struct = rb_struct_define(
+    "AssocChange", "type", "flags", "length", "state", "error",
+    "outbound_streams", "inbound_streams", "association_id", NULL
   );
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
