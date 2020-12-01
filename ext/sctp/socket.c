@@ -704,14 +704,19 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
  *   :shutdown
  *   - The peer has sent a shutdown to the local endpoint.
  *
+ *   :data_io
+ *   - Message data was received. On by default.
+ *
  *   Others:
  *
- *   :adaptation_layer
- *   :authentication_event
- *   :data_io
- *   :peer_error
+ *   :adaptation
+ *   :authentication
  *   :partial_delivery
+ *
+ *   Not yet supported:
+ *
  *   :sender_dry
+ *   :peer_error
  *
  * By default only data_io is subscribed to.
  *
