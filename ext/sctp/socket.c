@@ -14,6 +14,7 @@ VALUE v_send_failed_event_struct;
 VALUE v_shutdown_event_struct;
 VALUE v_sndinfo_struct;
 VALUE v_adaptation_event_struct;
+VALUE v_partial_delivery_event_struct;
 
 // Helper function to get a hash value via string or symbol.
 VALUE rb_hash_aref2(VALUE v_hash, const char* key){
@@ -598,6 +599,14 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
         );
         break;
       case SCTP_PARTIAL_DELIVERY_EVENT:
+        v_notification = rb_struct_new(v_partial_delivery_event_struct,
+          UINT2NUM(snp->sn_pdapi_event.pdapi_type),
+          UINT2NUM(snp->sn_pdapi_event.pdapi_length),
+          UINT2NUM(snp->sn_pdapi_event.pdapi_indication),
+          UINT2NUM(snp->sn_pdapi_event.pdapi_stream),
+          UINT2NUM(snp->sn_pdapi_event.pdapi_seq),
+          UINT2NUM(snp->sn_pdapi_event.pdapi_assoc_id)
+        );
         break;
     }
   }
@@ -860,6 +869,11 @@ void Init_socket(){
 
   v_adaptation_event_struct = rb_struct_define(
     "AdaptationEvent", "type", "length", "adaptation_indication", "association_id", NULL
+  );
+
+  v_partial_delivery_event_struct = rb_struct_define(
+    "AdaptationEvent", "type", "length", "indication", "stream",
+    "sequence_number", "association_id", NULL
   );
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
