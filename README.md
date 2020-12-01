@@ -53,8 +53,9 @@ end
 
 ## Future Plans
 
-* Check for notification data and return it if encountered.
-* Add specs.
+* Add more constants.
+* Add more specs.
+* Add more notifications.
 
 ## Known Issues
 
