@@ -467,16 +467,31 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
     uint32_t i;
     char str[16];
     union sctp_notification* snp;
+    VALUE v_str;
     VALUE* v_temp;
 
     snp = (union sctp_notification*)buffer;
 
     switch(snp->sn_header.sn_type){
       case SCTP_ASSOC_CHANGE:
-        v_temp = ALLOCA_N(VALUE, snp->sn_assoc_change.sac_length);
-
-        for(i = 0; i < snp->sn_assoc_change.sac_length; i++){
-          v_temp[i] = UINT2NUM(snp->sn_assoc_change.sac_info[i]);
+        switch(snp->sn_assoc_change.sac_state){
+          case SCTP_COMM_LOST:
+            v_str = rb_str_new2("comm lost");
+            break;
+          case SCTP_COMM_UP:
+            v_str = rb_str_new2("comm up");
+            break;
+          case SCTP_RESTART:
+            v_str = rb_str_new2("restart");
+            break;
+          case SCTP_SHUTDOWN_COMP:
+            v_str = rb_str_new2("shutdown complete");
+            break;
+          case SCTP_CANT_STR_ASSOC:
+            v_str = rb_str_new2("association setup failed");
+            break;
+          default:
+            v_str = rb_str_new2("unknown");
         }
 
         v_notification = rb_struct_new(v_assoc_change_struct,
@@ -487,7 +502,7 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
           UINT2NUM(snp->sn_assoc_change.sac_outbound_streams),
           UINT2NUM(snp->sn_assoc_change.sac_inbound_streams),
           UINT2NUM(snp->sn_assoc_change.sac_assoc_id),
-          rb_ary_new4(snp->sn_assoc_change.sac_length, v_temp)
+          v_str
         );
         break;
       case SCTP_PEER_ADDR_CHANGE:
