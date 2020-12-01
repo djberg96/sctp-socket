@@ -1,3 +1,7 @@
+## 1-Dec-2020
+* Added notification hooks that you can subscribe to, so now the subscribe method
+  actually does something.
+
 ## 29-Nov-2020
 * Fixed the homepage link in the gemspec metadata. Thanks go to Nick LaMuro for the patch.
 * The getlocalnames and getpeernames now return an array of addresses.
