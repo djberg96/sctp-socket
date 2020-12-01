@@ -887,7 +887,7 @@ void Init_socket(){
   );
 
   v_partial_delivery_event_struct = rb_struct_define(
-    "AdaptationEvent", "type", "length", "indication", "stream",
+    "PartialDeliveryEvent", "type", "length", "indication", "stream",
     "sequence_number", "association_id", NULL
   );
 
