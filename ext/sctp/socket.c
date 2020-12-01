@@ -506,6 +506,26 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
         );
         break;
       case SCTP_PEER_ADDR_CHANGE:
+        switch(snp->sn_paddr_change.spc_state){
+          case SCTP_ADDR_AVAILABLE:
+            v_str = rb_str_new2("available");
+            break;
+          case SCTP_ADDR_UNREACHABLE:
+            v_str = rb_str_new2("unreachable");
+            break;
+          case SCTP_ADDR_REMOVED:
+            v_str = rb_str_new2("removed from association");
+            break;
+          case SCTP_ADDR_ADDED:
+            v_str = rb_str_new2("added to association");
+            break;
+          case SCTP_ADDR_MADE_PRIM:
+            v_str = rb_str_new2("primary destination");
+            break;
+          default:
+            v_str = rb_str_new2("unknown");
+        }
+
         inet_ntop(
           ((struct sockaddr_in *)&snp->sn_paddr_change.spc_aaddr)->sin_family,
           &(((struct sockaddr_in *)&snp->sn_paddr_change.spc_aaddr)->sin_addr),
@@ -519,7 +539,8 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
           rb_str_new2(str),
           UINT2NUM(snp->sn_paddr_change.spc_state),
           UINT2NUM(snp->sn_paddr_change.spc_error),
-          UINT2NUM(snp->sn_paddr_change.spc_assoc_id)
+          UINT2NUM(snp->sn_paddr_change.spc_assoc_id),
+          v_str
         );
         break;
       case SCTP_REMOTE_ERROR:
@@ -803,7 +824,7 @@ void Init_socket(){
 
   v_peeraddr_change_struct = rb_struct_define(
     "PeerAddrChange", "type", "length", "ip_address",
-    "state", "error", "association_id", NULL
+    "state", "error", "association_id", "info", NULL
   );
 
   v_remote_error_struct = rb_struct_define(
