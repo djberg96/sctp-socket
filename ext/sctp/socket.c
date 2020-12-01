@@ -10,7 +10,7 @@ VALUE v_sndrcv_struct;
 VALUE v_assoc_change_struct;
 VALUE v_peeraddr_change_struct;
 VALUE v_remote_error_struct;
-VALUE v_send_failed_struct;
+VALUE v_send_failed_event_struct;
 VALUE v_shutdown_event_struct;
 
 // Helper function to get a hash value via string or symbol.
@@ -558,20 +558,20 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
           rb_ary_new4(snp->sn_remote_error.sre_length, v_temp)
         );
         break;
-      case SCTP_SEND_FAILED:
-        v_temp = ALLOCA_N(VALUE, snp->sn_send_failed.ssf_length);
+      case SCTP_SEND_FAILED_EVENT:
+        v_temp = ALLOCA_N(VALUE, snp->sn_send_failed_event.ssf_length);
 
-        for(i = 0; i < snp->sn_send_failed.ssf_length; i++){
-          v_temp[i] = UINT2NUM(snp->sn_send_failed.ssf_data[i]);
+        for(i = 0; i < snp->sn_send_failed_event.ssf_length; i++){
+          v_temp[i] = UINT2NUM(snp->sn_send_failed_event.ssf_data[i]);
         }
 
-        v_notification = rb_struct_new(v_send_failed_struct,
-          UINT2NUM(snp->sn_send_failed.ssf_type),
-          UINT2NUM(snp->sn_send_failed.ssf_length),
-          UINT2NUM(snp->sn_send_failed.ssf_error),
-          // TODO: Add sndrcvinfo here
-          UINT2NUM(snp->sn_send_failed.ssf_assoc_id),
-          rb_ary_new4(snp->sn_send_failed.ssf_length, v_temp)
+        v_notification = rb_struct_new(v_send_failed_event_struct,
+          UINT2NUM(snp->sn_send_failed_event.ssf_type),
+          UINT2NUM(snp->sn_send_failed_event.ssf_length),
+          UINT2NUM(snp->sn_send_failed_event.ssf_error),
+          // TODO: Add sndinfo here
+          UINT2NUM(snp->sn_send_failed_event.ssf_assoc_id),
+          rb_ary_new4(snp->sn_send_failed_event.ssf_length, v_temp)
         );
         break;
       case SCTP_SHUTDOWN_EVENT:
@@ -705,8 +705,9 @@ static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
   if(RTEST(rb_hash_aref2(v_options, "address")))
     events.sctp_address_event = 1;
 
+  // Use the new version
   if(RTEST(rb_hash_aref2(v_options, "send_failure")))
-    events.sctp_send_failure_event = 1;
+    events.sctp_send_failure_event_event = 1;
 
   if(RTEST(rb_hash_aref2(v_options, "peer_error")))
     events.sctp_peer_error_event = 1;
@@ -831,8 +832,8 @@ void Init_socket(){
     "RemoteError", "type", "length", "error", "association_id", "data", NULL
   );
 
-  v_send_failed_struct = rb_struct_define(
-    "SendFailed", "type", "length", "error", "association_id", "data", NULL
+  v_send_failed_event_struct = rb_struct_define(
+    "SendFailedEvent", "type", "length", "error", "association_id", "data", NULL
   );
 
   v_shutdown_event_struct = rb_struct_define(
