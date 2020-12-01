@@ -13,6 +13,7 @@ VALUE v_remote_error_struct;
 VALUE v_send_failed_event_struct;
 VALUE v_shutdown_event_struct;
 VALUE v_sndinfo_struct;
+VALUE v_adaptation_event_struct;
 
 // Helper function to get a hash value via string or symbol.
 VALUE rb_hash_aref2(VALUE v_hash, const char* key){
@@ -589,6 +590,12 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
         );
         break;
       case SCTP_ADAPTATION_INDICATION:
+        v_notification = rb_struct_new(v_adaptation_event_struct,
+          UINT2NUM(snp->sn_adaptation_event.sai_type),
+          UINT2NUM(snp->sn_adaptation_event.sai_length),
+          UINT2NUM(snp->sn_adaptation_event.sai_adaptation_ind),
+          UINT2NUM(snp->sn_adaptation_event.sai_assoc_id)
+        );
         break;
       case SCTP_PARTIAL_DELIVERY_EVENT:
         break;
@@ -849,6 +856,10 @@ void Init_socket(){
 
   v_sndinfo_struct = rb_struct_define(
     "SendInfo", "sid", "flags", "ppid", "context", "association_id", NULL
+  );
+
+  v_adaptation_event_struct = rb_struct_define(
+    "AdaptationEvent", "type", "length", "adaptation_indication", "association_id", NULL
   );
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
