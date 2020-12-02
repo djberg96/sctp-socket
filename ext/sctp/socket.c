@@ -25,7 +25,7 @@ VALUE convert_sockaddr_in_to_struct(struct sockaddr_in* addr){
 
   return rb_struct_new(v_sockaddr_in_struct,
     INT2NUM(addr->sin_family),
-    INT2NUM(htons(addr->sin_port)),
+    INT2NUM(ntohs(addr->sin_port)),
     rb_str_new2(ipbuf)
   );
 }
