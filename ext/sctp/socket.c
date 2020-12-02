@@ -202,7 +202,7 @@ static VALUE rsctp_connect(int argc, VALUE* argv, VALUE self){
   if(sctp_connectx(sock_fd, (struct sockaddr *) addrs, num_ip, &assoc) < 0)
     rb_raise(rb_eSystemCallError, "sctp_connectx: %s", strerror(errno));
 
-  rb_iv_set(self, "@assocation_id", INT2NUM(assoc));
+  rb_iv_set(self, "@association_id", INT2NUM(assoc));
 
   return self;
 }
@@ -693,7 +693,7 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
  * as follows:
  *
  *   :association
- *   - A change has occurred to an assocation, either a new one has begun or an existing one has end.
+ *   - A change has occurred to an association, either a new one has begun or an existing one has end.
  *
  *   :address
  *   - The state of one of the peer's addresses has experienced a change.
