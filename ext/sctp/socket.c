@@ -16,6 +16,19 @@ VALUE v_sndinfo_struct;
 VALUE v_adaptation_event_struct;
 VALUE v_partial_delivery_event_struct;
 VALUE v_auth_event_struct;
+VALUE v_sockaddr_in_struct;
+
+VALUE convert_sockaddr_in_to_struct(struct sockaddr_in* addr){
+  char ipbuf[16];
+
+  inet_ntop(addr->sin_family, &(((struct sockaddr_in *)addr)->sin_addr), ipbuf, sizeof(ipbuf));
+
+  return rb_struct_new(v_sockaddr_in_struct,
+    INT2NUM(addr->sin_family),
+    INT2NUM(htons(addr->sin_port)),
+    rb_str_new2(ipbuf)
+  );
+}
 
 // Helper function to get a hash value via string or symbol.
 VALUE rb_hash_aref2(VALUE v_hash, const char* key){
@@ -634,7 +647,8 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
     UINT2NUM(sndrcvinfo.sinfo_context),
     UINT2NUM(sndrcvinfo.sinfo_timetolive),
     UINT2NUM(sndrcvinfo.sinfo_assoc_id),
-    v_notification
+    v_notification,
+    convert_sockaddr_in_to_struct(&clientaddr)
   );
 }
 
@@ -853,7 +867,7 @@ void Init_socket(){
 
   v_sndrcv_struct = rb_struct_define(
     "SendReceiveInfo", "message", "stream", "flags",
-    "ppid", "context", "ttl", "association_id", "notification", NULL
+    "ppid", "context", "ttl", "association_id", "notification", "client", NULL
   );
 
   v_assoc_change_struct = rb_struct_define(
@@ -893,6 +907,10 @@ void Init_socket(){
 
   v_auth_event_struct = rb_struct_define(
     "AuthEvent", "type", "length", "key_number", "indication", "association_id", NULL
+  );
+
+  v_sockaddr_in_struct = rb_struct_define(
+    "SockAddrIn", "family", "port", "address", NULL
   );
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
