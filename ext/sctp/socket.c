@@ -18,6 +18,38 @@ VALUE v_partial_delivery_event_struct;
 VALUE v_auth_event_struct;
 VALUE v_sockaddr_in_struct;
 
+#if !defined(IOV_MAX)
+#if defined(_SC_IOV_MAX)
+#define IOV_MAX (sysconf(_SC_IOV_MAX))
+#else
+// Assume infinity, or let the syscall return with error
+#define IOV_MAX INT_MAX
+#endif
+#endif
+
+#define ARY2IOVEC(iov,iovcnt,expect,ary) \
+   do { \
+      VALUE *cur; \
+      struct iovec *tmp; \
+      long n; \
+      if (TYPE(ary) != T_ARRAY) \
+         rb_raise(rb_eArgError, "must be an array of strings"); \
+      cur = RARRAY_PTR(ary); \
+      n = RARRAY_LEN(ary); \
+      if (n > IOV_MAX) \
+         rb_raise(rb_eArgError, "array is larger than IOV_MAX"); \
+      iov = tmp = alloca(sizeof(struct iovec) * n); \
+      expect = 0; \
+      iovcnt = (int)n; \
+      for (; --n >= 0; tmp++, cur++) { \
+         if (TYPE(*cur) != T_STRING) \
+            rb_raise(rb_eArgError, "must be an array of strings"); \
+         tmp->iov_base = RSTRING_PTR(*cur); \
+         tmp->iov_len = RSTRING_LEN(*cur); \
+         expect += tmp->iov_len; \
+      } \
+   } while (0)
+
 VALUE convert_sockaddr_in_to_struct(struct sockaddr_in* addr){
   char ipbuf[16];
 
@@ -314,6 +346,41 @@ static VALUE rsctp_getlocalnames(VALUE self){
   sctp_freeladdrs(addrs);
 
   return v_array;
+}
+
+static VALUE rsctp_sendv(VALUE self, VALUE v_messages){
+  struct iovec* iov;
+  struct sockaddr* addrs[8];
+  struct sctp_sndinfo info;
+  int sock_fd, num_bytes, iov_count;
+  ssize_t left;
+
+  Check_Type(v_messages, T_ARRAY);
+  bzero(&addrs, sizeof(addrs));
+
+  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+
+  ARY2IOVEC(iov, iov_count, left, v_messages);
+
+  info.snd_flags = SCTP_UNORDERED;
+  info.snd_assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+
+  num_bytes = sctp_sendv(
+    sock_fd,
+    iov,
+    iov_count,
+    NULL,
+    0,
+    &info,
+    sizeof(info),
+    SCTP_SENDV_SNDINFO,
+    0
+  );
+
+  if(num_bytes < 0)
+    rb_raise(rb_eSystemCallError, "sctp_sendv: %s", strerror(errno));
+
+  return INT2NUM(num_bytes);
 }
 
 /*
@@ -1027,6 +1094,7 @@ void Init_socket(){
   rb_define_method(cSocket, "peeloff!", rsctp_peeloff, 1);
   rb_define_method(cSocket, "recvmsg", rsctp_recvmsg, -1);
   rb_define_method(cSocket, "send", rsctp_send, 1);
+  rb_define_method(cSocket, "sendv", rsctp_sendv, 1);
   rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, 1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
   rb_define_method(cSocket, "shutdown", rsctp_shutdown, -1);
