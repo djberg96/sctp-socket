@@ -59,6 +59,9 @@ end
 
 ## Known Issues
 
+Currently this has only been developed and tested on Linux. Other platforms
+will probably only be supported via community contributions.
+
 Please report any issues on the github project page.
 
   https://github.com/djberg96/sctp-socket
