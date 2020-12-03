@@ -363,10 +363,13 @@ static VALUE rsctp_send(VALUE self, VALUE v_options){
   else
     ctrl_flags = NUM2INT(v_ctrl_flags);
 
-  if(NIL_P(v_ttl))
+  if(NIL_P(v_ttl)){
     ttl = 0;
-  else
+  }
+  else{
     ttl = NUM2INT(v_ttl);
+    send_flags |= SCTP_PR_SCTP_TTL;
+  }
 
   if(NIL_P(v_ppid))
     ppid = 0;
@@ -463,10 +466,13 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   else
     flags = NUM2INT(v_flags);
 
-  if(NIL_P(v_ttl))
+  if(NIL_P(v_ttl)){
     ttl = 0;
-  else
+  }
+  else{
     ttl = NUM2INT(v_ttl);
+    flags |= SCTP_PR_SCTP_TTL;
+  }
 
   if(NIL_P(v_ppid))
     ppid = 0;
