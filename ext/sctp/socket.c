@@ -934,6 +934,14 @@ void Init_socket(){
   rb_define_attr(cSocket, "association_id", 1, 1);
   rb_define_attr(cSocket, "port", 1, 1);
 
-  /* 0.0.2: The version of this library */
+  /* 0.0.4: The version of this library */
   rb_define_const(cSocket, "VERSION", rb_str_new2("0.0.3"));
+
+  /* send flags */
+
+  rb_define_const(cSocket, "SCTP_UNORDERED", INT2NUM(SCTP_UNORDERED));
+  rb_define_const(cSocket, "SCTP_ADDR_OVER", INT2NUM(SCTP_ADDR_OVER));
+  rb_define_const(cSocket, "SCTP_ABORT", INT2NUM(SCTP_ABORT));
+  rb_define_const(cSocket, "SCTP_EOF", INT2NUM(SCTP_EOF));
+  rb_define_const(cSocket, "SCTP_SENDALL", INT2NUM(SCTP_SENDALL));
 }
