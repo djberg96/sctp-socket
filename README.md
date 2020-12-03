@@ -66,6 +66,10 @@ Please report any issues on the github project page.
 
   https://github.com/djberg96/sctp-socket
 
+## More Information on SCTP
+
+* https://www.linuxjournal.com/article/9784
+
 ## License
 
 Apache-2.0
