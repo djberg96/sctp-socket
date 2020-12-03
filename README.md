@@ -68,6 +68,8 @@ Please report any issues on the github project page.
 
 ## More Information on SCTP
 
+* https://www.linuxjournal.com/article/9748
+* https://www.linuxjournal.com/article/9749
 * https://www.linuxjournal.com/article/9784
 
 ## License
