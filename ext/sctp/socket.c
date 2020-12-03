@@ -317,6 +317,96 @@ static VALUE rsctp_getlocalnames(VALUE self){
 }
 
 /*
+ * Send a message on an already-connected socket to a specific association.
+ *
+ * Example:
+ *
+ *   socket = SCTP::Socket.new
+ *   socket.connect(:port => 42000, :addresses => ['10.0.4.5', '10.0.5.5'])
+ *
+ *   socket.send(:message => "Hello World")
+ *   socket.send(:message => "Hello World", :association_id => 37)
+ *
+ */
+static VALUE rsctp_send(VALUE self, VALUE v_options){
+  uint16_t stream;
+  uint32_t ppid, send_flags, ctrl_flags, ttl, context;
+  ssize_t num_bytes;
+  int sock_fd;
+  sctp_assoc_t assoc_id;
+  struct sctp_sndrcvinfo info;
+  VALUE v_msg, v_stream, v_ppid, v_context, v_send_flags, v_ctrl_flags, v_ttl, v_assoc_id;
+
+  Check_Type(v_options, T_HASH);
+
+  v_msg        = rb_hash_aref2(v_options, "message");
+  v_stream     = rb_hash_aref2(v_options, "stream");
+  v_ppid       = rb_hash_aref2(v_options, "ppid");
+  v_context    = rb_hash_aref2(v_options, "context");
+  v_send_flags = rb_hash_aref2(v_options, "send_flags");
+  v_ctrl_flags = rb_hash_aref2(v_options, "control_flags");
+  v_ttl        = rb_hash_aref2(v_options, "ttl");
+  v_assoc_id   = rb_hash_aref2(v_options, "association_id");
+
+  if(NIL_P(v_stream))
+    stream = 0;
+  else
+    stream = NUM2INT(v_stream);
+
+  if(NIL_P(v_send_flags))
+    send_flags = 0;
+  else
+    send_flags = NUM2INT(v_send_flags);
+
+  if(NIL_P(v_ctrl_flags))
+    ctrl_flags = 0;
+  else
+    ctrl_flags = NUM2INT(v_ctrl_flags);
+
+  if(NIL_P(v_ttl))
+    ttl = 0;
+  else
+    ttl = NUM2INT(v_ttl);
+
+  if(NIL_P(v_ppid))
+    ppid = 0;
+  else
+    ppid = NUM2INT(v_ppid);
+
+  if(NIL_P(v_context))
+    context = 0;
+  else
+    context = NUM2INT(v_context);
+
+  if(NIL_P(v_assoc_id))
+    assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  else
+    assoc_id = NUM2INT(v_assoc_id);
+
+  info.sinfo_stream = stream;
+  info.sinfo_flags = send_flags;
+  info.sinfo_ppid = ppid;
+  info.sinfo_context = context;
+  info.sinfo_timetolive = ttl;
+  info.sinfo_assoc_id = assoc_id;
+
+  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+
+  num_bytes = sctp_send(
+    sock_fd,
+    StringValueCStr(v_msg),
+    RSTRING_LEN(v_msg),
+    &info,
+    ctrl_flags
+  );
+
+  if(num_bytes < 0)
+    rb_raise(rb_eSystemCallError, "sctp_send: %s", strerror(errno));
+
+  return INT2NUM(num_bytes);
+}
+
+/*
  * Transmit a message to an SCTP endpoint. The following hash of options
  * is permitted:
  *
@@ -930,6 +1020,7 @@ void Init_socket(){
   rb_define_method(cSocket, "listen", rsctp_listen, -1);
   rb_define_method(cSocket, "peeloff!", rsctp_peeloff, 1);
   rb_define_method(cSocket, "recvmsg", rsctp_recvmsg, -1);
+  rb_define_method(cSocket, "send", rsctp_send, 1);
   rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, 1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
   rb_define_method(cSocket, "shutdown", rsctp_shutdown, -1);
@@ -946,9 +1037,20 @@ void Init_socket(){
 
   /* send flags */
 
+  /* Message is unordered */
   rb_define_const(cSocket, "SCTP_UNORDERED", INT2NUM(SCTP_UNORDERED));
+
+  /* Override the primary address */
   rb_define_const(cSocket, "SCTP_ADDR_OVER", INT2NUM(SCTP_ADDR_OVER));
+
+  /* Send an ABORT to peer */
   rb_define_const(cSocket, "SCTP_ABORT", INT2NUM(SCTP_ABORT));
+
+  /* Start a shutdown procedure */
   rb_define_const(cSocket, "SCTP_EOF", INT2NUM(SCTP_EOF));
+
+  /* Send to all associations */
   rb_define_const(cSocket, "SCTP_SENDALL", INT2NUM(SCTP_SENDALL));
+
+  rb_define_const(cSocket, "MSG_NOTIFICATION", INT2NUM(MSG_NOTIFICATION));
 }
