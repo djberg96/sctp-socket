@@ -48,7 +48,14 @@ VALUE rb_hash_aref2(VALUE v_hash, const char* key){
  * a domain (aka family) value and socket type. By default these are AF_INET
  * and SOCK_SEQPACKET, respectively.
  *
+ * There are only two supported families: SOCK_SEQPACKET for the creation
+ * of a one-to-many socket, and SOCK_STREAM for the creation of a
+ * one-to-one socket.
+ *
  * Example:
+ *
+ *   require 'socket'
+ *   require 'sctp/socket'
  *
  *   socket1 = SCTP::Socket.new
  *   socket2 = SCTP::Socket.new(Socket::AF_INET, Socket::SOCK_STREAM)
