@@ -371,7 +371,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   if(NIL_P(v_flags))
     flags = 0;
   else
-    flags = NUM2INT(v_stream);
+    flags = NUM2INT(v_flags);
 
   if(NIL_P(v_ttl))
     ttl = 0;
