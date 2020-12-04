@@ -32,12 +32,8 @@ VALUE v_sockaddr_in_struct;
       VALUE *cur; \
       struct iovec *tmp; \
       long n; \
-      if (TYPE(ary) != T_ARRAY) \
-         rb_raise(rb_eArgError, "must be an array of strings"); \
       cur = RARRAY_PTR(ary); \
       n = RARRAY_LEN(ary); \
-      if (n > IOV_MAX) \
-         rb_raise(rb_eArgError, "array is larger than IOV_MAX"); \
       iov = tmp = alloca(sizeof(struct iovec) * n); \
       expect = 0; \
       iovcnt = (int)n; \
@@ -365,6 +361,9 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_messages){
 
   if(!size)
     rb_raise(rb_eArgError, "Must contain at least one message");
+
+  if(size > IOV_MAX)
+    rb_raise(rb_eArgError, "Array size is greater than IOV_MAX");
 
   ARY2IOVEC(iov, iov_count, left, v_messages);
 
