@@ -352,13 +352,19 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_messages){
   struct iovec* iov;
   struct sockaddr* addrs[8];
   struct sctp_sndinfo info;
-  int sock_fd, num_bytes, iov_count;
+  int sock_fd, num_bytes, iov_count, size;
   ssize_t left;
 
   Check_Type(v_messages, T_ARRAY);
   bzero(&addrs, sizeof(addrs));
 
   sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+
+  Check_Type(v_messages, T_ARRAY);
+  size = RARRAY_LEN(v_messages);
+
+  if(!size)
+    rb_raise(rb_eArgError, "Must contain at least one message");
 
   ARY2IOVEC(iov, iov_count, left, v_messages);
 
