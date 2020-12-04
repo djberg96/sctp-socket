@@ -27,7 +27,7 @@ VALUE v_sockaddr_in_struct;
 #endif
 #endif
 
-#define ARY2IOVEC(iov,iovcnt,expect,ary) \
+#define ARY2IOVEC(iov,iovcnt,ary) \
    do { \
       VALUE *cur; \
       struct iovec *tmp; \
@@ -35,14 +35,12 @@ VALUE v_sockaddr_in_struct;
       cur = RARRAY_PTR(ary); \
       n = RARRAY_LEN(ary); \
       iov = tmp = alloca(sizeof(struct iovec) * n); \
-      expect = 0; \
       iovcnt = (int)n; \
       for (; --n >= 0; tmp++, cur++) { \
          if (TYPE(*cur) != T_STRING) \
             rb_raise(rb_eArgError, "must be an array of strings"); \
          tmp->iov_base = RSTRING_PTR(*cur); \
          tmp->iov_len = RSTRING_LEN(*cur); \
-         expect += tmp->iov_len; \
       } \
    } while (0)
 
@@ -349,7 +347,6 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_messages){
   struct sockaddr* addrs[8];
   struct sctp_sndinfo info;
   int sock_fd, num_bytes, iov_count, size;
-  ssize_t left;
 
   Check_Type(v_messages, T_ARRAY);
   bzero(&addrs, sizeof(addrs));
@@ -365,7 +362,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_messages){
   if(size > IOV_MAX)
     rb_raise(rb_eArgError, "Array size is greater than IOV_MAX");
 
-  ARY2IOVEC(iov, iov_count, left, v_messages);
+  ARY2IOVEC(iov, iov_count, v_messages);
 
   info.snd_flags = SCTP_UNORDERED;
   info.snd_assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
