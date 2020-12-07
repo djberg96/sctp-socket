@@ -26,6 +26,7 @@ module SCTP
     attach_function :c_shutdown, :shutdown, [:int, :int], :int
     attach_function :c_socket, :socket, [:int, :int, :int], :int
     attach_function :c_strerror, :strerror, [:int], :string
+    attach_function :c_htonl, :htonl, [:uint32], :uint32
     attach_function :c_htons, :htons, [:uint16], :uint16
   end
 end
