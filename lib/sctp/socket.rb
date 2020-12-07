@@ -9,14 +9,14 @@ class SCTPSocket
   extend SCTP::Structs
   extend SCTP::Functions
 
-  attr_reader :domain
+  attr_reader :family
   attr_reader :type
   attr_reader :sock_fd
 
-  def initialize(domain: Socket::AF_INET, type: Socket::SOCK_SEQPACKET)
-    @domain = domain
+  def initialize(family: Socket::AF_INET, type: Socket::SOCK_SEQPACKET)
+    @family = family
     @type = type
-    @sock_fd = c_socket(domain, type, IPPROTO_SCTP)
+    @sock_fd = c_socket(family, type, IPPROTO_SCTP)
 
     if @sock_fd < 0
       raise SystemCallError.new('socket', FFI.errno)
