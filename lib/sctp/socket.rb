@@ -36,7 +36,7 @@ class SCTPSocket
     self
   end
 
-  def bindx(addresses: [], port: 0, family: Socket::AF_INET)
+  def bindx(addresses: [], port: 0, family: Socket::AF_INET, flags: SCTP_BINDX_ADD_ADDR)
     addr = FFI::MemoryPointer.new(SCTP::Structs::SockAddrIn, addresses.size)
 
     sockaddrs = addresses.size.times.collect do |i|
@@ -50,7 +50,7 @@ class SCTPSocket
     end
 
     FFI::MemoryPointer.new(sockaddrs, sockaddrs.size) do |ptr|
-      if sctp_bindx(sock_fd, addrptr, addrptr.size, SCTP_BINDX_ADD_ADDR) < 0
+      if sctp_bindx(sock_fd, ptr, ptr.size, flags) < 0
         raise SystemCallError.new('bindx', FFI.errno)
       end
     end
