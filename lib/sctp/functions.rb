@@ -7,7 +7,7 @@ module SCTP
     ffi_lib :sctp
 
     attach_function :sctp_bindx, [:int, :pointer, :int, :int], :int
-    attach_function :sctp_connectx, [:int, :pointer, :int, :uint32], :int
+    attach_function :sctp_connectx, [:int, :pointer, :int, :pointer], :int
     attach_function :sctp_freeladdrs, [:pointer], :void
     attach_function :sctp_freepaddrs, [:pointer], :void
     attach_function :sctp_getladdrs, [:int, :uint32, :pointer], :int
@@ -26,6 +26,7 @@ module SCTP
     attach_function :c_shutdown, :shutdown, [:int, :int], :int
     attach_function :c_socket, :socket, [:int, :int, :int], :int
     attach_function :c_strerror, :strerror, [:int], :string
+    attach_function :c_htonl, :htonl, [:uint32], :uint32
     attach_function :c_htons, :htons, [:uint16], :uint16
   end
 end

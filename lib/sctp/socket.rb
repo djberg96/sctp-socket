@@ -64,6 +64,32 @@ class SCTPSocket
     self
   end
 
+  def connectx(addresses: [], port: 0)
+    addr = FFI::MemoryPointer.new(SCTP::Structs::SockAddrIn, addresses.size)
+
+    sockaddrs = addresses.size.times.collect do |i|
+      SCTP::Structs::SockAddrIn.new(addr + (i * SCTP::Structs::SockAddrIn.size))
+    end
+
+    sockaddrs.each_with_index do |sock_addr, i|
+      sock_addr[:sin_family] = family
+      sock_addr[:sin_port] = c_htons(port)
+      sock_addr[:sin_addr][:s_addr] = c_inet_addr(addresses[i])
+    end
+
+    assoc_id = FFI::MemoryPointer.new(:int32)
+
+    FFI::MemoryPointer.new(sockaddrs, sockaddrs.size) do |ptr|
+      if sctp_connectx(sock_fd, ptr, ptr.size, assoc_id) < 0
+        raise SystemCallError.new('connectx', FFI.errno)
+      end
+    end
+
+    @association_id = assoc_id.read_int32
+
+    self
+  end
+
   def close
     if c_close(sock_fd) < 0
       raise SystemCallError.new('close', FFI.errno)
@@ -73,8 +99,6 @@ end
 
 if $0 == __FILE__
   socket = SCTPSocket.new
-  #socket.bindx(addresses: ['127.0.0.1', '127.0.0.2'], port: 3000)
-  socket.bindx(addresses: ['127.0.0.1'], port: 3000)
-  #socket.bindx(addresses: ['localhost'], port: 3000)
+  socket.connectx(port: 42000, addresses: ['127.0.0.1'])
   socket.close
 end
