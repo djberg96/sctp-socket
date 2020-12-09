@@ -43,10 +43,16 @@ class SCTPSocket
       SCTP::Structs::SockAddrIn.new(addr + (i * SCTP::Structs::SockAddrIn.size))
     end
 
-    sockaddrs.each_with_index do |sock_addr, i|
-      sock_addr[:sin_family] = family
-      sock_addr[:sin_port] = c_htons(port)
-      sock_addr[:sin_addr][:s_addr] = c_inet_addr(addresses[i])
+    if addresses.size > 0
+      sockaddrs.each_with_index do |sock_addr, i|
+        sock_addr[:sin_family] = family
+        sock_addr[:sin_port] = c_htons(port)
+        sock_addr[:sin_addr][:s_addr] = c_inet_addr(addresses[i])
+      end
+    else
+      sockaddrs[0].sin_family = family
+      sockaddrs[0].sin_port = c_htons(port)
+      sockaddrs[0].sin_addr.s_addr = c_htonl(Socket::INADDR_ANY)
     end
 
     FFI::MemoryPointer.new(sockaddrs, sockaddrs.size) do |ptr|
