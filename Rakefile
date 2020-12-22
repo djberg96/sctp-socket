@@ -6,13 +6,14 @@ require 'rake/extensiontask'
 include RbConfig
 
 CLEAN.include(
-  '**/*.gem',               # Gem files
-  '**/*.rbc',               # Rubinius
-  '**/*.o',                 # C object file
-  '**/*.log',               # Ruby extension build log
-  '**/Makefile',            # C Makefile
-  '**/conftest.dSYM',       # OS X build directory
-  "**/*.#{CONFIG['DLEXT']}" # C shared object
+  '**/*.gem',                # Gem files
+  '**/*.rbc',                # Rubinius
+  '**/*.o',                  # C object file
+  '**/*.log',                # Ruby extension build log
+  '**/Makefile',             # C Makefile
+  '**/conftest.dSYM',        # OS X build directory
+  "**/*.#{CONFIG['DLEXT']}", # C shared object
+  'tmp'                      # Rake compiler
 )
 
 namespace :gem do
@@ -39,4 +40,4 @@ end
 RSpec::Core::RakeTask.new
 
 task :spec => :compile
-task :default => :spec
+task :default => [:clean, :spec]
