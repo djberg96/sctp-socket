@@ -47,7 +47,10 @@ VALUE v_sctp_status_struct;
 VALUE convert_sockaddr_in_to_struct(struct sockaddr_in* addr){
   char ipbuf[16];
 
-  inet_ntop(addr->sin_family, &(((struct sockaddr_in *)addr)->sin_addr), ipbuf, sizeof(ipbuf));
+  if(addr->sin_family == AF_INET6)
+    inet_ntop(addr->sin_family, &(((struct sockaddr_in6 *)addr)->sin6_addr), ipbuf, sizeof(ipbuf));
+  else
+    inet_ntop(addr->sin_family, &(((struct sockaddr_in *)addr)->sin_addr), ipbuf, sizeof(ipbuf));
 
   return rb_struct_new(v_sockaddr_in_struct,
     INT2NUM(addr->sin_family),
