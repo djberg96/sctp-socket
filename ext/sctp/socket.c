@@ -19,6 +19,7 @@ VALUE v_auth_event_struct;
 VALUE v_sockaddr_in_struct;
 VALUE v_sctp_status_struct;
 VALUE v_sctp_rtoinfo_struct;
+VALUE v_sctp_associnfo_struct;
 
 #if !defined(IOV_MAX)
 #if defined(_SC_IOV_MAX)
@@ -1016,6 +1017,32 @@ static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
   return self;
 }
 
+static VALUE rsctp_get_association_info(VALUE self){
+  int sock_fd;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  struct sctp_assocparams assoc;
+
+  bzero(&assoc, sizeof(assoc));
+
+  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  size = sizeof(struct sctp_assocparams);
+
+  if(sctp_opt_info(sock_fd, assoc_id, SCTP_ASSOCINFO, (void*)&assoc, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return rb_struct_new(
+    v_sctp_associnfo_struct,
+    INT2NUM(assoc.sasoc_assoc_id),
+    INT2NUM(assoc.sasoc_asocmaxrxt),
+    INT2NUM(assoc.sasoc_number_peer_destinations),
+    INT2NUM(assoc.sasoc_peer_rwnd),
+    INT2NUM(assoc.sasoc_local_rwnd),
+    INT2NUM(assoc.sasoc_cookie_life)
+  );
+}
+
 static VALUE rsctp_shutdown(int argc, VALUE* argv, VALUE self){
   int how, sock_fd;
   VALUE v_how;
@@ -1166,6 +1193,12 @@ void Init_socket(){
     "RetransmissionInfo", "association_id", "initial", "max", "min", NULL
   );
 
+  v_sctp_associnfo_struct = rb_struct_define(
+    "AssociationInfo", "association_id", "max_retransmission_count",
+    "number_peer_destinations", "peer_receive_window", "local_receive_window",
+    "cookie_life", NULL
+  );
+
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
 
   rb_define_method(cSocket, "bind", rsctp_bind, -1);
@@ -1175,6 +1208,7 @@ void Init_socket(){
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, 0);
   rb_define_method(cSocket, "get_status", rsctp_get_status, 0);
   rb_define_method(cSocket, "get_retransmission_info", rsctp_get_retransmission_info, 0);
+  rb_define_method(cSocket, "get_association_info", rsctp_get_association_info, 0);
   rb_define_method(cSocket, "listen", rsctp_listen, -1);
   rb_define_method(cSocket, "peeloff!", rsctp_peeloff, 1);
   rb_define_method(cSocket, "recvmsg", rsctp_recvmsg, -1);
