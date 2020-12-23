@@ -45,7 +45,7 @@ VALUE v_sctp_status_struct;
    } while (0)
 
 VALUE convert_sockaddr_in_to_struct(struct sockaddr_in* addr){
-  char ipbuf[16];
+  char ipbuf[INET6_ADDRSTRLEN];
 
   if(addr->sin_family == AF_INET6)
     inet_ntop(addr->sin_family, &(((struct sockaddr_in6 *)addr)->sin6_addr), ipbuf, sizeof(ipbuf));
@@ -1041,6 +1041,8 @@ static VALUE rsctp_get_status(VALUE self){
   socklen_t size;
   sctp_assoc_t assoc_id;
   struct sctp_status status;
+  struct sctp_paddrinfo* spinfo;
+  char tmpname[INET_ADDRSTRLEN];
 
   bzero(&status, sizeof(status));
 
@@ -1051,6 +1053,19 @@ static VALUE rsctp_get_status(VALUE self){
   if(sctp_opt_info(sock_fd, assoc_id, SCTP_STATUS, (void*)&status, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
+  spinfo = &status.sstat_primary;
+
+  if (spinfo->spinfo_address.ss_family == AF_INET6) {
+		struct sockaddr_in6 *sin6;
+		sin6 = (struct sockaddr_in6 *)&spinfo->spinfo_address;
+		inet_ntop(AF_INET6, &sin6->sin6_addr, tmpname, sizeof (tmpname));
+	}
+  else {
+		struct sockaddr_in *sin;
+		sin = (struct sockaddr_in *)&spinfo->spinfo_address;
+		inet_ntop(AF_INET, &sin->sin_addr, tmpname, sizeof (tmpname));
+  }
+
   return rb_struct_new(v_sctp_status_struct,
     INT2NUM(status.sstat_assoc_id),
     INT2NUM(status.sstat_state),
@@ -1060,7 +1075,7 @@ static VALUE rsctp_get_status(VALUE self){
     INT2NUM(status.sstat_instrms),
     INT2NUM(status.sstat_outstrms),
     INT2NUM(status.sstat_fragmentation_point),
-    INT2NUM(0) // TODO: add primary address
+    rb_str_new2(tmpname)
   );
 }
 
