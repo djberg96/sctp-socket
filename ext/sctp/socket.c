@@ -44,6 +44,7 @@ VALUE v_sctp_status_struct;
       } \
    } while (0)
 
+// TODO: Yes, I know I need to update the signature.
 VALUE convert_sockaddr_in_to_struct(struct sockaddr_in* addr){
   char ipbuf[INET6_ADDRSTRLEN];
 
