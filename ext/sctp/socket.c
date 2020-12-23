@@ -17,6 +17,7 @@ VALUE v_adaptation_event_struct;
 VALUE v_partial_delivery_event_struct;
 VALUE v_auth_event_struct;
 VALUE v_sockaddr_in_struct;
+VALUE v_sctp_status_struct;
 
 #if !defined(IOV_MAX)
 #if defined(_SC_IOV_MAX)
@@ -1032,6 +1033,34 @@ static VALUE rsctp_shutdown(int argc, VALUE* argv, VALUE self){
   return self;
 }
 
+static VALUE rsctp_get_status(VALUE self){
+  int sock_fd;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  struct sctp_status status;
+
+  bzero(&status, sizeof(status));
+
+  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  size = sizeof(struct sctp_status);
+
+  if(sctp_opt_info(sock_fd, assoc_id, SCTP_STATUS, (void*)&status, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return rb_struct_new(v_sctp_status_struct,
+    INT2NUM(status.sstat_assoc_id),
+    INT2NUM(status.sstat_state),
+    INT2NUM(status.sstat_rwnd),
+    INT2NUM(status.sstat_unackdata),
+    INT2NUM(status.sstat_penddata),
+    INT2NUM(status.sstat_instrms),
+    INT2NUM(status.sstat_outstrms),
+    INT2NUM(status.sstat_fragmentation_point),
+    INT2NUM(0) // TODO: add primary address
+  );
+}
+
 void Init_socket(){
   mSCTP   = rb_define_module("SCTP");
   cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
@@ -1084,6 +1113,11 @@ void Init_socket(){
     "SockAddrIn", "family", "port", "address", NULL
   );
 
+  v_sctp_status_struct = rb_struct_define(
+    "Status", "association_id", "state", "receive_window", "unacknowledged_data",
+    "pending_data", "inbound_streams", "outbound_streams", "fragmentation_point", "primary"
+  );
+
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
 
   rb_define_method(cSocket, "bind", rsctp_bind, -1);
@@ -1091,6 +1125,7 @@ void Init_socket(){
   rb_define_method(cSocket, "connect", rsctp_connect, -1);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, 0);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, 0);
+  rb_define_method(cSocket, "get_status", rsctp_get_status, 0);
   rb_define_method(cSocket, "listen", rsctp_listen, -1);
   rb_define_method(cSocket, "peeloff!", rsctp_peeloff, 1);
   rb_define_method(cSocket, "recvmsg", rsctp_recvmsg, -1);
@@ -1107,7 +1142,7 @@ void Init_socket(){
   rb_define_attr(cSocket, "association_id", 1, 1);
   rb_define_attr(cSocket, "port", 1, 1);
 
-  /* 0.0.4: The version of this library */
+  /* 0.0.5: The version of this library */
   rb_define_const(cSocket, "VERSION", rb_str_new2("0.0.4"));
 
   /* send flags */
