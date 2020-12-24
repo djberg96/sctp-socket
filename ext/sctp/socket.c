@@ -1282,4 +1282,16 @@ void Init_socket(){
   rb_define_const(cSocket, "SCTP_SENDALL", INT2NUM(SCTP_SENDALL));
 
   rb_define_const(cSocket, "MSG_NOTIFICATION", INT2NUM(MSG_NOTIFICATION));
+
+  // ASSOCIATION STATES //
+
+  rb_define_const(cSocket, "SCTP_EMPTY", INT2NUM(SCTP_EMPTY));
+  rb_define_const(cSocket, "SCTP_CLOSED", INT2NUM(SCTP_CLOSED));
+  rb_define_const(cSocket, "SCTP_COOKIE_WAIT", INT2NUM(SCTP_COOKIE_WAIT));
+  rb_define_const(cSocket, "SCTP_COOKIE_ECHOED", INT2NUM(SCTP_COOKIE_ECHOED));
+  rb_define_const(cSocket, "SCTP_ESTABLISHED", INT2NUM(SCTP_ESTABLISHED));
+  rb_define_const(cSocket, "SCTP_SHUTDOWN_PENDING", INT2NUM(SCTP_SHUTDOWN_PENDING));
+  rb_define_const(cSocket, "SCTP_SHUTDOWN_SENT", INT2NUM(SCTP_SHUTDOWN_SENT));
+  rb_define_const(cSocket, "SCTP_SHUTDOWN_RECEIVED", INT2NUM(SCTP_SHUTDOWN_RECEIVED));
+  rb_define_const(cSocket, "SCTP_SHUTDOWN_ACK_SENT", INT2NUM(SCTP_SHUTDOWN_ACK_SENT));
 }
