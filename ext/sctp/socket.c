@@ -20,6 +20,7 @@ VALUE v_sockaddr_in_struct;
 VALUE v_sctp_status_struct;
 VALUE v_sctp_rtoinfo_struct;
 VALUE v_sctp_associnfo_struct;
+VALUE v_sctp_default_send_params_struct;
 
 #if !defined(IOV_MAX)
 #if defined(_SC_IOV_MAX)
@@ -1017,6 +1018,35 @@ static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
   return self;
 }
 
+static VALUE rsctp_get_default_send_params(VALUE self){
+  int sock_fd;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  struct sctp_sndrcvinfo sndrcv;
+
+  bzero(&sndrcv, sizeof(sndrcv));
+
+  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  size = sizeof(struct sctp_sndrcvinfo);
+
+  if(sctp_opt_info(sock_fd, assoc_id, SCTP_DEFAULT_SEND_PARAM, (void*)&sndrcv, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return rb_struct_new(
+    v_sctp_default_send_params_struct,
+    INT2NUM(sndrcv.sinfo_stream),
+    INT2NUM(sndrcv.sinfo_ssn),
+    INT2NUM(sndrcv.sinfo_flags),
+    INT2NUM(sndrcv.sinfo_ppid),
+    INT2NUM(sndrcv.sinfo_context),
+    INT2NUM(sndrcv.sinfo_timetolive),
+    INT2NUM(sndrcv.sinfo_tsn),
+    INT2NUM(sndrcv.sinfo_cumtsn),
+    INT2NUM(sndrcv.sinfo_assoc_id)
+  );
+}
+
 static VALUE rsctp_get_association_info(VALUE self){
   int sock_fd;
   socklen_t size;
@@ -1199,6 +1229,11 @@ void Init_socket(){
     "cookie_life", NULL
   );
 
+  v_sctp_default_send_params_struct = rb_struct_define(
+    "DefaultSendParams", "stream", "ssn", "flags", "ppid", "context",
+    "ttl", "tsn", "cumtsn", "association_id", NULL
+  );
+
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
 
   rb_define_method(cSocket, "bind", rsctp_bind, -1);
@@ -1207,6 +1242,7 @@ void Init_socket(){
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, 0);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, 0);
   rb_define_method(cSocket, "get_status", rsctp_get_status, 0);
+  rb_define_method(cSocket, "get_default_send_params", rsctp_get_default_send_params, 0);
   rb_define_method(cSocket, "get_retransmission_info", rsctp_get_retransmission_info, 0);
   rb_define_method(cSocket, "get_association_info", rsctp_get_association_info, 0);
   rb_define_method(cSocket, "listen", rsctp_listen, -1);
@@ -1246,4 +1282,16 @@ void Init_socket(){
   rb_define_const(cSocket, "SCTP_SENDALL", INT2NUM(SCTP_SENDALL));
 
   rb_define_const(cSocket, "MSG_NOTIFICATION", INT2NUM(MSG_NOTIFICATION));
+
+  // ASSOCIATION STATES //
+
+  rb_define_const(cSocket, "SCTP_EMPTY", INT2NUM(SCTP_EMPTY));
+  rb_define_const(cSocket, "SCTP_CLOSED", INT2NUM(SCTP_CLOSED));
+  rb_define_const(cSocket, "SCTP_COOKIE_WAIT", INT2NUM(SCTP_COOKIE_WAIT));
+  rb_define_const(cSocket, "SCTP_COOKIE_ECHOED", INT2NUM(SCTP_COOKIE_ECHOED));
+  rb_define_const(cSocket, "SCTP_ESTABLISHED", INT2NUM(SCTP_ESTABLISHED));
+  rb_define_const(cSocket, "SCTP_SHUTDOWN_PENDING", INT2NUM(SCTP_SHUTDOWN_PENDING));
+  rb_define_const(cSocket, "SCTP_SHUTDOWN_SENT", INT2NUM(SCTP_SHUTDOWN_SENT));
+  rb_define_const(cSocket, "SCTP_SHUTDOWN_RECEIVED", INT2NUM(SCTP_SHUTDOWN_RECEIVED));
+  rb_define_const(cSocket, "SCTP_SHUTDOWN_ACK_SENT", INT2NUM(SCTP_SHUTDOWN_ACK_SENT));
 }
