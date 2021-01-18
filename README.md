@@ -12,7 +12,7 @@ On some systems, such as RHEL8, you may need to enable the sctp module.
 
 ## Installation
 
-  `gem install sctp-socket`
+`gem install sctp-socket`
 
 ## About SCTP
 
@@ -30,7 +30,7 @@ is applied to correct loss or corruption of data.
 
 ## Synopsis
 
-```
+```ruby
 # sample_server.rb
 require 'sctp/socket'
 
