@@ -349,6 +349,7 @@ static VALUE rsctp_getlocalnames(VALUE self){
   return v_array;
 }
 
+#ifdef HAVE_SCTP_SENDV
 static VALUE rsctp_sendv(VALUE self, VALUE v_messages){
   struct iovec* iov;
   struct sockaddr* addrs[8];
@@ -391,6 +392,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_messages){
 
   return INT2NUM(num_bytes);
 }
+#endif
 
 /*
  * Send a message on an already-connected socket to a specific association.
@@ -754,6 +756,7 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
           rb_ary_new4(snp->sn_remote_error.sre_length, v_temp)
         );
         break;
+#ifdef SCTP_SEND_FAILED_EVENT
       case SCTP_SEND_FAILED_EVENT:
         v_temp = ALLOCA_N(VALUE, snp->sn_send_failed_event.ssf_length);
 
@@ -776,6 +779,24 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
           rb_ary_new4(snp->sn_send_failed_event.ssf_length, v_temp)
         );
         break;
+#else
+      case SCTP_SEND_FAILED:
+        v_temp = ALLOCA_N(VALUE, snp->sn_send_failed.ssf_length);
+
+        for(i = 0; i < snp->sn_send_failed.ssf_length; i++){
+          v_temp[i] = UINT2NUM(snp->sn_send_failed.ssf_data[i]);
+        }
+
+        v_notification = rb_struct_new(v_send_failed_event_struct,
+          UINT2NUM(snp->sn_send_failed.ssf_type),
+          UINT2NUM(snp->sn_send_failed.ssf_length),
+          UINT2NUM(snp->sn_send_failed.ssf_error),
+          Qnil,
+          UINT2NUM(snp->sn_send_failed.ssf_assoc_id),
+          rb_ary_new4(snp->sn_send_failed.ssf_length, v_temp)
+        );
+        break;
+#endif
       case SCTP_SHUTDOWN_EVENT:
         v_notification = rb_struct_new(v_shutdown_event_struct,
           UINT2NUM(snp->sn_shutdown_event.sse_type),
@@ -936,9 +957,12 @@ static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
   if(RTEST(rb_hash_aref2(v_options, "address")))
     events.sctp_address_event = 1;
 
-  // Use the new version
   if(RTEST(rb_hash_aref2(v_options, "send_failure")))
+#ifdef HAVE_STRUCT_SCTP_EVENT_SUBSCRIBE_SCTP_SEND_FAILURE_EVENT
+    events.sctp_send_failure_event = 1;
+#else
     events.sctp_send_failure_event_event = 1;
+#endif
 
   if(RTEST(rb_hash_aref2(v_options, "peer_error")))
     events.sctp_peer_error_event = 1;
@@ -1249,7 +1273,11 @@ void Init_socket(){
   rb_define_method(cSocket, "peeloff!", rsctp_peeloff, 1);
   rb_define_method(cSocket, "recvmsg", rsctp_recvmsg, -1);
   rb_define_method(cSocket, "send", rsctp_send, 1);
+
+#ifdef HAVE_SCTP_SENDV
   rb_define_method(cSocket, "sendv", rsctp_sendv, 1);
+#endif
+
   rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, 1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
   rb_define_method(cSocket, "shutdown", rsctp_shutdown, -1);
