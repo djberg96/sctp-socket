@@ -1,3 +1,8 @@
+## 0.0.5 - 15-Dec-2021
+* Add handling for Linux platforms that don't support the sctp_sendv function
+  and/or the SCTP_SEND_FAILED_EVENT notification.
+* Some minor updates to Rakefile and Gemfile.
+
 ## 0.0.4 - 3-Dec-2020
 * Added the send method. Use this when you already have a connection.
 * Fixed a flags bug in the sendmsg method.
