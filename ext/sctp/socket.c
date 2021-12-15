@@ -791,13 +791,7 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
           UINT2NUM(snp->sn_send_failed.ssf_type),
           UINT2NUM(snp->sn_send_failed.ssf_length),
           UINT2NUM(snp->sn_send_failed.ssf_error),
-          rb_struct_new(v_sndinfo_struct,
-            UINT2NUM(snp->sn_send_failed.ssf_info.sinfo_sid),
-            UINT2NUM(snp->sn_send_failed.ssf_info.sinfo_flags),
-            UINT2NUM(snp->sn_send_failed.ssf_info.sinfo_ppid),
-            UINT2NUM(snp->sn_send_failed.ssf_info.sinfo_context),
-            UINT2NUM(snp->sn_send_failed.ssf_info.sinfo_assoc_id)
-          ),
+          Qnil,
           UINT2NUM(snp->sn_send_failed.ssf_assoc_id),
           rb_ary_new4(snp->sn_send_failed.ssf_length, v_temp)
         );
@@ -963,9 +957,12 @@ static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
   if(RTEST(rb_hash_aref2(v_options, "address")))
     events.sctp_address_event = 1;
 
-  // Use the new version
   if(RTEST(rb_hash_aref2(v_options, "send_failure")))
+#ifdef HAVE_STRUCT_SCTP_EVENT_SUBSCRIBE_SCTP_SEND_FAILURE_EVENT
+    events.sctp_send_failure_event = 1;
+#else
     events.sctp_send_failure_event_event = 1;
+#endif
 
   if(RTEST(rb_hash_aref2(v_options, "peer_error")))
     events.sctp_peer_error_event = 1;
