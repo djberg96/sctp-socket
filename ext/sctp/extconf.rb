@@ -1,4 +1,5 @@
 require 'mkmf'
+require 'rbconfig'
 
 unless have_header('netinet/sctp.h')
   os = IO.readlines('/etc/os-release').first.split('=').last
