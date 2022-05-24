@@ -4,3 +4,4 @@
 *.lock
 *.bundle
 Makefile
+tmp/
