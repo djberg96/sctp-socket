@@ -8,11 +8,15 @@ WARNING: THIS IS CURRENTLY AN ALPHA PRODUCT. NOT RECOMMENDED FOR PRODUCTION USE 
 
 You will need the sctp development headers installed.
 
-On some systems, such as RHEL8, you may need to enable the sctp module.
+On some systems, such as RHEL8 or later, you may need to enable the sctp module.
 
 ## Installation
 
 `gem install sctp-socket`
+
+## Installing the Trusted Cert
+
+`gem cert --add <(curl -Ls https://raw.githubusercontent.com/djberg96/sctp-socket/main/certs/djberg96_pub.pem)`
 
 ## About SCTP
 
@@ -81,7 +85,7 @@ Apache-2.0
 
 ## Copyright
 
-(C) 2020, Daniel J. Berger
+(C) 2020-2022, Daniel J. Berger
 Al Rights Reserved
 
 ## Author
