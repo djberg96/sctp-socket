@@ -345,5 +345,138 @@ module SCTP
         :shmac_idents, [:uint16_t, 0]
       )
     end
+
+    class SctpSackInfo < FFI::Struct
+      layout(
+        :sack_assoc_id, :sctp_assoc_t,
+        :sack_delay, :uint32_t,
+        :sack_freq, :uint32_t
+      )
+    end
+
+    class SctpDefaultPrinfo < FFI::Struct
+      layout(
+        :pr_policy, :uint16_t,
+        :pr_value, :uint32_t,
+        :pr_assoc_id, :sctp_assoc_t
+      )
+    end
+
+    class SctpPaddrinfo < FFI::Struct
+      layout(
+        :spinfo_address, SockaddrStorage,
+        :spinfo_assoc_id, :sctp_assoc_t,
+        :spinfo_state, :int32_t,
+        :spinfo_cwnd, :uint32_t,
+        :spinfo_srtt, :uint32_t,
+        :spinfo_rto, :uint32_t,
+        :spinfo_mtu, :uint32_t
+      )
+    end
+
+    class SctpStatus < FFI::Struct
+      layout(
+        :sstat_assoc_id, :sctp_assoc_t,
+        :sstat_state, :int32_t,
+        :sstat_rwnd, :int32_t,
+        :sstat_unackdata, :int16_t,
+        :sstat_penddata, :int16_t,
+        :sstat_instrms, :int16_t,
+        :sstat_outstrms, :int16_t,
+        :sstat_fragmentation_point, :int32_t,
+        :sstat_primary, SctpPaddrinfo
+      )
+    end
+
+    class SctpAuthchunks < FFI::Struct
+      layout(
+        :gauth_assoc_id, :sctp_assoc_t,
+        :gauth_chunks, :uint8_t
+      )
+    end
+
+    class SctpAssocIds < FFI::Struct
+      layout(
+        :gaids_number_of_ids, :uint32_t,
+        :gaids_assoc_id, [:sctp_assoc_t, 0]
+      )
+    end
+
+    class SctpSetpeerprim < FFI::Struct
+      layout(
+        :sspp_addr, SockaddrStorage,
+        :sspp_assoc_id, :sctp_assoc_t,
+        :sspp_padding, [:uint8_t, 4]
+      )
+    end
+
+    class SctpGetNonceValues < FFI::Struct
+      layout(
+        :gn_assoc_id, :sctp_assoc_t,
+        :gn_peers_tag, :uint32_t,
+        :gn_local_tag, :uint32_t
+      )
+    end
+
+    class SctpAuthkey < FFI::Struct
+      layout(
+        :sca_assoc_id, :sctp_assoc_t,
+        :sca_keynumber, :uint16_t,
+        :sca_keylength, :uint16_t,
+        :sca_key, :uint8_t
+      )
+    end
+
+    class SctpAuthkeyid < FFI::Struct
+      layout(
+        :scact_assoc_id, :sctp_assoc_t,
+        :scact_keynumber, :uint16_t
+      )
+    end
+
+    class SctpAssocValue < FFI::Struct
+      layout(
+        :assoc_id, :sctp_assoc_t,
+        :assoc_value, :uint32_t
+      )
+    end
+
+    class SctpCcOption < FFI::Struct
+      layout(
+        :option, :int,
+        :aid_value, SctpAssocValue
+      )
+    end
+
+    class SctpStreamValue < FFI::Struct
+      layout(
+        :assoc_id, :sctp_assoc_t,
+        :stream_id, :uint16_t,
+        :stream_value, :uint16_t
+      )
+    end
+
+    class SctpTimeouts < FFI::Struct
+      layout(
+        :stimo_assoc_id, :sctp_assoc_t,
+        :stimo_init, :uint32_t,
+        :stimo_data, :uint32_t,
+        :stimo_sack, :uint32_t,
+        :stimo_shutdown, :uint32_t,
+        :stimo_heartbeat, :uint32_t,
+        :stimo_cookie, :uint32_t,
+        :stimo_shutdownack, :uint32_t
+      )
+    end
+
+    class SctpPrstatus < FFI::Struct
+      layout(
+        :sprstat_assoc_id, :sctp_assoc_t,
+        :sprstat_sid, :uint16_t,
+        :sprstat_policy, :uint16_t,
+        :sprstat_abandoned_unsent, :uint64_t,
+        :sprstat_abandoned_sent, :uint64_t,
+      )
+    end
   end
 end
