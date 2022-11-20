@@ -134,5 +134,138 @@ module SCTP
         :sac_info, [:uint8_t, 0]
       )
     end
+
+    class SctpRemoteError < FFI::Struct
+      layout(
+        :sre_type, :uint16_t,
+        :sre_flags, :uint16_t,
+        :sre_length, :uint32_t,
+        :sre_error, :uint16_t,
+        :sre_assoc_id, :sctp_assoc_t,
+        :sre_data, [:uint8_t, 0]
+      )
+    end
+
+    class SctpAdaptationEvent < FFI::Struct
+      layout(
+        :sai_type, :uint16_t,
+        :sai_flags, :uint16_t,
+        :sai_length, :uint32_t,
+        :sai_adaptation_ind, :uint32_t,
+        :sai_assoc_id, :sctp_assoc_t
+      )
+    end
+
+    class SctpPdapiEvent < FFI::Struct
+      layout(
+        :pdapi_type, :uint16_t,
+        :pdapi_flags, :uint16_t,
+        :pdapi_length, :uint32_t,
+        :pdapi_indication, :uint32_t,
+        :pdapi_stream, :uint32_t,
+        :pdapi_seq, :uint32_t,
+        :pdapi_assoc_id, :sctp_assoc_t
+      )
+    end
+
+    class SctpAuthkeyEvent < FFI::Struct
+      layout(
+        :auth_type, :uint16_t,
+        :auth_flags, :uint16_t,
+        :auth_length, :uint32_t,
+        :auth_keynumber, :uint16_t,
+        :auth_indication, :uint32_t,
+        :auth_assoc_id, :sctp_assoc_t
+      )
+    end
+
+    class SctpSenderDryEvent < FFI::Struct
+      layout(
+        :sender_dry_type, :uint16_t,
+        :sender_dry_flags, :uint16_t,
+        :sender_dry_length, :uint32_t,
+        :sender_dry_assoc_id, :sctp_assoc_t
+      )
+    end
+
+    class SctpStreamResetEvent < FFI::Struct
+      layout(
+        :strreset_type, :uint16_t,
+        :strreset_flags, :uint16_t,
+        :strreset_length, :uint32_t,
+        :strreset_assoc_id, :sctp_assoc_t,
+        :strreset_stream_list, [:uint16_t, 0]
+      )
+    end
+
+    class SctpAssocResetEvent < FFI::Struct
+      layout(
+        :assocreset_type, :uint16_t,
+        :assocreset_flags, :uint16_t,
+        :assocreset_length, :uint32_t,
+        :assocreset_type, :uint16_t,
+        :assocreset_assoc_id, :sctp_assoc_t,
+        :assocreset_local_tsn, :uint32_t,
+        :assocreset_remote_tsn, :uint32_t
+      )
+    end
+
+    class SctpStreamChangeEvent < FFI::Struct
+      layout(
+        :strchange_type, :uint16_t,
+        :strchange_flags, :uint16_t,
+        :strchange_length, :uint32_t,
+        :strchange_assoc_id, :sctp_assoc_t,
+        :strchange_instrms, :uint16_t,
+        :strchange_outstrms, :uint16_t,
+      )
+    end
+
+    class SctpSendFailedEvent < FFI::Struct
+      layout(
+        :ssfe_type, :uint16_t,
+        :ssfe_flags, :uint16_t,
+        :ssfe_length, :uint32_t,
+        :ssfe_error, :uint32_t,
+        :ssfe_assoc_id, :sctp_assoc_t,
+        :ssfe_data, [:uint8_t, 0]
+      )
+    end
+
+    class SctpEvent < FFI::Struct
+      layout(
+        :se_assoc_id, :sctp_assoc_t,
+        :se_type, :uint16_t,
+        :se_on, :uint8_t
+      )
+    end
+
+    class SctpTlv < FFI::Struct
+      layout(
+        :sn_type, :uint16_t,
+        :sn_flags, :uint16_t,
+        :sn_length, :uint32_t
+      )
+    end
+
+    class SctpNotification < FFI::Union
+      layout(:sn_header, SctpTlv)
+    end
+
+    class SctpEventSubscribe < FFI::Struct
+      layout(
+        :sctp_data_io_event, :uint8_t,
+        :sctp_association_event, :uint8_t,
+        :sctp_address_event, :uint8_t,
+        :sctp_send_failure_event, :uint8_t,
+        :sctp_peer_error_event, :uint8_t,
+        :sctp_shutdown_event, :uint8_t,
+        :sctp_partial_deliery_event, :uint8_t,
+        :sctp_adaptation_layer_event, :uint8_t,
+        :sctp_authentication_event, :uint8_t,
+        :sctp_sender_dry_event, :uint8_t,
+        :sctp_stream_reset_event, :uint8_t
+      )
+    end
   end
 end
