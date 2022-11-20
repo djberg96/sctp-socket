@@ -4,54 +4,62 @@ module SCTP
   module Structs
     extend FFI::Library
 
-    typedef :int32, :sctp_assoc_t
+    typedef :uint32_t, :sctp_assoc_t
 
-    class Sockaddr < FFI::Struct
+    class SctpCommonHeader < FFI::Struct
       layout(
-        :sa_family, :ushort,
-        :sa_data, [:char, 14]
+        :source_port, :uint16_t,
+        :destination_port, :uint16_t,
+        :verification_tag, :uint16_t,
+        :crc32c, :uint32_t
       )
     end
 
-    class InAddr < FFI::Struct
-      layout(:s_addr, :uint32)
-    end
-
-    class SockAddrIn < FFI::Struct
+    class SockaddrConn < FFI::Struct
       layout(
-        :sin_family, :sa_family_t,
-        :sin_port, :in_port_t,
-        :sin_addr, InAddr,
-        :sin_zero, [:uint8, 8]
+        :sconn_len, :uint8_t,
+        :sconn_family, :uint8_t,
+        :sconn_port, :uint8_t,
+        :sconn_addr, :pointer
       )
     end
 
-    class SctpSndRcvInfo < FFI::Struct
+    class SctpSockstore < FFI::Union
       layout(
-	      :sinfo_stream, :uint16,
-	      :sinfo_ssn, :uint16,
-	      :sinfo_flags, :uint16,
-	      :sinfo_ppid, :uint32,
-	      :sinfo_context, :uint32,
-	      :sinfo_timetolive, :uint32,
-	      :sinfo_tsn, :uint32,
-	      :sinfo_cumtsn, :uint32,
-	      :sinfo_assoc_id, :sctp_assoc_t
+        :sin, :pointer,
+        :sin6, :pointer,
+        :sconn, :pointer,
+        :sa, :pointer
       )
     end
 
-    class SctpEventSubscribe < FFI::Struct
+    class SctpRcvinfo < FFI::Struct
       layout(
-        :sctp_data_io_event, :uint8,
-        :sctp_association_event, :uint8,
-        :sctp_address_event, :uint8,
-        :sctp_send_failure_event, :uint8,
-        :sctp_peer_error_event, :uint8,
-        :sctp_shutdown_event, :uint8,
-        :sctp_partial_delivery_event, :uint8,
-        :sctp_adaptation_layer_event, :uint8,
-        :sctp_authentication_event, :uint8,
-        :sctp_sender_dry_event, :uint8
+        :rcv_sid, :uint16_t,
+        :rcv_ssn, :uint16_t,
+        :rcv_flags, :uint16_t,
+        :rcv_ppid, :uint32_t,
+        :rcv_tsn, :uint32_t,
+        :rcv_cumtsn, :uint32_t,
+        :rcv_context, :uint32_t,
+        :rcv_assoc_id, :sctp_assoc_t
+      )
+    end
+
+    class SctpNxtinfo < FFI::Struct
+      layout(
+        :nxt_sid, :uint16_t,
+        :nxt_flags, :uint16_t,
+        :nxt_ppid, :uint32_t,
+        :nxt_length, :uint32_t,
+        :nxt_assoc_id, :sctp_assoc_t
+      )
+    end
+
+    class SctpRecvvRn < FFI::Struct
+      layout(
+        :recvv_rcvinfo, SctpRcvinfo,
+        :recvv_nxtinfo, SctpNxtinfo,
       )
     end
   end
