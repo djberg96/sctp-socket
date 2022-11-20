@@ -6,7 +6,7 @@ module SCTP
 
     ffi_lib :usrsctp
 
-    attach_function :usrsctp_init, %i[udp_port], :void
+    attach_function :usrsctp_init, %i[uint16], :void
     attach_function :usrsctp_finish, [], :int
     attach_function :usrsctp_socket, %i[int int int pointer pointer uint32 pointer], :pointer
 
