@@ -6,9 +6,15 @@ module SCTP
 
     ffi_lib :usrsctp
 
+    attach_function :usrsctp_accept, %i[pointer pointer pointer], :pointer
+    attach_function :usrsctp_bind, %i[pointer pointer pointer], :int
+    attach_function :usrsctp_close, %i[pointer], :void
+    attach_function :usrsctp_connect, %i[pointer pointer pointer], :int
     attach_function :usrsctp_init, %i[uint16], :void
     attach_function :usrsctp_finish, [], :int
+    attach_function :usrsctp_listen, %i[pointer int], :int
     attach_function :usrsctp_socket, %i[int int int pointer pointer uint32 pointer], :pointer
+    attach_function :usrsctp_shutdown, %i[pointer int], :int
 
     ffi_lib :libc
 
