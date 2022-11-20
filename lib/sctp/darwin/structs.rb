@@ -267,5 +267,83 @@ module SCTP
         :sctp_stream_reset_event, :uint8_t
       )
     end
+
+    class SctpInitMsg < FFI::Struct
+      layout(
+        :sinit_num_ostreams, :uint16_t,
+        :sinit_max_ostreams, :uint16_t,
+        :sinit_max_attempts, :uint16_t,
+        :sinit_max_init_timeo, :uint16_t
+      )
+    end
+
+    class SctpRtoinfo < FFI::Struct
+      layout(
+        :srto_assoc_id, :sctp_assoc_t,
+        :srto_initial, :uint32_t,
+        :srto_max, :uint32_t,
+        :srto_min, :uint32_t
+      )
+    end
+
+    class SctpAssocparams < FFI::Struct
+      layout(
+        :sasoc_assoc_id, :sctp_assoc_t,
+        :sasoc_peer_rwnd, :uint32_t,
+        :sasoc_local_rwnd, :uint32_t,
+        :sasoc_cookie_rwnd, :uint32_t,
+        :sasoc_asocmaxrxt, :uint16_t,
+        :sasoc_number_peer_destinations, :uint16_t
+      )
+    end
+
+    class SctpSetprim < FFI::Struct
+      layout(
+        :ssp_addr, SockaddrStorage,
+        :ssp_assoc_id, :sctp_assoc_t,
+        :ssp_padding, [:uint8_t, 4]
+      )
+    end
+
+    class SctpSetadaptation < FFI::Struct
+      layout(:ssb_adaptation_ind, :uint32_t)
+    end
+
+    class SctpPeeraddrparams < FFI::Struct
+      layout(
+        :spp_address, SockaddrStorage,
+        :spp_assoc_id, :sctp_assoc_t,
+        :spp_hbinterval, :uint32_t,
+        :spp_pathmtu, :uint32_t,
+        :spp_flags, :uint32_t,
+        :spp_ipv6_flowlabel, :uint32_t,
+        :spp_pathmaxrxt, :uint16_t,
+        :spp_dscp, :uint8_t,
+      )
+    end
+
+    class SctpResetStreams < FFI::Struct
+      layout(
+        :srs_assoc_id, :sctp_assoc_t,
+        :srs_flags, :uint16_t,
+        :srs_number_streams, :uint16_t,
+        :srs_stream_list, :uint16_t
+      )
+    end
+
+    class SctpAddStreams < FFI::Struct
+      layout(
+        :sas_assoc_id, :sctp_assoc_t,
+        :sas_instrms, :uint16_t,
+        :sas_outstrms, :uint16_t
+      )
+    end
+
+    class SctpHmacalgo < FFI::Struct
+      layout(
+        :shmac_number_of_idents, :uint32_t,
+        :shmac_idents, [:uint16_t, 0]
+      )
+    end
   end
 end
