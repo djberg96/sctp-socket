@@ -55,3 +55,16 @@ class SCTPSocket
     usrsctp_finish
   end
 end
+
+if $0 == __FILE__
+  begin
+    receive_cb = Proc.new do |socket, _sockstore, data, datalen, _recvinfo, flags|
+      usrsctp_close(socket) if data.nil? || data.null?
+      puts "DATA: #{data}"
+    end
+
+    socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
+  ensure
+    socket.close if socket
+  end
+end
