@@ -15,7 +15,7 @@ module SCTP
     attach_function :usrsctp_init, %i[uint16], :void
     attach_function :usrsctp_listen, %i[pointer int], :int
     attach_function :usrsctp_recvv, %i[pointer pointer size_t pointer pointer pointer pointer pointer], :ssize_t
-    attach_function :usrsctp_socket, %i[int int int pointer pointer uint32 pointer], :pointer
+    attach_function :usrsctp_socket, %i[int int int pointer pointer uint32_t pointer], :pointer
     attach_function :usrsctp_sendv, %i[pointer pointer size_t pointer int pointer pointer uint int], :ssize_t
     attach_function :usrsctp_setsockopt, %i[pointer int int pointer pointer], :int
     attach_function :usrsctp_shutdown, %i[pointer int], :int
