@@ -1,10 +1,15 @@
 require 'ffi'
+require_relative 'structs'
 
 module SCTP
   module Functions
     extend FFI::Library
+    include SCTP::Structs
 
     ffi_lib :usrsctp
+
+    callback :receive_cb, [:pointer, SctpSockstore, :pointer, :size_t, SctpRcvinfo, :int], :int
+    callback :send_cb, %i[pointer uint32_t], :int
 
     attach_function :usrsctp_accept, %i[pointer pointer pointer], :pointer
     attach_function :usrsctp_bind, %i[pointer pointer pointer], :int
@@ -15,7 +20,7 @@ module SCTP
     attach_function :usrsctp_init, %i[uint16], :void
     attach_function :usrsctp_listen, %i[pointer int], :int
     attach_function :usrsctp_recvv, %i[pointer pointer size_t pointer pointer pointer pointer pointer], :ssize_t
-    attach_function :usrsctp_socket, %i[int int int pointer pointer uint32_t pointer], :pointer
+    attach_function :usrsctp_socket, %i[int int int receive_cb send_cb uint32_t pointer], :pointer
     attach_function :usrsctp_sendv, %i[pointer pointer size_t pointer int pointer pointer uint int], :ssize_t
     attach_function :usrsctp_setsockopt, %i[pointer int int pointer pointer], :int
     attach_function :usrsctp_shutdown, %i[pointer int], :int
