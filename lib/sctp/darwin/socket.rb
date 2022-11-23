@@ -40,7 +40,7 @@ class SCTPSocket
       raise ArgumentError, "invalid socket type: #{@type}"
     end
 
-    usrsctp_init(@port)
+    usrsctp_init(@port, nil, nil)
 
     # Not sure what last param is actually for, set it to nil for now
     @socket = usrsctp_socket(@domain, @type, @protocol, @receive, @send, @threshold, nil)
@@ -63,7 +63,22 @@ if $0 == __FILE__
       puts "DATA: #{data}"
     end
 
+    port = 7
+
+    inaddr = SCTPSocket::InAddr.new
+    inaddr[:s_addr] = Socket::INADDR_ANY
+
+    addr = SCTPSocket::SockAddrIn.new
+    addr[:sin_len]    = addr.size
+    addr[:sin_family] = Socket::AF_INET
+    addr[:sin_addr]   = inaddr
+    addr[:sin_port]   = SCTPSocket.c_htons(port)
+
     socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
+
+    if SCTPSocket.usrsctp_bind(socket, addr, addr.size) < 0
+      raise SystemCallError.new('usrsctp_bind', FFI.errno)
+    end
   ensure
     socket.close if socket
   end
