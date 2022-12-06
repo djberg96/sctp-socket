@@ -50,6 +50,21 @@ class SCTPSocket
     end
   end
 
+  def bind
+    inaddr = SCTPSocket::InAddr.new
+    inaddr[:s_addr] = Socket::INADDR_ANY
+
+    addr = SCTPSocket::SockAddrIn.new
+    addr[:sin_len]    = addr.size
+    addr[:sin_family] = Socket::AF_INET
+    addr[:sin_addr]   = inaddr
+    addr[:sin_port]   = SCTPSocket.c_htons(@port)
+
+    if usrsctp_bind(@socket, addr, addr.size) < 0
+      raise SystemCallError.new('usrsctp_bind', FFI.errno)
+    end
+  end
+
   def close
     usrsctp_close(@socket) if @socket
     usrsctp_finish
