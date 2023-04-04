@@ -1186,7 +1186,7 @@ static VALUE rsctp_get_status(VALUE self){
   );
 }
 
-void Init_socket(){
+void Init_socket(void){
   mSCTP   = rb_define_module("SCTP");
   cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
 
