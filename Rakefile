@@ -33,8 +33,13 @@ namespace :gem do
 end
 
 Rake::ExtensionTask.new('socket') do |t|
-  t.ext_dir = 'ext/sctp'
-  t.lib_dir = 'lib/sctp'
+  if RbConfig::CONFIG['host_os'] =~ /linux/i
+    t.ext_dir = 'ext/sctp/linux'
+    t.lib_dir = 'lib/sctp/linux'
+  else
+    t.ext_dir = 'ext/sctp/macos'
+    t.lib_dir = 'lib/sctp/macos'
+  end
 end
 
 RSpec::Core::RakeTask.new
