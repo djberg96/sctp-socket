@@ -95,7 +95,7 @@ VALUE rb_hash_aref2(VALUE v_hash, const char* key){
  *   socket2 = SCTP::Socket.new(Socket::AF_INET, Socket::SOCK_STREAM)
  */
 static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
-  int sock_fd;
+  struct socket* sock_fd;
   VALUE v_domain, v_type;
 
   rb_scan_args(argc, argv, "02", &v_domain, &v_type);
@@ -106,18 +106,16 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
   if(NIL_P(v_type))
     v_type = INT2NUM(SOCK_SEQPACKET);
 
-  sock_fd = socket(NUM2INT(v_domain), NUM2INT(v_type), IPPROTO_SCTP);
+  usrsctp_init(9899, NULL, NULL);
+
+  sock_fd = usrsctp_socket(NUM2INT(v_domain), NUM2INT(v_type), IPPROTO_SCTP, NULL, NULL, 0, NULL);
 
   if(sock_fd < 0)
     rb_raise(rb_eSystemCallError, "socket: %s", strerror(errno));
 
-#ifdef HAVE_USRSCTP_H
-  usrsctp_init(0, NULL, NULL);
-#endif
-
   rb_iv_set(self, "@domain", v_domain);
   rb_iv_set(self, "@type", v_type);
-  rb_iv_set(self, "@sock_fd", INT2NUM(sock_fd));
+  rb_iv_set(self, "@sock_fd", LONG2NUM((long)sock_fd));
   rb_iv_set(self, "@association_id", INT2NUM(0));
 
   return self;
@@ -279,13 +277,10 @@ static VALUE rsctp_connect(int argc, VALUE* argv, VALUE self){
  */
 static VALUE rsctp_close(VALUE self){
   VALUE v_sock_fd = rb_iv_get(self, "@sock_fd");
+  long sock_fd = NUM2LONG(v_sock_fd);
 
-  if(close(NUM2INT(v_sock_fd)))
-    rb_raise(rb_eSystemCallError, "close: %s", strerror(errno));
-
-#ifdef HAVE_USRSCTP_H
+  usrsctp_close((struct socket*)&sock_fd);
   usrsctp_finish();
-#endif
 
   return self;
 }
@@ -1307,7 +1302,7 @@ void Init_socket(){
   rb_define_attr(cSocket, "port", 1, 1);
 
   /* 0.0.5: The version of this library */
-  rb_define_const(cSocket, "VERSION", rb_str_new2("0.0.4"));
+  rb_define_const(cSocket, "VERSION", rb_str_new2("0.0.5"));
 
   /* send flags */
 
