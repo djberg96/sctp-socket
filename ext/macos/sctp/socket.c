@@ -144,11 +144,11 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
  *
  *  Returns the port that it was bound to.
  */
-/*
 static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
   struct sockaddr_in addrs[8];
-  int i, sock_fd, num_ip, flags, domain, port;
-  VALUE v_addresses, v_port, v_flags, v_address, v_options;
+  int i, domain, port;
+  long sock_fd, num_ip;
+  VALUE v_addresses, v_port, v_address, v_options;
 
   rb_scan_args(argc, argv, "01", &v_options);
 
@@ -158,7 +158,6 @@ static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
     v_options = rb_hash_new();
 
   v_addresses = rb_hash_aref2(v_options, "addresses");
-  v_flags = rb_hash_aref2(v_options, "flags");
   v_port = rb_hash_aref2(v_options, "port");
 
   if(NIL_P(v_port))
@@ -166,18 +165,13 @@ static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
   else
     port = NUM2INT(v_port);
 
-  if(NIL_P(v_flags))
-    flags = SCTP_BINDX_ADD_ADDR;
-  else
-    flags = NUM2INT(v_flags);
-
   if(NIL_P(v_addresses))
     num_ip = 1;
   else
     num_ip = RARRAY_LEN(v_addresses);
 
   domain = NUM2INT(rb_iv_get(self, "@domain"));
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  sock_fd = NUM2LONG(rb_iv_get(self, "@sock_fd"));
 
   if(num_ip > 1){
     for(i = 0; i < num_ip; i++){
@@ -193,22 +187,23 @@ static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
     addrs[0].sin_addr.s_addr = htonl(INADDR_ANY);
   }
 
-  if(sctp_bindx(sock_fd, (struct sockaddr *) addrs, num_ip, flags) != 0)
-    rb_raise(rb_eSystemCallError, "sctp_bindx: %s", strerror(errno));
+  if(usrsctp_bind((struct socket*)sock_fd, (struct sockaddr *) addrs, sizeof(addrs)) != 0)
+    rb_raise(rb_eSystemCallError, "usrsctp_bind: %s", strerror(errno));
 
+  /*
   if(port == 0){
     struct sockaddr_in sin;
     socklen_t len = sizeof(sin);
 
-    if(getsockname(sock_fd, (struct sockaddr *)&sin, &len) == -1)
+    if(getsockname((long)sock_fd, (struct sockaddr *)&sin, &len) == -1)
       rb_raise(rb_eSystemCallError, "getsockname: %s", strerror(errno));
 
     port = sin.sin_port;
   }
+  */
 
   return INT2NUM(port);
 }
-*/
 
 /*
  * Connect the socket to a multihomed peer via the provided array of addresses
@@ -1274,7 +1269,7 @@ void Init_socket(){
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
 
-  //rb_define_method(cSocket, "bind", rsctp_bind, -1);
+  rb_define_method(cSocket, "bind", rsctp_bind, -1);
   rb_define_method(cSocket, "close", rsctp_close, 0);
   /*
   rb_define_method(cSocket, "connect", rsctp_connect, -1);
