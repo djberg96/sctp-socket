@@ -34,15 +34,22 @@ end
 
 Rake::ExtensionTask.new('socket') do |t|
   if RbConfig::CONFIG['host_os'] =~ /linux/i
-    t.ext_dir = 'ext/sctp/linux'
-    t.lib_dir = 'lib/sctp/linux'
+    t.ext_dir = 'ext/linux/sctp'
+    t.lib_dir = 'lib/linux/sctp'
   else
-    t.ext_dir = 'ext/sctp/macos'
-    t.lib_dir = 'lib/sctp/macos'
+    t.ext_dir = 'ext/macos/sctp'
+    t.lib_dir = 'lib/macos/sctp'
   end
 end
 
-RSpec::Core::RakeTask.new
+RSpec::Core::RakeTask.new(:spec) do |t|
+  case RbConfig::CONFIG['host_os']
+    when /linux/i
+      t.rspec_opts = '-Ilib/linux'
+    when /macos|darwin/i
+      t.rspec_opts = '-Ilib/macos'
+  end
+end
 
 task :spec => :compile
 task :default => [:clean, :spec]
