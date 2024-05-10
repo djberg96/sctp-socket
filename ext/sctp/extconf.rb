@@ -1,5 +1,7 @@
 require 'mkmf'
 
+dir_config('sctp')
+
 unless have_header('netinet/sctp.h')
   os = IO.readlines('/etc/os-release').first.split('=').last
   msg = "\nSCTP HEADERS NOT FOUND. PLEASE INSTALL THEM FIRST LIKE SO:\n\n"
@@ -18,7 +20,7 @@ unless have_header('netinet/sctp.h')
     msg << "sudo apt-get install libsctp-dev lksctp-tools\n\n"
   end
 
-  $stderr.puts msg
+  warn msg
   exit
 end
 
