@@ -1311,7 +1311,7 @@ void Init_socket(){
   rb_define_attr(cSocket, "port", 1, 1);
 
   /* 0.0.5: The version of this library */
-  rb_define_const(cSocket, "VERSION", rb_str_new2("0.0.4"));
+  rb_define_const(cSocket, "VERSION", rb_str_new2("0.0.5"));
 
   /* send flags */
 
