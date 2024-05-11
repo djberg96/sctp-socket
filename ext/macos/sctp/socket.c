@@ -190,17 +190,15 @@ static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
   if(usrsctp_bind((struct socket*)sock_fd, (struct sockaddr *) addrs, sizeof(addrs)) != 0)
     rb_raise(rb_eSystemCallError, "usrsctp_bind: %s", strerror(errno));
 
-  /*
   if(port == 0){
     struct sockaddr_in sin;
     socklen_t len = sizeof(sin);
 
-    if(getsockname((long)sock_fd, (struct sockaddr *)&sin, &len) == -1)
+    if(getsockname((int)sock_fd, (struct sockaddr *)&sin, &len) == -1)
       rb_raise(rb_eSystemCallError, "getsockname: %s", strerror(errno));
 
     port = sin.sin_port;
   }
-  */
 
   return INT2NUM(port);
 }
