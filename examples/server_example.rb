@@ -1,5 +1,8 @@
 require 'sctp/socket'
 
+# rake compile + ruby -Ilib to run local version
+puts "VERSION: #{SCTP::Socket::VERSION}"
+
 # To test multiple IP addresses locally:
 #
 # sudo apt install iproute2
@@ -22,6 +25,7 @@ begin
   socket = SCTP::Socket.new
   socket.bind(:port => port, :addresses => addresses)
   socket.set_initmsg(:output_streams => 5, :input_streams => 5, :max_attempts => 4)
+  socket.subscribe(:data_io => true, :shutdown => true, :send_failure => true)
   socket.listen
 
   while true
