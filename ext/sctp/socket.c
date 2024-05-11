@@ -644,7 +644,10 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
 
   sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
   length = sizeof(struct sockaddr_in);
+
   bzero(buffer, sizeof(buffer));
+  bzero(&clientaddr, sizeof(clientaddr));
+  bzero(&sndrcvinfo, sizeof(sndrcvinfo));
 
   bytes = sctp_recvmsg(
     sock_fd,
@@ -919,7 +922,7 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
  *   - The peer has sent a shutdown to the local endpoint.
  *
  *   :data_io
- *   - Message data was received. On by default.
+ *   - Message data was received. You will want to subscribe to this in most cases.
  *
  *   Others:
  *
@@ -932,14 +935,12 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
  *   :sender_dry
  *   :peer_error
  *
- * By default only data_io is subscribed to.
- *
  * Example:
  * 
  *   socket = SCTP::Socket.new
  *
  *   socket.bind(:port => port, :addresses => ['127.0.0.1'])
- *   socket.subscribe(:shutdown => true, :send_failure => true)
+ *   socket.subscribe(:data_io => true, :shutdown => true, :send_failure => true)
  */
 static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
   int sock_fd;
@@ -1016,7 +1017,7 @@ static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
   sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
 
   if(listen(sock_fd, backlog) < 0)
-    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+    rb_raise(rb_eSystemCallError, "listen: %s", strerror(errno));
   
   return self;
 }
@@ -1289,8 +1290,8 @@ void Init_socket(void){
   rb_define_attr(cSocket, "association_id", 1, 1);
   rb_define_attr(cSocket, "port", 1, 1);
 
-  /* 0.0.5: The version of this library */
-  rb_define_const(cSocket, "VERSION", rb_str_new2("0.0.5"));
+  /* 0.0.6: The version of this library */
+  rb_define_const(cSocket, "VERSION", rb_str_new2("0.0.6"));
 
   /* send flags */
 
