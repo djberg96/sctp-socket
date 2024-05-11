@@ -491,14 +491,14 @@ static VALUE rsctp_send(VALUE self, VALUE v_options){
  * Transmit a message to an SCTP endpoint. The following hash of options
  * is permitted:
  *
- *  :message -> The message to send to the endpoint. Mandatory.
- *  :stream  -> The SCTP stream number you wish to send the message on.
- *  :to      -> An array of addresses to send the message to.
- *  :context -> The default context used for the sendmsg call if the send fails.
- *  :ppid    -> The payload protocol identifier that is passed to the peer endpoint. 
- *  :flags   -> A bitwise integer that contain one or more values that control behavior.
+ *  :message   -> The message to send to the endpoint. Mandatory.
+ *  :stream    -> The SCTP stream number you wish to send the message on.
+ *  :addresses -> An array of addresses to send the message to.
+ *  :context   -> The default context used for the sendmsg call if the send fails.
+ *  :ppid      -> The payload protocol identifier that is passed to the peer endpoint. 
+ *  :flags     -> A bitwise integer that contain one or more values that control behavior.
  *
- *  Note that the :to option is not mandatory in a one-to-one (SOCK_STREAM)
+ *  Note that the :addresses option is not mandatory in a one-to-one (SOCK_STREAM)
  *  socket connection. However, it must have been set previously via the
  *  connect method.
  *
@@ -507,11 +507,11 @@ static VALUE rsctp_send(VALUE self, VALUE v_options){
  *    socket = SCTP::Socket.new
  *
  *    socket.sendmsg(
- *      :message => "Hello World!",
- *      :stream  => 3,
- *      :flags   => SCTP::Socket::SCTP_UNORDERED | SCTP::Socket::SCTP_SENDALL,
- *      :ttl     => 100,
- *      :to      => ['10.0.5.4', '10.0.6.4']
+ *      :message   => "Hello World!",
+ *      :stream    => 3,
+ *      :flags     => SCTP::Socket::SCTP_UNORDERED | SCTP::Socket::SCTP_SENDALL,
+ *      :ttl       => 100,
+ *      :addresses => ['10.0.5.4', '10.0.6.4']
  *    )
  */
 static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
