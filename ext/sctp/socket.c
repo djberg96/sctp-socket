@@ -202,6 +202,8 @@ static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
     port = sin.sin_port;
   }
 
+  rb_iv_set(self, "@port", INT2NUM(port));
+
   return INT2NUM(port);
 }
 
@@ -1323,4 +1325,9 @@ void Init_socket(void){
   rb_define_const(cSocket, "SCTP_SHUTDOWN_SENT", INT2NUM(SCTP_SHUTDOWN_SENT));
   rb_define_const(cSocket, "SCTP_SHUTDOWN_RECEIVED", INT2NUM(SCTP_SHUTDOWN_RECEIVED));
   rb_define_const(cSocket, "SCTP_SHUTDOWN_ACK_SENT", INT2NUM(SCTP_SHUTDOWN_ACK_SENT));
+
+  // BINDING //
+
+  rb_define_const(cSocket, "SCTP_BINDX_ADD_ADDR", INT2NUM(SCTP_BINDX_ADD_ADDR));
+  rb_define_const(cSocket, "SCTP_BINDX_REM_ADDR", INT2NUM(SCTP_BINDX_REM_ADDR));
 }
