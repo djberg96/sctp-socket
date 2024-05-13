@@ -122,4 +122,22 @@ RSpec.describe SCTP::Socket do
       expect{ @socket.connect(:addresses => addresses) }.to raise_error(ArgumentError)
     end
   end
+
+  context "close" do
+    before do
+      @socket = described_class.new
+    end
+
+    example "close basic functionality" do
+      expect{ @socket.close }.not_to raise_error
+    end
+
+    example "close does not take any arguments" do
+      expect{ @socket.close(1) }.to raise_error(ArgumentError)
+    end
+
+    example "calling close on a closed socket raises an error" do
+      expect{ 2.times{ @socket.close } }.to raise_error
+    end
+  end
 end
