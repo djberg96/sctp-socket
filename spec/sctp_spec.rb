@@ -93,4 +93,33 @@ RSpec.describe SCTP::Socket do
       expect{ @socket.bind(:port => port, :addresses => [addresses.first], :flags => SCTP::Socket::SCTP_BINDX_REM_ADDR) }.not_to raise_error
     end
   end
+
+  context "connect" do
+    let(:addresses){ %w[1.1.1.1 1.1.1.2] }
+    let(:port){ 12345 }
+
+    before do
+      @socket = described_class.new
+      @socket.bind(:port => port)
+    end
+
+    after do
+      @socket.close if @socket
+    end
+
+    example "connect basic check" do
+      expect{ @socket.connect(:addresses => addresses, :port => port) }.not_to raise_error
+    end
+
+    example "association ID is set after connect" do
+      @socket.connect(:addresses => addresses, :port => port)
+      expect(@socket.association_id).to be > 0
+    end
+
+    example "connect requires both a port and an array of addresses" do
+      expect{ @socket.connect }.to raise_error(ArgumentError)
+      expect{ @socket.connect(:port => port) }.to raise_error(ArgumentError)
+      expect{ @socket.connect(:addresses => addresses) }.to raise_error(ArgumentError)
+    end
+  end
 end
