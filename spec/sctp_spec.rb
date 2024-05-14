@@ -137,7 +137,33 @@ RSpec.describe SCTP::Socket do
     end
 
     example "calling close on a closed socket raises an error" do
-      expect{ 2.times{ @socket.close } }.to raise_error
+      expect{ 2.times{ @socket.close } }.to raise_error(SystemCallError)
+    end
+  end
+
+  context "getpeernames" do
+    let(:addresses){ %w[1.1.1.1 1.1.1.2] }
+    let(:port){ 12345 }
+
+    before do
+      @server = described_class.new
+      @socket = described_class.new
+      @server.bind(:addresses => addresses, :port => port)
+      @server.listen
+    end
+
+    after do
+      @socket.close if @socket
+      @server.close if @server
+    end
+
+    example "getpeernames returns the expected array" do
+      @socket.connect(:addresses => addresses, :port => port)
+      expect(@socket.getpeernames).to eq(addresses)
+    end
+
+    example "getpeernames does not accept arguments" do
+      expect{ @socket.getpeernames(true) }.to raise_error(ArgumentError)
     end
   end
 end
