@@ -1146,6 +1146,27 @@ static VALUE rsctp_get_retransmission_info(VALUE self){
   );
 }
 
+/*
+ * Get the status of a connected socket.
+ *
+ * Example:
+ *
+ *   socket = SCTP::Socket.new
+ *   socket.connect(...)
+ *   socket.get_status
+ *
+ * Returns a Struct::Status object, which contains the following fields:
+ *
+ *  * association_id
+ *  * state
+ *  * receive_window
+ *  * unacknowledged_data
+ *  * pending_data
+ *  * inbound_streams
+ *  * outbound_streams
+ *  * fragmentation_point
+ *  * primary (IP)
+ */
 static VALUE rsctp_get_status(VALUE self){
   int sock_fd;
   socklen_t size;
