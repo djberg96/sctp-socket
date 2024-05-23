@@ -26,26 +26,9 @@ VALUE v_sctp_default_send_params_struct;
 #if defined(_SC_IOV_MAX)
 #define IOV_MAX (sysconf(_SC_IOV_MAX))
 #else
-// Assume infinity, or let the syscall return with error
 #define IOV_MAX INT_MAX
 #endif
 #endif
-
-#define ARY2IOVEC(iov,ary) \
-   do { \
-      VALUE *cur; \
-      struct iovec *tmp; \
-      long n; \
-      cur = RARRAY_PTR(ary); \
-      n = RARRAY_LEN(ary); \
-      iov = tmp = alloca(sizeof(struct iovec) * n); \
-      for (; --n >= 0; tmp++, cur++) { \
-         if (TYPE(*cur) != T_STRING) \
-            rb_raise(rb_eArgError, "must be an array of strings"); \
-         tmp->iov_base = RSTRING_PTR(*cur); \
-         tmp->iov_len = RSTRING_LEN(*cur); \
-      } \
-   } while (0)
 
 // TODO: Yes, I know I need to update the signature.
 VALUE convert_sockaddr_in_to_struct(struct sockaddr_in* addr){
@@ -352,18 +335,29 @@ static VALUE rsctp_getlocalnames(VALUE self){
 }
 
 #ifdef HAVE_SCTP_SENDV
-static VALUE rsctp_sendv(VALUE self, VALUE v_messages){
-  struct iovec* iov;
-  struct sockaddr* addrs[8];
+static VALUE rsctp_sendv(VALUE self, VALUE v_options){
+  VALUE v_msg, v_messages, v_addresses;
+  struct iovec iov[IOV_MAX];
+  struct sockaddr_in addrs[8];
   struct sctp_sndinfo info;
-  int sock_fd, num_bytes, size;
+  int i, sock_fd, num_bytes, size, num_ip;
 
-  Check_Type(v_messages, T_ARRAY);
+  Check_Type(v_options, T_HASH);
+
   bzero(&addrs, sizeof(addrs));
+  bzero(&iov, sizeof(iov));
+  bzero(&info, sizeof(info));
+
+  v_addresses = rb_hash_aref2(v_options, "addresses");
+  v_messages  = rb_hash_aref2(v_options, "messages");
+
+  if(!NIL_P(v_messages))
+    Check_Type(v_messages, T_ARRAY);
+
+  if(!NIL_P(v_addresses))
+    Check_Type(v_addresses, T_ARRAY);
 
   sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
-
-  Check_Type(v_messages, T_ARRAY);
   size = RARRAY_LEN(v_messages);
 
   if(!size)
@@ -372,16 +366,43 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_messages){
   if(size > IOV_MAX)
     rb_raise(rb_eArgError, "Array size is greater than IOV_MAX");
 
-  ARY2IOVEC(iov, v_messages);
-
   info.snd_flags = SCTP_UNORDERED;
   info.snd_assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+
+  num_ip = RARRAY_LEN(v_addresses);
+
+  if(!NIL_P(v_addresses)){
+    int i, port;
+    VALUE v_address, v_port;
+
+    v_port = NUM2INT(rb_iv_get(self, "@port"));
+
+    if(NIL_P(v_port))
+      port = 0;
+    else
+      port = NUM2INT(v_port);
+
+    for(i = 0; i < num_ip; i++){
+      v_address = RARRAY_PTR(v_addresses)[i];
+      addrs[i].sin_family = NUM2INT(rb_iv_get(self, "@domain"));
+      addrs[i].sin_port = htons(port);
+      addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
+    }
+  }
+
+  for(i = 0; i < size; i++){
+    v_msg = RARRAY_PTR(v_messages)[i];
+    iov[i].iov_base = StringValueCStr(v_msg);
+    iov[i].iov_len = RSTRING_LEN(v_msg);
+  }
 
   num_bytes = sctp_sendv(
     sock_fd,
     iov,
     size,
+    //(struct sockaddr*)addrs,
     NULL,
+    //sizeof(addrs),
     0,
     &info,
     sizeof(info),
