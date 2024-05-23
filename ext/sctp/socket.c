@@ -335,8 +335,29 @@ static VALUE rsctp_getlocalnames(VALUE self){
 }
 
 #ifdef HAVE_SCTP_SENDV
+/*
+ * Transmit a message to an SCTP endpoint using a gather-write. The following
+ * hash of options is permitted:
+ *
+ *  * message   - An array of strings that will be joined into a single message.
+ *  * addresses - An array of IP addresses to setup an association to send the message.
+ *  * info_type - The type of information provided. The default is SCTP_SENDV_SNDINFO.
+ *
+ *
+ *  Example:
+ *
+ *    socket = SCTP::Socket.new
+ *
+ *    socket.sendv
+ *      :message   => ["Hello ", "World."],
+ *      :addresses => ['10.0.5.4', '10.0.6.4'],
+ *      :info_type => SCTP::Socket:::SCTP_SENDV_SNDINFO
+ *    )
+ *
+ *  CAVEAT: Currently addresses does not work, and info_type is not yet supported.
+ */
 static VALUE rsctp_sendv(VALUE self, VALUE v_options){
-  VALUE v_msg, v_messages, v_addresses;
+  VALUE v_msg, v_message, v_addresses;
   struct iovec iov[IOV_MAX];
   struct sockaddr_in* addrs;
   struct sctp_sndinfo info;
@@ -347,11 +368,11 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   bzero(&iov, sizeof(iov));
   bzero(&info, sizeof(info));
 
+  v_message   = rb_hash_aref2(v_options, "message");
   v_addresses = rb_hash_aref2(v_options, "addresses");
-  v_messages  = rb_hash_aref2(v_options, "messages");
 
-  if(!NIL_P(v_messages))
-    Check_Type(v_messages, T_ARRAY);
+  if(!NIL_P(v_message))
+    Check_Type(v_message, T_ARRAY);
 
   if(!NIL_P(v_addresses)){
     Check_Type(v_addresses, T_ARRAY);
@@ -364,7 +385,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   }
 
   sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
-  size = RARRAY_LEN(v_messages);
+  size = RARRAY_LEN(v_message);
 
   if(!size)
     rb_raise(rb_eArgError, "Must contain at least one message");
@@ -396,7 +417,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   }
 
   for(i = 0; i < size; i++){
-    v_msg = RARRAY_PTR(v_messages)[i];
+    v_msg = RARRAY_PTR(v_message)[i];
     iov[i].iov_base = StringValueCStr(v_msg);
     iov[i].iov_len = RSTRING_LEN(v_msg);
   }
