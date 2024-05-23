@@ -338,13 +338,12 @@ static VALUE rsctp_getlocalnames(VALUE self){
 static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   VALUE v_msg, v_messages, v_addresses;
   struct iovec iov[IOV_MAX];
-  struct sockaddr_in addrs[8];
+  struct sockaddr_in* addrs;
   struct sctp_sndinfo info;
   int i, sock_fd, num_bytes, size, num_ip;
 
   Check_Type(v_options, T_HASH);
 
-  bzero(&addrs, sizeof(addrs));
   bzero(&iov, sizeof(iov));
   bzero(&info, sizeof(info));
 
@@ -357,8 +356,10 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   if(!NIL_P(v_addresses)){
     Check_Type(v_addresses, T_ARRAY);
     num_ip = RARRAY_LEN(v_addresses);
+    addrs = (struct sockaddr_in*)alloca(sizeof(struct sockaddr_in) * num_ip);
   }
   else{
+    addrs = NULL;
     num_ip = 0;
   }
 
@@ -387,9 +388,10 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
 
     for(i = 0; i < num_ip; i++){
       v_address = RARRAY_PTR(v_addresses)[i];
-      addrs[i].sin_family = NUM2INT(rb_iv_get(self, "@domain"));
-      addrs[i].sin_port = htons(port);
-      addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
+      addrs->sin_family = NUM2INT(rb_iv_get(self, "@domain"));
+      addrs->sin_port = htons(port);
+      addrs->sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
+      addrs += sizeof(struct sockaddr_in);
     }
   }
 
@@ -403,7 +405,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
     sock_fd,
     iov,
     size,
-    (struct sockaddr*)&addrs,
+    (struct sockaddr*)addrs,
     num_ip,
     &info,
     sizeof(info),
