@@ -354,8 +354,13 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   if(!NIL_P(v_messages))
     Check_Type(v_messages, T_ARRAY);
 
-  if(!NIL_P(v_addresses))
+  if(!NIL_P(v_addresses)){
     Check_Type(v_addresses, T_ARRAY);
+    num_ip = RARRAY_LEN(v_addresses);
+  }
+  else{
+    num_ip = 0;
+  }
 
   sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
   size = RARRAY_LEN(v_messages);
@@ -368,8 +373,6 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
 
   info.snd_flags = SCTP_UNORDERED;
   info.snd_assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
-
-  num_ip = RARRAY_LEN(v_addresses);
 
   if(!NIL_P(v_addresses)){
     int i, port;
@@ -400,10 +403,8 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
     sock_fd,
     iov,
     size,
-    //(struct sockaddr*)addrs,
-    NULL,
-    //sizeof(addrs),
-    0,
+    (struct sockaddr*)&addrs,
+    num_ip,
     &info,
     sizeof(info),
     SCTP_SENDV_SNDINFO,
