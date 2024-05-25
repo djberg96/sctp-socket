@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name        = 'sctp-socket'
-  spec.version     = '0.0.5'
+  spec.version     = '0.0.6'
   spec.author      = 'Daniel Berger'
   spec.email       = 'djberg96@gmail.com'
   spec.summary     = 'Ruby bindings for SCTP sockets'
