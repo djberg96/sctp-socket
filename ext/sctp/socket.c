@@ -343,18 +343,19 @@ static VALUE rsctp_getlocalnames(VALUE self){
  *  * addresses - An array of IP addresses to setup an association to send the message.
  *  * info_type - The type of information provided. The default is SCTP_SENDV_SNDINFO.
  *
- *
  *  Example:
  *
  *    socket = SCTP::Socket.new
  *
  *    socket.sendv
- *      :message   => ["Hello ", "World."],
+ *      :message   => ['Hello ', 'World.'],
  *      :addresses => ['10.0.5.4', '10.0.6.4'],
  *      :info_type => SCTP::Socket:::SCTP_SENDV_SNDINFO
  *    )
  *
  *  CAVEAT: Currently addresses does not work, and info_type is not yet supported.
+ *
+ *  Returns the number of bytes sent.
  */
 static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   VALUE v_msg, v_message, v_addresses;
@@ -560,6 +561,8 @@ static VALUE rsctp_send(VALUE self, VALUE v_options){
  *      :ttl       => 100,
  *      :addresses => ['10.0.5.4', '10.0.6.4']
  *    )
+ *
+ *  Returns the number of bytes sent.
  */
 static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   VALUE v_msg, v_ppid, v_flags, v_stream, v_ttl, v_context, v_addresses;
