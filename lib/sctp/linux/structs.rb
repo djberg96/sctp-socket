@@ -6,7 +6,7 @@ module SCTP
 
     typedef :int32, :sctp_assoc_t
 
-    class Sockaddr < FFI::Struct
+    class SockAddr < FFI::Struct
       layout(
         :sa_family, :ushort,
         :sa_data, [:char, 14]

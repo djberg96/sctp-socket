@@ -40,7 +40,7 @@ module SCTP
       end
 
       FFI::MemoryPointer.new(sockaddrs, sockaddrs.size) do |ptr|
-        if sctp_bindx(sock_fd, ptr, ptr.size, flags) < 0
+        if sctp_bindx(fileno, ptr, ptr.size, flags) < 0
           raise SystemCallError.new('bindx', FFI.errno)
         end
       end
@@ -64,7 +64,7 @@ module SCTP
       assoc_id = FFI::MemoryPointer.new(:int32)
 
       FFI::MemoryPointer.new(sockaddrs, sockaddrs.size) do |ptr|
-        if sctp_connectx(sock_fd, ptr, ptr.size, assoc_id) < 0
+        if sctp_connectx(fileno, ptr, ptr.size, assoc_id) < 0
           raise SystemCallError.new('connectx', FFI.errno)
         end
       end
@@ -80,6 +80,6 @@ if $0 == __FILE__
   port = 42000
   addresses = ['1.1.1.1', '1.1.1.2']
   socket = SCTP::Socket.new
-  #socket.bindx(port: 42000, addresses: addresses)
+  socket.bindx(port: 42000, addresses: addresses)
   socket.close
 end
