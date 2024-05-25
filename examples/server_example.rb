@@ -25,7 +25,7 @@ begin
   socket = SCTP::Socket.new
   socket.bind(:port => port, :addresses => addresses)
   socket.set_initmsg(:output_streams => 5, :input_streams => 5, :max_attempts => 4)
-  socket.subscribe(:data_io => true, :shutdown => false, :send_failure => true, :partial_delivery => true)
+  socket.subscribe(:data_io => true, :shutdown => true, :send_failure => true, :partial_delivery => true)
   socket.listen
 
   while true
