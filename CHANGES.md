@@ -1,3 +1,12 @@
+## 0.0.6 - 24-May-2024
+* Fixup the sendv method and add some documentation.
+* Added documentation to the get_status method.
+* Update the example server and client code, including comments for how to
+  setup multiple dummy IP addresses locally for testing.
+* Some warning cleanup and build improvements.
+* Added SCTP_BINDX constants.
+* Started adding some real specs.
+
 ## 0.0.5 - 15-Dec-2021
 * Add handling for Linux platforms that don't support the sctp_sendv function
   and/or the SCTP_SEND_FAILED_EVENT notification.
