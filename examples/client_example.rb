@@ -10,10 +10,10 @@ begin
   socket = SCTP::Socket.new
 
   # Optional, but could bind to a subset of available addresses
-  p socket.bind(:addresses => addresses)
+  p socket.bindx(:addresses => addresses)
 
   # Initial connection
-  p socket.connect(:addresses => addresses, :port => port)
+  p socket.connectx(:addresses => addresses, :port => port)
 
   # Try a sendv
   p socket.sendv(:message => ["Hello ", "World!"])

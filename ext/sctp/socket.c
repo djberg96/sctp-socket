@@ -114,17 +114,17 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
  *    socket = SCTP::Socket.new
  *
  *    # Bind 2 addresses
- *    socket.bind(:port => 64325, :addresses => ['10.0.4.5', '10.0.5.5'])
+ *    socket.bindx(:port => 64325, :addresses => ['10.0.4.5', '10.0.5.5'])
  *
  *    # Remove 1 later
- *    socket.bind(:addresses => ['10.0.4.5'], :flags => SCTP::Socket::BINDX_REM_ADDR)
+ *    socket.bindx(:addresses => ['10.0.4.5'], :flags => SCTP::Socket::BINDX_REM_ADDR)
  *
  *  If no addresses are specified, then it will bind to all available interfaces. If
  *  no port is specified, then one will be assigned by the host.
  *
  *  Returns the port that it was bound to.
  */
-static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
+static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   struct sockaddr_in addrs[8];
   int i, fileno, num_ip, flags, domain, port;
   VALUE v_addresses, v_port, v_flags, v_address, v_options;
@@ -197,11 +197,11 @@ static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
  * Example:
  *
  *   socket = SCTP::Socket.new
- *   socket.connect(:port => 62354, :addresses => ['10.0.4.5', '10.0.5.5'])
+ *   socket.connectx(:port => 62354, :addresses => ['10.0.4.5', '10.0.5.5'])
  *
  * Note that this will also set/update the object's association_id.
  */
-static VALUE rsctp_connect(int argc, VALUE* argv, VALUE self){
+static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
   struct sockaddr_in addrs[8];
   int i, num_ip, fileno;
   sctp_assoc_t assoc;
@@ -1332,9 +1332,9 @@ void Init_socket(void){
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
 
-  rb_define_method(cSocket, "bind", rsctp_bind, -1);
+  rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
   rb_define_method(cSocket, "close", rsctp_close, 0);
-  rb_define_method(cSocket, "connect", rsctp_connect, -1);
+  rb_define_method(cSocket, "connectx", rsctp_connectx, -1);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, 0);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, 0);
   rb_define_method(cSocket, "get_status", rsctp_get_status, 0);
