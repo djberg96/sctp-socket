@@ -77,7 +77,7 @@ VALUE rb_hash_aref2(VALUE v_hash, const char* key){
  *   socket2 = SCTP::Socket.new(Socket::AF_INET, Socket::SOCK_STREAM)
  */
 static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
-  int sock_fd;
+  int fileno;
   VALUE v_domain, v_type;
 
   rb_scan_args(argc, argv, "02", &v_domain, &v_type);
@@ -88,14 +88,14 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
   if(NIL_P(v_type))
     v_type = INT2NUM(SOCK_SEQPACKET);
 
-  sock_fd = socket(NUM2INT(v_domain), NUM2INT(v_type), IPPROTO_SCTP);
+  fileno = socket(NUM2INT(v_domain), NUM2INT(v_type), IPPROTO_SCTP);
 
-  if(sock_fd < 0)
+  if(fileno < 0)
     rb_raise(rb_eSystemCallError, "socket: %s", strerror(errno));
 
   rb_iv_set(self, "@domain", v_domain);
   rb_iv_set(self, "@type", v_type);
-  rb_iv_set(self, "@sock_fd", INT2NUM(sock_fd));
+  rb_iv_set(self, "@fileno", INT2NUM(fileno));
   rb_iv_set(self, "@association_id", INT2NUM(0));
 
   return self;
@@ -126,7 +126,7 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
  */
 static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
   struct sockaddr_in addrs[8];
-  int i, sock_fd, num_ip, flags, domain, port;
+  int i, fileno, num_ip, flags, domain, port;
   VALUE v_addresses, v_port, v_flags, v_address, v_options;
 
   rb_scan_args(argc, argv, "01", &v_options);
@@ -156,7 +156,7 @@ static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
     num_ip = RARRAY_LEN(v_addresses);
 
   domain = NUM2INT(rb_iv_get(self, "@domain"));
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
   if(num_ip > 1){
     for(i = 0; i < num_ip; i++){
@@ -172,14 +172,14 @@ static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
     addrs[0].sin_addr.s_addr = htonl(INADDR_ANY);
   }
 
-  if(sctp_bindx(sock_fd, (struct sockaddr *) addrs, num_ip, flags) != 0)
+  if(sctp_bindx(fileno, (struct sockaddr *) addrs, num_ip, flags) != 0)
     rb_raise(rb_eSystemCallError, "sctp_bindx: %s", strerror(errno));
 
   if(port == 0){
     struct sockaddr_in sin;
     socklen_t len = sizeof(sin);
 
-    if(getsockname(sock_fd, (struct sockaddr *)&sin, &len) == -1)
+    if(getsockname(fileno, (struct sockaddr *)&sin, &len) == -1)
       rb_raise(rb_eSystemCallError, "getsockname: %s", strerror(errno));
 
     port = sin.sin_port;
@@ -203,7 +203,7 @@ static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
  */
 static VALUE rsctp_connect(int argc, VALUE* argv, VALUE self){
   struct sockaddr_in addrs[8];
-  int i, num_ip, sock_fd;
+  int i, num_ip, fileno;
   sctp_assoc_t assoc;
   VALUE v_address, v_domain, v_options, v_addresses, v_port;
 
@@ -235,9 +235,9 @@ static VALUE rsctp_connect(int argc, VALUE* argv, VALUE self){
     addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
   }
 
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
-  if(sctp_connectx(sock_fd, (struct sockaddr *) addrs, num_ip, &assoc) < 0)
+  if(sctp_connectx(fileno, (struct sockaddr *) addrs, num_ip, &assoc) < 0)
     rb_raise(rb_eSystemCallError, "sctp_connectx: %s", strerror(errno));
 
   rb_iv_set(self, "@association_id", INT2NUM(assoc));
@@ -254,9 +254,9 @@ static VALUE rsctp_connect(int argc, VALUE* argv, VALUE self){
  *   socket.close
  */
 static VALUE rsctp_close(VALUE self){
-  VALUE v_sock_fd = rb_iv_get(self, "@sock_fd");
+  VALUE v_fileno = rb_iv_get(self, "@fileno");
 
-  if(close(NUM2INT(v_sock_fd)))
+  if(close(NUM2INT(v_fileno)))
     rb_raise(rb_eSystemCallError, "close: %s", strerror(errno));
 
   return self;
@@ -268,16 +268,16 @@ static VALUE rsctp_close(VALUE self){
 static VALUE rsctp_getpeernames(VALUE self){
   sctp_assoc_t assoc_id;
   struct sockaddr* addrs;
-  int i, sock_fd, num_addrs;
+  int i, fileno, num_addrs;
   char str[16];
   VALUE v_array = rb_ary_new();
 
   bzero(&addrs, sizeof(addrs));
 
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
 
-  num_addrs = sctp_getpaddrs(sock_fd, assoc_id, &addrs);
+  num_addrs = sctp_getpaddrs(fileno, assoc_id, &addrs);
 
   if(num_addrs < 0){
     sctp_freepaddrs(addrs);
@@ -307,16 +307,16 @@ static VALUE rsctp_getpeernames(VALUE self){
 static VALUE rsctp_getlocalnames(VALUE self){
   sctp_assoc_t assoc_id;
   struct sockaddr* addrs;
-  int i, sock_fd, num_addrs;
+  int i, fileno, num_addrs;
   char str[16];
   VALUE v_array = rb_ary_new();
 
   bzero(&addrs, sizeof(addrs));
 
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
 
-  num_addrs = sctp_getladdrs(sock_fd, assoc_id, &addrs);
+  num_addrs = sctp_getladdrs(fileno, assoc_id, &addrs);
 
   if(num_addrs < 0){
     sctp_freeladdrs(addrs);
@@ -362,7 +362,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   struct iovec iov[IOV_MAX];
   struct sockaddr_in* addrs;
   struct sctp_sndinfo info;
-  int i, sock_fd, num_bytes, size, num_ip;
+  int i, fileno, num_bytes, size, num_ip;
 
   Check_Type(v_options, T_HASH);
 
@@ -385,7 +385,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
     num_ip = 0;
   }
 
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   size = RARRAY_LEN(v_message);
 
   if(!size)
@@ -424,7 +424,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   }
 
   num_bytes = sctp_sendv(
-    sock_fd,
+    fileno,
     iov,
     size,
     (struct sockaddr*)addrs,
@@ -458,7 +458,7 @@ static VALUE rsctp_send(VALUE self, VALUE v_options){
   uint16_t stream;
   uint32_t ppid, send_flags, ctrl_flags, ttl, context;
   ssize_t num_bytes;
-  int sock_fd;
+  int fileno;
   sctp_assoc_t assoc_id;
   struct sctp_sndrcvinfo info;
   VALUE v_msg, v_stream, v_ppid, v_context, v_send_flags, v_ctrl_flags, v_ttl, v_assoc_id;
@@ -519,10 +519,10 @@ static VALUE rsctp_send(VALUE self, VALUE v_options){
   info.sinfo_timetolive = ttl;
   info.sinfo_assoc_id = assoc_id;
 
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
   num_bytes = sctp_send(
-    sock_fd,
+    fileno,
     StringValueCStr(v_msg),
     RSTRING_LEN(v_msg),
     &info,
@@ -570,7 +570,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   uint32_t ppid, flags, ttl, context;
   ssize_t num_bytes;
   struct sockaddr_in addrs[8];
-  int sock_fd, size;
+  int fileno, size;
 
   Check_Type(v_options, T_HASH);
 
@@ -637,10 +637,10 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
     size = 0;
   }
 
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
   num_bytes = sctp_sendmsg(
-    sock_fd,
+    fileno,
     StringValueCStr(v_msg),
     RSTRING_LEN(v_msg),
     (struct sockaddr*)addrs,
@@ -681,7 +681,7 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   VALUE v_flags, v_notification, v_message;
   struct sctp_sndrcvinfo sndrcvinfo;
   struct sockaddr_in clientaddr;
-  int flags, bytes, sock_fd;
+  int flags, bytes, fileno;
   char buffer[1024]; // TODO: Let this be configurable?
   socklen_t length;
 
@@ -692,7 +692,7 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   else
     flags = NUM2INT(v_flags);  
 
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   length = sizeof(struct sockaddr_in);
 
   bzero(buffer, sizeof(buffer));
@@ -700,7 +700,7 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   bzero(&sndrcvinfo, sizeof(sndrcvinfo));
 
   bytes = sctp_recvmsg(
-    sock_fd,
+    fileno,
     buffer,
     sizeof(buffer),
     (struct sockaddr*)&clientaddr,
@@ -923,7 +923,7 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
  * By default these values are set to zero (i.e. ignored).
  */
 static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
-  int sock_fd;
+  int fileno;
   struct sctp_initmsg initmsg;
   VALUE v_output, v_input, v_attempts, v_timeout;
 
@@ -934,7 +934,7 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
   v_attempts = rb_hash_aref2(v_options, "max_attempts");
   v_timeout  = rb_hash_aref2(v_options, "timeout");
 
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
   if(!NIL_P(v_output))
     initmsg.sinit_num_ostreams = NUM2INT(v_output);
@@ -948,7 +948,7 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
   if(!NIL_P(v_timeout))
     initmsg.sinit_max_init_timeo = NUM2INT(v_timeout);
 
-  if(setsockopt(sock_fd, IPPROTO_SCTP, SCTP_INITMSG, &initmsg, sizeof(initmsg)) < 0)
+  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_INITMSG, &initmsg, sizeof(initmsg)) < 0)
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   return self;
@@ -993,11 +993,11 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
  *   socket.subscribe(:data_io => true, :shutdown => true, :send_failure => true)
  */
 static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
-  int sock_fd;
+  int fileno;
   struct sctp_event_subscribe events;
 
   bzero(&events, sizeof(events));
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
   if(RTEST(rb_hash_aref2(v_options, "data_io")))
     events.sctp_data_io_event = 1;
@@ -1033,7 +1033,7 @@ static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
   if(RTEST(rb_hash_aref2(v_options, "sender_dry")))
     events.sctp_sender_dry_event = 1;
 
-  if(setsockopt(sock_fd, IPPROTO_SCTP, SCTP_EVENTS, &events, sizeof(events)) < 0)
+  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_EVENTS, &events, sizeof(events)) < 0)
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   return self;
@@ -1055,7 +1055,7 @@ static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
  */
 static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
   VALUE v_backlog;
-  int backlog, sock_fd;
+  int backlog, fileno;
 
   rb_scan_args(argc, argv, "01", &v_backlog);
 
@@ -1064,9 +1064,9 @@ static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
   else
     backlog = NUM2INT(v_backlog);
 
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
-  if(listen(sock_fd, backlog) < 0)
+  if(listen(fileno, backlog) < 0)
     rb_raise(rb_eSystemCallError, "listen: %s", strerror(errno));
   
   return self;
@@ -1074,38 +1074,38 @@ static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
 
 /*
  * Extracts an association contained by a one-to-many socket connection into
- * a one-to-one style socket. Note that this modifies the underlying sock_fd.
+ * a one-to-one style socket. Note that this modifies the underlying fileno.
  */
 static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
-  int sock_fd, new_sock_fd;
+  int fileno, new_fileno;
   sctp_assoc_t assoc_id;
     
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(v_assoc_id);
 
-  new_sock_fd = sctp_peeloff(sock_fd, assoc_id);
+  new_fileno = sctp_peeloff(fileno, assoc_id);
 
-  if(new_sock_fd < 0)
+  if(new_fileno < 0)
     rb_raise(rb_eSystemCallError, "sctp_peeloff: %s", strerror(errno));
 
-  rb_iv_set(self, "@sock_fd", INT2NUM(new_sock_fd));
+  rb_iv_set(self, "@fileno", INT2NUM(new_fileno));
 
   return self;
 }
 
 static VALUE rsctp_get_default_send_params(VALUE self){
-  int sock_fd;
+  int fileno;
   socklen_t size;
   sctp_assoc_t assoc_id;
   struct sctp_sndrcvinfo sndrcv;
 
   bzero(&sndrcv, sizeof(sndrcv));
 
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
   size = sizeof(struct sctp_sndrcvinfo);
 
-  if(sctp_opt_info(sock_fd, assoc_id, SCTP_DEFAULT_SEND_PARAM, (void*)&sndrcv, &size) < 0)
+  if(sctp_opt_info(fileno, assoc_id, SCTP_DEFAULT_SEND_PARAM, (void*)&sndrcv, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
   return rb_struct_new(
@@ -1123,18 +1123,18 @@ static VALUE rsctp_get_default_send_params(VALUE self){
 }
 
 static VALUE rsctp_get_association_info(VALUE self){
-  int sock_fd;
+  int fileno;
   socklen_t size;
   sctp_assoc_t assoc_id;
   struct sctp_assocparams assoc;
 
   bzero(&assoc, sizeof(assoc));
 
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
   size = sizeof(struct sctp_assocparams);
 
-  if(sctp_opt_info(sock_fd, assoc_id, SCTP_ASSOCINFO, (void*)&assoc, &size) < 0)
+  if(sctp_opt_info(fileno, assoc_id, SCTP_ASSOCINFO, (void*)&assoc, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
   return rb_struct_new(
@@ -1149,10 +1149,10 @@ static VALUE rsctp_get_association_info(VALUE self){
 }
 
 static VALUE rsctp_shutdown(int argc, VALUE* argv, VALUE self){
-  int how, sock_fd;
+  int how, fileno;
   VALUE v_how;
 
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
   rb_scan_args(argc, argv, "01", &v_how);
 
@@ -1164,25 +1164,25 @@ static VALUE rsctp_shutdown(int argc, VALUE* argv, VALUE self){
     how = NUM2INT(v_how);
   }
 
-  if(shutdown(sock_fd, how) < 0)
+  if(shutdown(fileno, how) < 0)
     rb_raise(rb_eSystemCallError, "shutdown: %s", strerror(errno));
 
   return self;
 }
 
 static VALUE rsctp_get_retransmission_info(VALUE self){
-  int sock_fd;
+  int fileno;
   socklen_t size;
   sctp_assoc_t assoc_id;
   struct sctp_rtoinfo rto;
 
   bzero(&rto, sizeof(rto));
 
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
   size = sizeof(struct sctp_rtoinfo);
 
-  if(sctp_opt_info(sock_fd, assoc_id, SCTP_RTOINFO, (void*)&rto, &size) < 0)
+  if(sctp_opt_info(fileno, assoc_id, SCTP_RTOINFO, (void*)&rto, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
   return rb_struct_new(
@@ -1216,7 +1216,7 @@ static VALUE rsctp_get_retransmission_info(VALUE self){
  *  * primary (IP)
  */
 static VALUE rsctp_get_status(VALUE self){
-  int sock_fd;
+  int fileno;
   socklen_t size;
   sctp_assoc_t assoc_id;
   struct sctp_status status;
@@ -1225,11 +1225,11 @@ static VALUE rsctp_get_status(VALUE self){
 
   bzero(&status, sizeof(status));
 
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
   size = sizeof(struct sctp_status);
 
-  if(sctp_opt_info(sock_fd, assoc_id, SCTP_STATUS, (void*)&status, &size) < 0)
+  if(sctp_opt_info(fileno, assoc_id, SCTP_STATUS, (void*)&status, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
   spinfo = &status.sstat_primary;
@@ -1357,7 +1357,7 @@ void Init_socket(void){
 
   rb_define_attr(cSocket, "domain", 1, 1);
   rb_define_attr(cSocket, "type", 1, 1);
-  rb_define_attr(cSocket, "sock_fd", 1, 1);
+  rb_define_attr(cSocket, "fileno", 1, 1);
   rb_define_attr(cSocket, "association_id", 1, 1);
   rb_define_attr(cSocket, "port", 1, 1);
 
