@@ -39,7 +39,7 @@ require 'sctp/socket'
 begin
   port = 62324
   socket = SCTP::Socket.new
-  socket.bind(:port => port, :addresses => ['10.0.5.4', '10.0.6.4'])
+  socket.bindx(:port => port, :addresses => ['10.0.5.4', '10.0.6.4'])
   socket.set_initmsg(:output_streams => 5, :input_streams => 5, :max_attempts => 4)
   socket.subscribe(:data_io => true)
   socket.listen
