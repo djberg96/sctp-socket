@@ -2,8 +2,6 @@
 
 A Ruby interface for SCTP sockets.
 
-WARNING: THIS IS CURRENTLY AN ALPHA PRODUCT. NOT RECOMMENDED FOR PRODUCTION USE AT THIS TIME.
-
 ## Prerequisites
 
 You will need the sctp development headers installed.
@@ -66,8 +64,7 @@ end
 Currently this has only been developed and tested on Linux. Other platforms
 will probably only be supported via community contributions.
 
-On Ubuntu 20 and possibly other Linux variants, the sendv method is not
-available. Use the sendmsg method instead.
+The sendv method is not available on some Linux variants. Use the sendmsg method instead.
 
 Please report any issues on the github project page.
 
@@ -85,7 +82,7 @@ Apache-2.0
 
 ## Copyright
 
-(C) 2020-2022, Daniel J. Berger
+(C) 2020-2024, Daniel J. Berger
 Al Rights Reserved
 
 ## Author
