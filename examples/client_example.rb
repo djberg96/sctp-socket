@@ -15,20 +15,26 @@ begin
   # Initial connection
   p socket.connect(:addresses => addresses, :port => port)
 
-  3.times{ |n|
-    stream = [*0..4].sample # Max 5 streams in server example
-    puts "Stream: #{stream}"
-    bytes_sent = socket.sendmsg(
-      :message   => "#{n+1} Hello World!",
-      :addresses => addresses.shuffle,
-      :port      => port, # Not sure why I have to specify this again, still working out the kinks
-      :stream    => stream,
-      :ppid      => 1234567,
-      # :flags     => SCTP::Socket::SCTP_UNORDERED | SCTP::Socket::SCTP_SENDALL,
-      :ttl       => 100,
-    )
-    puts "#{n+1}: Bytes sent: #{bytes_sent}"
-  }
+  # Try a sendv
+  p socket.sendv(:message => ["Hello ", "World!"])
+
+  # Send messages on separate streams of the same connection
+  arr = []
+
+  0.upto(4) do |n|
+    arr << Thread.new do |t|
+      puts "Stream: #{n}"
+      bytes_sent = socket.sendmsg(
+        :message   => "Hello World: #{n+1}",
+        :addresses => addresses.shuffle,
+        :stream    => n,
+        :port      => port
+      )
+      puts "Bytes Sent: #{bytes_sent}"
+    end
+  end
+
+  arr.map(&:join)
 ensure
   socket.close if socket
 end
