@@ -77,7 +77,6 @@ VALUE rb_hash_aref2(VALUE v_hash, const char* key){
  *   socket2 = SCTP::Socket.new(Socket::AF_INET, Socket::SOCK_STREAM)
  */
 static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
-  int sock_fd;
   VALUE v_domain, v_type;
 
   rb_scan_args(argc, argv, "02", &v_domain, &v_type);
@@ -88,17 +87,14 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
   if(NIL_P(v_type))
     v_type = INT2NUM(SOCK_SEQPACKET);
 
-  sock_fd = socket(NUM2INT(v_domain), NUM2INT(v_type), IPPROTO_SCTP);
+  argv[0] = v_domain;
+  argv[1] = v_type;
 
-  if(sock_fd < 0)
-    rb_raise(rb_eSystemCallError, "socket: %s", strerror(errno));
-
-  rb_iv_set(self, "@domain", v_domain);
-  rb_iv_set(self, "@type", v_type);
-  rb_iv_set(self, "@sock_fd", INT2NUM(sock_fd));
   rb_iv_set(self, "@association_id", INT2NUM(0));
+  rb_iv_set(self, "@type", INT2NUM(0));
+  rb_iv_set(self, "@domain", INT2NUM(0));
 
-  return self;
+  return rb_call_super(2, argv);
 }
 
 /*
@@ -114,17 +110,17 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
  *    socket = SCTP::Socket.new
  *
  *    # Bind 2 addresses
- *    socket.bind(:port => 64325, :addresses => ['10.0.4.5', '10.0.5.5'])
+ *    socket.bindx(:port => 64325, :addresses => ['10.0.4.5', '10.0.5.5'])
  *
  *    # Remove 1 later
- *    socket.bind(:addresses => ['10.0.4.5'], :flags => SCTP::Socket::BINDX_REM_ADDR)
+ *    socket.bindx(:addresses => ['10.0.4.5'], :flags => SCTP::Socket::BINDX_REM_ADDR)
  *
  *  If no addresses are specified, then it will bind to all available interfaces. If
  *  no port is specified, then one will be assigned by the host.
  *
  *  Returns the port that it was bound to.
  */
-static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
+static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   struct sockaddr_in addrs[8];
   int i, sock_fd, num_ip, flags, domain, port;
   VALUE v_addresses, v_port, v_flags, v_address, v_options;
@@ -156,7 +152,9 @@ static VALUE rsctp_bind(int argc, VALUE* argv, VALUE self){
     num_ip = RARRAY_LEN(v_addresses);
 
   domain = NUM2INT(rb_iv_get(self, "@domain"));
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
+  sock_fd = NUM2INT(rb_funcall(self, rb_intern("fileno"), 0, 0));
+
+  printf("SOCK_FD: %i\n", sock_fd);
 
   if(num_ip > 1){
     for(i = 0; i < num_ip; i++){
@@ -241,23 +239,6 @@ static VALUE rsctp_connect(int argc, VALUE* argv, VALUE self){
     rb_raise(rb_eSystemCallError, "sctp_connectx: %s", strerror(errno));
 
   rb_iv_set(self, "@association_id", INT2NUM(assoc));
-
-  return self;
-}
-
-/*
- * Close the socket. You should always do this.
- *
- * Example:
- *
- *   socket = SCTP::Socket.new
- *   socket.close
- */
-static VALUE rsctp_close(VALUE self){
-  VALUE v_sock_fd = rb_iv_get(self, "@sock_fd");
-
-  if(close(NUM2INT(v_sock_fd)))
-    rb_raise(rb_eSystemCallError, "close: %s", strerror(errno));
 
   return self;
 }
@@ -667,7 +648,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
  *     socket = SCTP::Socket.new
  *     socket.bind(:port => 62534, :addresses => ['10.0.4.5', '10.0.5.5'])
  *     socket.subscribe(:data_io => 1)
- *     socket.listen
+ *     socket.listen(4)
  *
  *     while true
  *       info = socket.recvmsg
@@ -1040,39 +1021,6 @@ static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
 }
 
 /*
- * Marks the socket referred to by sockfd as a passive socket, i.e. a socket that
- * will be used to accept incoming connection requests.
- *
- * The backlog argument defines the maximum length to which the queue of
- * pending connections for sockfd may grow. The default is 1024.
- *
- * Example:
- *
- *  socket = SCTP::Socket.new
- *  socket.bind(:port => 62534, :addresses => ['127.0.0.1'])
- *  socket.listen
- *
- */
-static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
-  VALUE v_backlog;
-  int backlog, sock_fd;
-
-  rb_scan_args(argc, argv, "01", &v_backlog);
-
-  if(NIL_P(v_backlog))
-    backlog = 1024;
-  else
-    backlog = NUM2INT(v_backlog);
-
-  sock_fd = NUM2INT(rb_iv_get(self, "@sock_fd"));
-
-  if(listen(sock_fd, backlog) < 0)
-    rb_raise(rb_eSystemCallError, "listen: %s", strerror(errno));
-  
-  return self;
-}
-
-/*
  * Extracts an association contained by a one-to-many socket connection into
  * a one-to-one style socket. Note that this modifies the underlying sock_fd.
  */
@@ -1259,8 +1207,10 @@ static VALUE rsctp_get_status(VALUE self){
 }
 
 void Init_socket(void){
+  rb_require("socket");
   mSCTP   = rb_define_module("SCTP");
-  cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
+
+  cSocket = rb_define_class_under(mSCTP, "Socket", rb_const_get(rb_cObject, rb_intern("Socket")));
 
   v_sndrcv_struct = rb_struct_define(
     "SendReceiveInfo", "message", "stream", "flags",
@@ -1332,8 +1282,7 @@ void Init_socket(void){
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
 
-  rb_define_method(cSocket, "bind", rsctp_bind, -1);
-  rb_define_method(cSocket, "close", rsctp_close, 0);
+  rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
   rb_define_method(cSocket, "connect", rsctp_connect, -1);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, 0);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, 0);
@@ -1341,7 +1290,6 @@ void Init_socket(void){
   rb_define_method(cSocket, "get_default_send_params", rsctp_get_default_send_params, 0);
   rb_define_method(cSocket, "get_retransmission_info", rsctp_get_retransmission_info, 0);
   rb_define_method(cSocket, "get_association_info", rsctp_get_association_info, 0);
-  rb_define_method(cSocket, "listen", rsctp_listen, -1);
   rb_define_method(cSocket, "peeloff!", rsctp_peeloff, 1);
   rb_define_method(cSocket, "recvmsg", rsctp_recvmsg, -1);
   rb_define_method(cSocket, "send", rsctp_send, 1);
@@ -1357,9 +1305,8 @@ void Init_socket(void){
 
   rb_define_attr(cSocket, "domain", 1, 1);
   rb_define_attr(cSocket, "type", 1, 1);
-  rb_define_attr(cSocket, "sock_fd", 1, 1);
-  rb_define_attr(cSocket, "association_id", 1, 1);
   rb_define_attr(cSocket, "port", 1, 1);
+  rb_define_attr(cSocket, "association_id", 1, 1);
 
   /* 0.0.6: The version of this library */
   rb_define_const(cSocket, "VERSION", rb_str_new2("0.0.6"));
