@@ -330,17 +330,27 @@ static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
  *  socket.bind(:addresses => ['10.0.4.5', '10.0.5.5'])
  *  socket.getlocalnames # => ['10.0.4.5', '10.0.5.5'])
  */
-static VALUE rsctp_getlocalnames(VALUE self){
+static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
   sctp_assoc_t assoc_id;
   struct sockaddr* addrs;
   int i, fileno, num_addrs;
   char str[16];
+  VALUE v_assoc_fileno, v_assoc_id;
   VALUE v_array = rb_ary_new();
 
   bzero(&addrs, sizeof(addrs));
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
-  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  rb_scan_args(argc, argv, "02", &v_assoc_fileno, &v_assoc_id);
+
+  if(NIL_P(v_assoc_fileno))
+    fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  else
+    fileno = NUM2INT(v_assoc_fileno);
+
+  if(NIL_P(v_assoc_id))
+    assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  else
+    assoc_id = NUM2INT(v_assoc_id);
 
   num_addrs = sctp_getladdrs(fileno, assoc_id, &addrs);
 
@@ -1423,7 +1433,7 @@ void Init_socket(void){
   rb_define_method(cSocket, "close", rsctp_close, 0);
   rb_define_method(cSocket, "connectx", rsctp_connectx, -1);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, -1);
-  rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, 0);
+  rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, -1);
   rb_define_method(cSocket, "get_status", rsctp_get_status, 0);
   rb_define_method(cSocket, "get_default_send_params", rsctp_get_default_send_params, 0);
   rb_define_method(cSocket, "get_retransmission_info", rsctp_get_retransmission_info, 0);
