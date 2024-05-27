@@ -1087,23 +1087,21 @@ static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
 
 /*
  * Extracts an association contained by a one-to-many socket connection into
- * a one-to-one style socket. Note that this modifies the underlying fileno.
+ * a one-to-one style socket. Returns the socket descriptor (fileno).
  */
 static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
-  int fileno, new_fileno;
+  int fileno, assoc_fileno;
   sctp_assoc_t assoc_id;
     
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(v_assoc_id);
 
-  new_fileno = sctp_peeloff(fileno, assoc_id);
+  assoc_fileno = sctp_peeloff(fileno, assoc_id);
 
-  if(new_fileno < 0)
+  if(assoc_fileno < 0)
     rb_raise(rb_eSystemCallError, "sctp_peeloff: %s", strerror(errno));
 
-  rb_iv_set(self, "@fileno", INT2NUM(new_fileno));
-
-  return self;
+  return INT2NUM(assoc_fileno);
 }
 
 static VALUE rsctp_get_default_send_params(VALUE self){
@@ -1396,7 +1394,7 @@ void Init_socket(void){
   rb_define_method(cSocket, "get_association_info", rsctp_get_association_info, 0);
   rb_define_method(cSocket, "get_subscriptions", rsctp_get_subscriptions, 0);
   rb_define_method(cSocket, "listen", rsctp_listen, -1);
-  rb_define_method(cSocket, "peeloff!", rsctp_peeloff, 1);
+  rb_define_method(cSocket, "peeloff", rsctp_peeloff, 1);
   rb_define_method(cSocket, "recvmsg", rsctp_recvmsg, -1);
   rb_define_method(cSocket, "send", rsctp_send, 1);
 
