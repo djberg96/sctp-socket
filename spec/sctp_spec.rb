@@ -205,6 +205,11 @@ RSpec.describe SCTP::Socket do
       @socket.connectx(:addresses => addresses, :port => port)
     end
 
+    after do
+      @socket.close if @socket
+      @server.close if @server
+    end
+
     example "get_status return the expected struct" do
       expect(@socket.get_status).to be_a(Struct::Status)
     end
@@ -221,10 +226,53 @@ RSpec.describe SCTP::Socket do
       expect(struct.fragmentation_point).to be_a(Integer)
       expect(struct.primary).to eq(addresses.first)
     end
+  end
+
+  context "subscribe" do
+    let(:addresses){ %w[1.1.1.1 1.1.1.2] }
+    let(:port){ 12345 }
+
+    before do
+      @server = described_class.new
+      @server.bindx(:addresses => addresses, :port => port)
+      @server.listen
+    end
 
     after do
-      @socket.close if @socket
       @server.close if @server
+    end
+
+    example "subscribe accepts a hash of options" do
+      expect{ @server.subscribe(:data_io => true) }.not_to raise_error
+      expect{ @server.subscribe(1) }.to raise_error(TypeError)
+    end
+  end
+
+  context "get_subscriptions" do
+    let(:addresses){ %w[1.1.1.1 1.1.1.2] }
+    let(:port){ 12345 }
+    let(:subscriptions){ {:data_io => true, :shutdown => true} }
+
+    before do
+      @server = described_class.new
+      @server.bindx(:addresses => addresses, :port => port)
+      @server.subscribe(subscriptions)
+    end
+
+    after do
+      @server.close if @server
+    end
+
+    example "get_subscriptions returns expected values" do
+      subscriptions = @server.get_subscriptions
+      expect(subscriptions[:data_io]).to be true
+      expect(subscriptions[:shutdown]).to be true
+      expect(subscriptions[:association]).to be false
+      expect(subscriptions[:authentication]).to be false
+    end
+
+    example "get_subscriptions does not accept any arguments" do
+      expect{ @server.get_subscriptions(true) }.to raise_error(ArgumentError)
     end
   end
 end
