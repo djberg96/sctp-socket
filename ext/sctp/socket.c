@@ -1044,14 +1044,21 @@ static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
  * will be used to accept incoming connection requests.
  *
  * The backlog argument defines the maximum length to which the queue of
- * pending connections for sockfd may grow. The default is 1024.
+ * pending connections for sockfd may grow. The default value is 128. The
+ * maximum value is Socket::SOMAXCONN.
+ *
+ * Why a default of 128? The answer is a "best guess" compromise between
+ * handling server load versus avoiding SYN flood attacks. I leave it as an
+ * exercise to the programmer to adjust as desired.
+ *
+ * See https://tangentsoft.com/wskfaq/advanced.html#backlog if you want
+ * more details on the advantages and drawbacks of various values.
  *
  * Example:
  *
  *  socket = SCTP::Socket.new
  *  socket.bind(:port => 62534, :addresses => ['127.0.0.1'])
  *  socket.listen
- *
  */
 static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
   VALUE v_backlog;
@@ -1060,9 +1067,12 @@ static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
   rb_scan_args(argc, argv, "01", &v_backlog);
 
   if(NIL_P(v_backlog))
-    backlog = 1024;
+    backlog = 128;
   else
     backlog = NUM2INT(v_backlog);
+
+  if(backlog > SOMAXCONN)
+    rb_raise(rb_eArgError, "backlog value exceeds maximum value of: %i", SOMAXCONN);
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
