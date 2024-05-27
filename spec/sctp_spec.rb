@@ -43,9 +43,9 @@ RSpec.describe SCTP::Socket do
       expect{ described_class.new(Socket::AF_INET, Socket::SOCK_STREAM, 0) }.to raise_error(ArgumentError)
     end
 
-    example "socket_fd has expected value" do
+    example "fileno has expected value" do
       @socket = described_class.new
-      expect(@socket.sock_fd).to be_a(Integer)
+      expect(@socket.fileno).to be_a(Integer)
     end
 
     example "association_id has expected value" do
@@ -54,7 +54,7 @@ RSpec.describe SCTP::Socket do
     end
   end
 
-  context "bind" do
+  context "bindx" do
     let(:addresses){ %w[1.1.1.1 1.1.1.2] }
     let(:port){ 12345 }
 
@@ -66,60 +66,60 @@ RSpec.describe SCTP::Socket do
       @socket.close if @socket
     end
 
-    example "bind both sets and returns port value" do
-      port = @socket.bind
+    example "bindx both sets and returns port value" do
+      port = @socket.bindx
       expect(@socket.port).to eq(port)
     end
 
-    example "bind with no arguments" do
-      expect{ @socket.bind }.not_to raise_error
+    example "bindx with no arguments" do
+      expect{ @socket.bindx }.not_to raise_error
     end
 
-    example "bind with addresses" do
-      expect{ @socket.bind(:addresses => addresses) }.not_to raise_error
+    example "bindx with addresses" do
+      expect{ @socket.bindx(:addresses => addresses) }.not_to raise_error
     end
 
-    example "bind with explicit port value" do
-      expect{ @socket.bind(:port => port) }.not_to raise_error
+    example "bindx with explicit port value" do
+      expect{ @socket.bindx(:port => port) }.not_to raise_error
       expect(@socket.port).to eq(port)
     end
 
-    example "bind using explicit flags to add addresses" do
-      expect{ @socket.bind(:addresses => addresses, :flags => SCTP::Socket::SCTP_BINDX_ADD_ADDR) }.not_to raise_error
+    example "bindx using explicit flags to add addresses" do
+      expect{ @socket.bindx(:addresses => addresses, :flags => SCTP::Socket::SCTP_BINDX_ADD_ADDR) }.not_to raise_error
     end
 
-    xexample "bind using explicit flags to remove addresses" do
-      @socket.bind(:port => port, :addresses => addresses)
-      expect{ @socket.bind(:port => port, :addresses => [addresses.first], :flags => SCTP::Socket::SCTP_BINDX_REM_ADDR) }.not_to raise_error
+    xexample "bindx using explicit flags to remove addresses" do
+      @socket.bindx(:port => port, :addresses => addresses)
+      expect{ @socket.bindx(:port => port, :addresses => [addresses.last], :flags => SCTP::Socket::SCTP_BINDX_REM_ADDR) }.not_to raise_error
     end
   end
 
-  context "connect" do
+  context "connectx" do
     let(:addresses){ %w[1.1.1.1 1.1.1.2] }
     let(:port){ 12345 }
 
     before do
       @socket = described_class.new
-      @socket.bind(:port => port)
+      @socket.bindx(:port => port)
     end
 
     after do
       @socket.close if @socket
     end
 
-    example "connect basic check" do
-      expect{ @socket.connect(:addresses => addresses, :port => port) }.not_to raise_error
+    example "connectx basic check" do
+      expect{ @socket.connectx(:addresses => addresses, :port => port) }.not_to raise_error
     end
 
-    example "association ID is set after connect" do
-      @socket.connect(:addresses => addresses, :port => port)
+    example "association ID is set after connectx" do
+      @socket.connectx(:addresses => addresses, :port => port)
       expect(@socket.association_id).to be > 0
     end
 
-    example "connect requires both a port and an array of addresses" do
-      expect{ @socket.connect }.to raise_error(ArgumentError)
-      expect{ @socket.connect(:port => port) }.to raise_error(ArgumentError)
-      expect{ @socket.connect(:addresses => addresses) }.to raise_error(ArgumentError)
+    example "connectx requires both a port and an array of addresses" do
+      expect{ @socket.connectx }.to raise_error(ArgumentError)
+      expect{ @socket.connectx(:port => port) }.to raise_error(ArgumentError)
+      expect{ @socket.connectx(:addresses => addresses) }.to raise_error(ArgumentError)
     end
   end
 
@@ -148,7 +148,7 @@ RSpec.describe SCTP::Socket do
     before do
       @server = described_class.new
       @socket = described_class.new
-      @server.bind(:addresses => addresses, :port => port)
+      @server.bindx(:addresses => addresses, :port => port)
       @server.listen
     end
 
@@ -158,7 +158,7 @@ RSpec.describe SCTP::Socket do
     end
 
     example "getpeernames returns the expected array" do
-      @socket.connect(:addresses => addresses, :port => port)
+      @socket.connectx(:addresses => addresses, :port => port)
       expect(@socket.getpeernames).to eq(addresses)
     end
 
@@ -174,7 +174,7 @@ RSpec.describe SCTP::Socket do
     before do
       @server = described_class.new
       @socket = described_class.new
-      @server.bind(:addresses => addresses, :port => port)
+      @server.bindx(:addresses => addresses, :port => port)
       @server.listen
     end
 
@@ -184,12 +184,47 @@ RSpec.describe SCTP::Socket do
     end
 
     example "getlocalnames returns the expected array" do
-      @socket.connect(:addresses => addresses, :port => port)
+      @socket.connectx(:addresses => addresses, :port => port)
       expect(@socket.getlocalnames).to eq(addresses)
     end
 
     example "getlocalnames does not accept arguments" do
       expect{ @socket.getlocalnames(true) }.to raise_error(ArgumentError)
+    end
+  end
+
+  context "get_status" do
+    let(:addresses){ %w[1.1.1.1 1.1.1.2] }
+    let(:port){ 12345 }
+
+    before do
+      @server = described_class.new
+      @socket = described_class.new
+      @server.bindx(:addresses => addresses, :port => port)
+      @server.listen
+      @socket.connectx(:addresses => addresses, :port => port)
+    end
+
+    example "get_status return the expected struct" do
+      expect(@socket.get_status).to be_a(Struct::Status)
+    end
+
+    example "status struct contains expected values" do
+      struct = @socket.get_status
+      expect(struct.association_id).to be_a(Integer)
+      expect(struct.state).to be_a(Integer)
+      expect(struct.receive_window).to be_a(Integer)
+      expect(struct.unacknowledged_data).to be_a(Integer)
+      expect(struct.pending_data).to be_a(Integer)
+      expect(struct.inbound_streams).to be_a(Integer)
+      expect(struct.outbound_streams).to be_a(Integer)
+      expect(struct.fragmentation_point).to be_a(Integer)
+      expect(struct.primary).to eq(addresses.first)
+    end
+
+    after do
+      @socket.close if @socket
+      @server.close if @server
     end
   end
 end
