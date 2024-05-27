@@ -14,6 +14,7 @@ begin
 
   # Initial connection
   p socket.connectx(:addresses => addresses, :port => port)
+  p socket.get_status
 
   # Try a sendv
   p socket.sendv(:message => ["Hello ", "World!"])
