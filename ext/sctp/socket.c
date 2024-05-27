@@ -998,6 +998,8 @@ static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
   struct sctp_event_subscribe events;
 
   bzero(&events, sizeof(events));
+  Check_Type(v_options, T_HASH);
+
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
   if(RTEST(rb_hash_aref2(v_options, "data_io")))
@@ -1377,7 +1379,7 @@ void Init_socket(void){
   v_sctp_event_subscribe_struct = rb_struct_define(
     "EventSubscriptions", "data_io", "association", "address", "send_failure",
     "peer_error", "shutdown", "partial_delivery", "adaptation_layer",
-    "authentication_layer", "sender_dry", "stream_reset", "assoc_reset",
+    "authentication", "sender_dry", "stream_reset", "assoc_reset",
     "stream_change", "send_failure_event", NULL
   );
 
