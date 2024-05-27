@@ -21,6 +21,7 @@ VALUE v_sctp_status_struct;
 VALUE v_sctp_rtoinfo_struct;
 VALUE v_sctp_associnfo_struct;
 VALUE v_sctp_default_send_params_struct;
+VALUE v_sctp_event_subscribe_struct;
 
 #if !defined(IOV_MAX)
 #if defined(_SC_IOV_MAX)
@@ -1268,6 +1269,39 @@ static VALUE rsctp_get_status(VALUE self){
   );
 }
 
+static VALUE rsctp_get_subscriptions(VALUE self){
+  int fileno;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  struct sctp_event_subscribe events;
+
+  bzero(&events, sizeof(events));
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  size = sizeof(struct sctp_event_subscribe);
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_EVENTS, (void*)&events, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return rb_struct_new(v_sctp_event_subscribe_struct,
+    (events.sctp_data_io_event ? Qtrue : Qfalse),
+    (events.sctp_association_event ? Qtrue : Qfalse),
+    (events.sctp_address_event ? Qtrue : Qfalse),
+    (events.sctp_send_failure_event ? Qtrue : Qfalse),
+    (events.sctp_peer_error_event ? Qtrue : Qfalse),
+    (events.sctp_shutdown_event ? Qtrue : Qfalse),
+    (events.sctp_partial_delivery_event ? Qtrue : Qfalse),
+    (events.sctp_adaptation_layer_event ? Qtrue : Qfalse),
+    (events.sctp_authentication_event ? Qtrue : Qfalse),
+    (events.sctp_sender_dry_event ? Qtrue : Qfalse),
+    (events.sctp_stream_reset_event ? Qtrue : Qfalse),
+    (events.sctp_assoc_reset_event ? Qtrue : Qfalse),
+    (events.sctp_stream_change_event ? Qtrue : Qfalse),
+    (events.sctp_send_failure_event_event ? Qtrue : Qfalse)
+  );
+}
+
 void Init_socket(void){
   mSCTP   = rb_define_module("SCTP");
   cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
@@ -1340,6 +1374,13 @@ void Init_socket(void){
     "ttl", "tsn", "cumtsn", "association_id", NULL
   );
 
+  v_sctp_event_subscribe_struct = rb_struct_define(
+    "EventSubscriptions", "data_io", "association", "address", "send_failure",
+    "peer_error", "shutdown", "partial_delivery", "adaptation_layer",
+    "authentication_layer", "sender_dry", "stream_reset", "assoc_reset",
+    "stream_change", "send_failure_event", NULL
+  );
+
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
 
   rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
@@ -1351,6 +1392,7 @@ void Init_socket(void){
   rb_define_method(cSocket, "get_default_send_params", rsctp_get_default_send_params, 0);
   rb_define_method(cSocket, "get_retransmission_info", rsctp_get_retransmission_info, 0);
   rb_define_method(cSocket, "get_association_info", rsctp_get_association_info, 0);
+  rb_define_method(cSocket, "get_subscriptions", rsctp_get_subscriptions, 0);
   rb_define_method(cSocket, "listen", rsctp_listen, -1);
   rb_define_method(cSocket, "peeloff!", rsctp_peeloff, 1);
   rb_define_method(cSocket, "recvmsg", rsctp_recvmsg, -1);
