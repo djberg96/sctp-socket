@@ -264,19 +264,44 @@ static VALUE rsctp_close(VALUE self){
 }
 
 /*
- *  Return an array of all addresses of a peer.
+ *  Return an array of all addresses of a peer of the current socket
+ *  and association number.
+ *
+ *  You may optionally pass a assocation fileno and association ID. Typically
+ *  this information would come from the peeloff method.
+ *
+ *  Example:
+ *
+ *    socket = SCTP::Socket.new
+ *    # ...
+ *    p socket.getpeernames
+ *
+ *    info = socket.recvmsg
+ *    association_fileno = socket.peeloff(info.association_id)
+ *
+ *    p socket.getpeernames(association_fileno, info.association_id)
  */
-static VALUE rsctp_getpeernames(VALUE self){
+static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
   sctp_assoc_t assoc_id;
   struct sockaddr* addrs;
   int i, fileno, num_addrs;
   char str[16];
+  VALUE v_fileno, v_association_id;
   VALUE v_array = rb_ary_new();
 
   bzero(&addrs, sizeof(addrs));
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
-  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  rb_scan_args(argc, argv, "02", &v_fileno, &v_association_id);
+
+  if(NIL_P(v_fileno))
+    fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  else
+    fileno = NUM2INT(v_fileno);
+
+  if(NIL_P(v_association_id))
+    assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  else
+    assoc_id = NUM2INT(v_association_id);
 
   num_addrs = sctp_getpaddrs(fileno, assoc_id, &addrs);
 
@@ -1088,6 +1113,17 @@ static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
 /*
  * Extracts an association contained by a one-to-many socket connection into
  * a one-to-one style socket. Returns the socket descriptor (fileno).
+ *
+ * Example:
+ *
+ *   socket = SCTP::Socket.new
+ *   # etc...
+ *
+ *   while true
+ *     info = socket.recvmsg
+ *     assoc_fileno = socket.peeloff(info.association_id)
+ *     # ... Do something with this new
+ *   end
  */
 static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
   int fileno, assoc_fileno;
@@ -1386,7 +1422,7 @@ void Init_socket(void){
   rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
   rb_define_method(cSocket, "close", rsctp_close, 0);
   rb_define_method(cSocket, "connectx", rsctp_connectx, -1);
-  rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, 0);
+  rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, -1);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, 0);
   rb_define_method(cSocket, "get_status", rsctp_get_status, 0);
   rb_define_method(cSocket, "get_default_send_params", rsctp_get_default_send_params, 0);
