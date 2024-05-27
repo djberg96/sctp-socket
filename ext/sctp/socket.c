@@ -329,6 +329,11 @@ static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
  *  socket = SCTP::Socket.new
  *  socket.bind(:addresses => ['10.0.4.5', '10.0.5.5'])
  *  socket.getlocalnames # => ['10.0.4.5', '10.0.5.5'])
+ *
+ *  # or get info from a peeled off association...
+ *
+ *  assoc_fileno = socket.peeloff(some_association_id)
+ *  socket.getlocalnames(assoc_fileno, some_association_id)
  */
 static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
   sctp_assoc_t assoc_id;
