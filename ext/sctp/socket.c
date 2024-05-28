@@ -22,6 +22,7 @@ VALUE v_sctp_rtoinfo_struct;
 VALUE v_sctp_associnfo_struct;
 VALUE v_sctp_default_send_params_struct;
 VALUE v_sctp_event_subscribe_struct;
+VALUE v_sctp_receive_info_struct;
 
 #if !defined(IOV_MAX)
 #if defined(_SC_IOV_MAX)
@@ -480,6 +481,62 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
     rb_raise(rb_eSystemCallError, "sctp_sendv: %s", strerror(errno));
 
   return INT2NUM(num_bytes);
+}
+#endif
+
+#ifdef HAVE_SCTP_RECVV
+static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
+  VALUE v_flags;
+  int fileno, flags, bytes;
+  uint infotype;
+  socklen_t fromlen, infolen;
+  struct iovec* iov;
+  struct sockaddr_in from;
+  struct sctp_rcvinfo info;
+
+  bzero(&iov, sizeof(iov));
+  bzero(&from, sizeof(from));
+  bzero(&info, sizeof(info));
+
+  rb_scan_args(argc, argv, "01", &v_flags);
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+
+  if(NIL_P(v_flags))
+    flags = 0;
+  else
+    flags = NUM2INT(v_flags);
+
+  fromlen = sizeof(struct sockaddr_in);
+  infolen = sizeof(struct sctp_rcvinfo);
+  infotype = SCTP_RECVRCVINFO,
+
+  bytes = sctp_recvv(
+    fileno,
+    iov,
+    sizeof(iov),
+    (struct sockaddr*)&from,
+    &fromlen,
+    &info,
+    &infolen,
+    &infotype,
+    &flags
+  );
+
+  if(bytes < 0)
+    rb_raise(rb_eSystemCallError, "sctp_recvv: %s", strerror(errno));
+
+  return rb_struct_new(
+    v_sctp_receive_info_struct,
+    UINT2NUM(info.rcv_sid),
+    UINT2NUM(info.rcv_ssn),
+    UINT2NUM(info.rcv_flags),
+    UINT2NUM(info.rcv_ppid),
+    UINT2NUM(info.rcv_tsn),
+    UINT2NUM(info.rcv_cumtsn),
+    UINT2NUM(info.rcv_context),
+    UINT2NUM(info.rcv_assoc_id)
+  );
 }
 #endif
 
@@ -1432,6 +1489,11 @@ void Init_socket(void){
     "stream_change", "send_failure_event", NULL
   );
 
+  v_sctp_receive_info_struct = rb_struct_define(
+    "ReceiveInfo", "sid", "ssn", "flags", "ppid", "tsn",
+    "cumtsn", "context", "assocation_id", NULL
+  );
+
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
 
   rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
@@ -1453,6 +1515,10 @@ void Init_socket(void){
   rb_define_method(cSocket, "sendv", rsctp_sendv, 1);
 #endif
 
+#ifdef HAVE_SCTP_RECVV
+  rb_define_method(cSocket, "recvv", rsctp_recvv, -1);
+#endif
+
   rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, 1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
   rb_define_method(cSocket, "shutdown", rsctp_shutdown, -1);
@@ -1465,7 +1531,7 @@ void Init_socket(void){
   rb_define_attr(cSocket, "port", 1, 1);
 
   /* 0.0.6: The version of this library */
-  rb_define_const(cSocket, "VERSION", rb_str_new2("0.0.6"));
+  rb_define_const(cSocket, "VERSION", rb_str_new2("0.0.7"));
 
   /* send flags */
 
