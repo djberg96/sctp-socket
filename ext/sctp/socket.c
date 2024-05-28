@@ -489,14 +489,17 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
   VALUE v_flags;
   int fileno, flags, bytes;
   uint infotype;
-  socklen_t fromlen, infolen;
-  struct iovec* iov;
-  struct sockaddr_in from;
+  socklen_t infolen;
+  struct iovec iov[1];
   struct sctp_rcvinfo info;
+  char buffer[1024];
 
   bzero(&iov, sizeof(iov));
-  bzero(&from, sizeof(from));
   bzero(&info, sizeof(info));
+  bzero(&buffer, sizeof(buffer));
+
+	iov->iov_base = buffer;
+	iov->iov_len = sizeof(buffer);
 
   rb_scan_args(argc, argv, "01", &v_flags);
 
@@ -507,16 +510,15 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
   else
     flags = NUM2INT(v_flags);
 
-  fromlen = sizeof(struct sockaddr_in);
   infolen = sizeof(struct sctp_rcvinfo);
-  infotype = SCTP_RECVRCVINFO,
+  infotype = SCTP_RECVRCVINFO;
 
   bytes = sctp_recvv(
     fileno,
     iov,
-    sizeof(iov),
-    (struct sockaddr*)&from,
-    &fromlen,
+    1,
+    NULL,
+    NULL,
     &info,
     &infolen,
     &infotype,
@@ -528,6 +530,7 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
 
   return rb_struct_new(
     v_sctp_receive_info_struct,
+    rb_str_new2(iov->iov_base),
     UINT2NUM(info.rcv_sid),
     UINT2NUM(info.rcv_ssn),
     UINT2NUM(info.rcv_flags),
@@ -1490,7 +1493,7 @@ void Init_socket(void){
   );
 
   v_sctp_receive_info_struct = rb_struct_define(
-    "ReceiveInfo", "sid", "ssn", "flags", "ppid", "tsn",
+    "ReceiveInfo", "message", "sid", "ssn", "flags", "ppid", "tsn",
     "cumtsn", "context", "assocation_id", NULL
   );
 
