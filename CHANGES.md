@@ -1,3 +1,18 @@
+## 0.0.7 - 28-May-2024
+* Added the recvv method.
+* The getlocalnames and getpeernames methods now accept optional fileno and
+  association ID arguments.
+* The peeloff method now returns the peeled off fileno and no longer modifies
+  the receiver, so I dropped the exclamation point from the method name.
+* Added the get_subscriptions method.
+* Changed bind method to bindx and connect method to connectx. I may try to
+  subclass Socket someday so I didn't want a conflict, and this more closely
+  matches the underlying function name anyway.
+* Changed the sock_fd method to fileno.
+* Changed the default backlog from 1024 to 128 for the listen method.
+* Updated comments and documentation.
+* Added more specs.
+
 ## 0.0.6 - 24-May-2024
 * Fixup the sendv method and add some documentation.
 * Added documentation to the get_status method.
