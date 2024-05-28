@@ -487,7 +487,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
 #ifdef HAVE_SCTP_RECVV
 static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
   VALUE v_flags;
-  int fileno, flags, bytes;
+  int fileno, flags, bytes, on;
   uint infotype;
   socklen_t infolen;
   struct iovec iov[1];
@@ -510,8 +510,12 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
   else
     flags = NUM2INT(v_flags);
 
+  on = 1;
+  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_RECVRCVINFO, &on, sizeof(on)) < 0)
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+
   infolen = sizeof(struct sctp_rcvinfo);
-  infotype = SCTP_RECVRCVINFO;
+  infotype = 0;
 
   bytes = sctp_recvv(
     fileno,
@@ -528,18 +532,23 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
   if(bytes < 0)
     rb_raise(rb_eSystemCallError, "sctp_recvv: %s", strerror(errno));
 
-  return rb_struct_new(
-    v_sctp_receive_info_struct,
-    rb_str_new2(iov->iov_base),
-    UINT2NUM(info.rcv_sid),
-    UINT2NUM(info.rcv_ssn),
-    UINT2NUM(info.rcv_flags),
-    UINT2NUM(info.rcv_ppid),
-    UINT2NUM(info.rcv_tsn),
-    UINT2NUM(info.rcv_cumtsn),
-    UINT2NUM(info.rcv_context),
-    UINT2NUM(info.rcv_assoc_id)
-  );
+  if(infotype != SCTP_RECVV_RCVINFO){
+    return Qnil;
+  }
+  else{
+    return rb_struct_new(
+      v_sctp_receive_info_struct,
+      rb_str_new2(iov->iov_base),
+      UINT2NUM(info.rcv_sid),
+      UINT2NUM(info.rcv_ssn),
+      UINT2NUM(info.rcv_flags),
+      UINT2NUM(info.rcv_ppid),
+      UINT2NUM(info.rcv_tsn),
+      UINT2NUM(info.rcv_cumtsn),
+      UINT2NUM(info.rcv_context),
+      UINT2NUM(info.rcv_assoc_id)
+    );
+  }
 }
 #endif
 
@@ -1056,8 +1065,8 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
 }
 
 /*
- * Subscribe to various notification types, which will generate additional
- * data that the socket may receive. The possible notification types are
+ * Subscribe to various notification type events, which will generate additional
+ * data that the socket may receive. The possible notification type events are
  * as follows:
  *
  *   :association
