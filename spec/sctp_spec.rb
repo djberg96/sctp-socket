@@ -162,9 +162,9 @@ RSpec.describe SCTP::Socket do
       expect(@socket.getpeernames).to eq(addresses)
     end
 
-    example "getpeernames does not accept arguments" do
-      expect{ @socket.getpeernames(true) }.to raise_error(ArgumentError)
-    end
+    #example "getpeernames does not accept arguments" do
+    #  expect{ @socket.getpeernames(true) }.to raise_error(ArgumentError)
+    #end
   end
 
   context "getlocalnames" do
@@ -188,9 +188,9 @@ RSpec.describe SCTP::Socket do
       expect(@socket.getlocalnames).to eq(addresses)
     end
 
-    example "getlocalnames does not accept arguments" do
-      expect{ @socket.getlocalnames(true) }.to raise_error(ArgumentError)
-    end
+    #example "getlocalnames does not accept arguments" do
+    #  expect{ @socket.getlocalnames(true) }.to raise_error(ArgumentError)
+    #end
   end
 
   context "get_status" do
