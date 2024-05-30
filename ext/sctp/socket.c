@@ -1440,6 +1440,26 @@ static VALUE rsctp_get_status(VALUE self){
   );
 }
 
+/*
+ * Returns a struct of events detailing which events have been
+ * subscribed to by the socket. The struct contains the following
+ * members:
+ *
+ *  * data_io
+ *  * association
+ *  * address
+ *  * send_failure
+ *  * peer_error
+ *  * shutdown
+ *  * partial_delivery
+ *  * adaptation_layer
+ *  * authentication
+ *  * sender_dry
+ *  * stream_reset
+ *  * assoc_reset
+ *  * stream_change
+ *  * send_failure_event
+ */
 static VALUE rsctp_get_subscriptions(VALUE self){
   int fileno;
   socklen_t size;
