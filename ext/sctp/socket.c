@@ -1308,6 +1308,18 @@ static VALUE rsctp_get_association_info(VALUE self){
   );
 }
 
+/*
+ * Shuts down socket send and receive operations.
+ *
+ * Optionally accepts an argument that specifieds the type of shutdown.
+ * This can be one of the following values:
+ *
+ *  * SHUT_RD   - Disables further receive operations.
+ *  * SHUT_WR   - Disables further send operations.
+ *  * SHUT_RDWR - Disables further send and receive operations.
+ *
+ *  The default is SHUT_RDWR.
+ */
 static VALUE rsctp_shutdown(int argc, VALUE* argv, VALUE self){
   int how, fileno;
   VALUE v_how;
