@@ -1207,7 +1207,7 @@ static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
  *   while true
  *     info = socket.recvmsg
  *     assoc_fileno = socket.peeloff(info.association_id)
- *     # ... Do something with this new
+ *     # ... Do something with this new fileno
  *   end
  */
 static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
@@ -1225,6 +1225,21 @@ static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
   return INT2NUM(assoc_fileno);
 }
 
+/*
+ * Returns the default set of parameters that a call to the sendto function
+ * uses on this association. This is a struct that contains the following
+ * members:
+ *
+ *  * stream
+ *  * ssn
+ *  * flags
+ *  * ppid
+ *  * context
+ *  * ttl
+ *  * tsn
+ *  * cumtsn
+ *  * association_id
+ */
 static VALUE rsctp_get_default_send_params(VALUE self){
   int fileno;
   socklen_t size;
@@ -1254,6 +1269,19 @@ static VALUE rsctp_get_default_send_params(VALUE self){
   );
 }
 
+/*
+ * Returns the association specific parameters. This is a struct
+ * that contains the following members:
+ *
+ *  * association_id
+ *  * max_retransmission_count
+ *  * number_peer_destinations
+ *  * peer_receive_window
+ *  * local_receive_window
+ *  * cookie_life
+ *
+ *  All values that refer to time values are measured in milliseconds.
+ */
 static VALUE rsctp_get_association_info(VALUE self){
   int fileno;
   socklen_t size;
