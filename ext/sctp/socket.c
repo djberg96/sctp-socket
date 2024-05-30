@@ -180,6 +180,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   if(port == 0){
     struct sockaddr_in sin;
     socklen_t len = sizeof(sin);
+    bzero(&sin, len);
 
     if(getsockname(fileno, (struct sockaddr *)&sin, &len) == -1)
       rb_raise(rb_eSystemCallError, "getsockname: %s", strerror(errno));
