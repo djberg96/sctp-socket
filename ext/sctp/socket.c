@@ -1026,10 +1026,10 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
  *
  * The following parameters can be configured:
  *
- * :output_streams - The number of outbound SCTP streams an application would like to request.
- * :input_streams - The maximum number of inbound streams an application is prepared to allow.
- * :max_attempts - How many times the the SCTP stack should send the initial INIT message before it's considered unreachable.
- * :timeout - The maximum RTO value for the INIT timer.
+ *  :output_streams - The number of outbound SCTP streams an application would like to request.
+ *  :input_streams  - The maximum number of inbound streams an application is prepared to allow.
+ *  :max_attempts   - How many times the the SCTP stack should send the initial INIT message before it's considered unreachable.
+ *  :timeout        - The maximum RTO value for the INIT timer.
  *
  * By default these values are set to zero (i.e. ignored).
  */
@@ -1342,6 +1342,16 @@ static VALUE rsctp_shutdown(int argc, VALUE* argv, VALUE self){
   return self;
 }
 
+/*
+ * Returns the protocol parameters that are used to initialize and bind the
+ * retransmission timeout (RTO) tunable. This is a struct with the following
+ * members:
+ *
+ *  * association_id
+ *  * initial
+ *  * max
+ *  * min
+ */
 static VALUE rsctp_get_retransmission_info(VALUE self){
   int fileno;
   socklen_t size;
