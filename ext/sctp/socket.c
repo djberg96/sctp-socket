@@ -24,6 +24,7 @@ VALUE v_sctp_default_send_params_struct;
 VALUE v_sctp_event_subscribe_struct;
 VALUE v_sctp_receive_info_struct;
 VALUE v_sctp_peer_addr_params_struct;
+VALUE v_sender_dry_event_struct;
 
 #if !defined(IOV_MAX)
 #if defined(_SC_IOV_MAX)
@@ -996,6 +997,14 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
           UINT2NUM(snp->sn_authkey_event.auth_assoc_id)
         );
         break;
+      case SCTP_SENDER_DRY_EVENT:
+        v_notification = rb_struct_new(v_sender_dry_event_struct,
+          UINT2NUM(snp->sn_sender_dry_event.sender_dry_type),
+          UINT2NUM(snp->sn_sender_dry_event.sender_dry_flags),
+          UINT2NUM(snp->sn_sender_dry_event.sender_dry_length),
+          UINT2NUM(snp->sn_sender_dry_event.sender_dry_assoc_id)
+        );
+        break;
     }
   }
 
@@ -1091,10 +1100,10 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
  *   :adaptation
  *   :authentication
  *   :partial_delivery
+ *   :sender_dry
  *
  *   Not yet supported:
  *
- *   :sender_dry
  *   :peer_error
  *
  * Example:
@@ -1568,6 +1577,10 @@ void Init_socket(void){
 
   v_auth_event_struct = rb_struct_define(
     "AuthEvent", "type", "length", "key_number", "indication", "association_id", NULL
+  );
+
+  v_sender_dry_event_struct = rb_struct_define(
+    "SenderDryEvent", "type", "flags", "length", "association_id", NULL
   );
 
   v_sockaddr_in_struct = rb_struct_define(
