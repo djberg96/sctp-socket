@@ -916,6 +916,7 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
 
         v_notification = rb_struct_new(v_remote_error_struct,
           UINT2NUM(snp->sn_remote_error.sre_type),
+          UINT2NUM(snp->sn_remote_error.sre_flags),
           UINT2NUM(snp->sn_remote_error.sre_length),
           UINT2NUM(snp->sn_remote_error.sre_error),
           UINT2NUM(snp->sn_remote_error.sre_assoc_id),
@@ -1101,10 +1102,7 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
  *   :authentication
  *   :partial_delivery
  *   :sender_dry
- *
- *   Not yet supported:
- *
- *   :peer_error
+ *   :peer_error (aka remote error)
  *
  * Example:
  * 
@@ -1551,7 +1549,7 @@ void Init_socket(void){
   );
 
   v_remote_error_struct = rb_struct_define(
-    "RemoteError", "type", "length", "error", "association_id", "data", NULL
+    "RemoteError", "type", "flags", "length", "error", "association_id", "data", NULL
   );
 
   v_send_failed_event_struct = rb_struct_define(
