@@ -55,9 +55,8 @@ end
 
 ## Future Plans
 
-* Add more constants.
 * Add more specs.
-* Add more notifications.
+* Suggestions welcome.
 
 ## Known Issues
 
