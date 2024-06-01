@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name        = 'sctp-socket'
-  spec.version     = '0.0.7'
+  spec.version     = '0.1.0'
   spec.author      = 'Daniel Berger'
   spec.email       = 'djberg96@gmail.com'
   spec.summary     = 'Ruby bindings for SCTP sockets'
@@ -14,10 +14,10 @@ Gem::Specification.new do |spec|
 
   spec.extensions = ['ext/sctp/extconf.rb']
 
-  spec.add_development_dependency 'bundler', '~> 2.1'
-  spec.add_development_dependency 'rake', '~> 13.0'
-  spec.add_development_dependency 'rake-compiler', '~> 1.1'
-  spec.add_development_dependency 'rspec', '~> 3.9'
+  spec.add_development_dependency 'bundler'
+  spec.add_development_dependency 'rake'
+  spec.add_development_dependency 'rake-compiler'
+  spec.add_development_dependency 'rspec'
 
   spec.metadata = {
     'homepage_uri'          => 'https://github.com/djberg96/sctp-socket',

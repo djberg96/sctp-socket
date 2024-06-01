@@ -1,3 +1,10 @@
+## 0.1.0 - 31-May-2024
+* Added support for sender dry events.
+* Added the get_peer_address_params method.
+* Comments were added to methods that were missing them.
+* Remove version locking for dev dependencies, doesn't matter to me.
+* Bumped version to 0.1.0, I guess I'll declare it stable.
+
 ## 0.0.7 - 28-May-2024
 * Added the recvv method.
 * The getlocalnames and getpeernames methods now accept optional fileno and
