@@ -56,14 +56,20 @@ end
 ## Future Plans
 
 * Add more specs.
-* Suggestions welcome.
+* Subclass the Socket class (but see known issues below).
 
 ## Known Issues
 
 Currently this has only been developed and tested on Linux. Other platforms
 will probably only be supported via community contributions.
 
-The sendv method is not available on some Linux variants. Use the sendmsg method instead.
+The sendv and recvv methods may not be available. Use the sendmsg and recvmsg
+methods instead.
+
+I am currently unable to subclass the Socket class from Ruby's standard library.
+For whatever reason the call to rb_call_super works, but the fileno is always
+set to nil. I think it's getting confused by the IPPROTO_SCTP value for the
+protocol, but I haven't nailed it down yet.
 
 Please report any issues on the github project page.
 
