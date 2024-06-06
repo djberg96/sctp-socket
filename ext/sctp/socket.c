@@ -446,7 +446,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
     int i, port;
     VALUE v_address, v_port;
 
-    v_port = NUM2INT(rb_iv_get(self, "@port"));
+    v_port = rb_iv_get(self, "@port");
 
     if(NIL_P(v_port))
       port = 0;
