@@ -1,8 +1,8 @@
-#include "ruby.h"
 #include <string.h>
 #include <errno.h>
 #include <arpa/inet.h>
 #include <netinet/sctp.h>
+#include "ruby.h"
 
 VALUE mSCTP;
 VALUE cSocket;
@@ -1200,6 +1200,27 @@ static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
   if(listen(fileno, backlog) < 0)
     rb_raise(rb_eSystemCallError, "listen: %s", strerror(errno));
   
+  return self;
+}
+
+static VALUE rsctp_accept(int argc, VALUE* argv, VALUE self){
+  int fileno, flags;
+  struct sockaddr_in peer_addr;
+  VALUE v_flags;
+
+  rb_scan_args(argc, argv, "01", &v_flags);
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  bzero(&peer_addr, sizeof(peer_addr));
+
+  if(NIL_P(v_flags))
+    flags = 0;
+  else
+    flags = NUM2INT(v_flags);
+
+  if(accept4(fileno, (struct sockaddr*)&peer_addr, sizeof(peer_addr), flags) < 0)
+    rb_raise(rb_eSystemCallError, "accept: %s", strerror(errno));
+
   return self;
 }
 
