@@ -409,13 +409,13 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   VALUE v_msg, v_message, v_addresses;
   struct iovec iov[IOV_MAX];
   struct sockaddr_in* addrs;
-  struct sctp_sndinfo info;
+  struct sctp_sendv_spa spa;
   int i, fileno, num_bytes, size, num_ip;
 
   Check_Type(v_options, T_HASH);
 
   bzero(&iov, sizeof(iov));
-  bzero(&info, sizeof(info));
+  bzero(&spa, sizeof(spa));
 
   v_message   = rb_hash_aref2(v_options, "message");
   v_addresses = rb_hash_aref2(v_options, "addresses");
@@ -442,8 +442,9 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   if(size > IOV_MAX)
     rb_raise(rb_eArgError, "Array size is greater than IOV_MAX");
 
-  info.snd_flags = SCTP_UNORDERED;
-  info.snd_assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  // TODO: Make this configurable
+  spa.sendv_sndinfo.snd_flags = SCTP_UNORDERED;
+  spa.sendv_sndinfo.snd_assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
 
   if(!NIL_P(v_addresses)){
     int i, port, domain;
@@ -478,9 +479,9 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
     size,
     (struct sockaddr*)addrs,
     num_ip,
-    &info,
-    sizeof(info),
-    SCTP_SENDV_SNDINFO,
+    &spa,
+    sizeof(spa),
+    SCTP_SENDV_SPA,
     0
   );
 
