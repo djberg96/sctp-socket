@@ -394,13 +394,14 @@ static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
  *
  *    socket = SCTP::Socket.new
  *
+ *    # You can specify addresses here or in an earlier connectx call.
  *    socket.sendv
  *      :message   => ['Hello ', 'World.'],
  *      :addresses => ['10.0.5.4', '10.0.6.4'],
  *      :info_type => SCTP::Socket:::SCTP_SENDV_SNDINFO
  *    )
  *
- *  CAVEAT: Currently addresses does not work, and info_type is not yet supported.
+ *  CAVEAT: Currently info_type is not yet supported.
  *
  *  Returns the number of bytes sent.
  */
