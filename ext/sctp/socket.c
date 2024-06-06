@@ -423,7 +423,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   if(!NIL_P(v_addresses)){
     Check_Type(v_addresses, T_ARRAY);
     num_ip = RARRAY_LEN(v_addresses);
-    addrs = (struct sockaddr_in*)alloca(sizeof(struct sockaddr_in) * num_ip);
+    addrs = (struct sockaddr_in*)alloca(num_ip * sizeof(*addrs));
   }
   else{
     addrs = NULL;
@@ -443,7 +443,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   info.snd_assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
 
   if(!NIL_P(v_addresses)){
-    int i, port;
+    int i, port, domain;
     VALUE v_address, v_port;
 
     v_port = rb_iv_get(self, "@port");
@@ -453,12 +453,13 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
     else
       port = NUM2INT(v_port);
 
+    domain = NUM2INT(rb_iv_get(self, "@domain"));
+
     for(i = 0; i < num_ip; i++){
       v_address = RARRAY_PTR(v_addresses)[i];
-      addrs->sin_family = NUM2INT(rb_iv_get(self, "@domain"));
-      addrs->sin_port = htons(port);
-      addrs->sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
-      addrs += sizeof(struct sockaddr_in);
+      addrs[i].sin_family = domain;
+      addrs[i].sin_port = htons(port);
+      addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
     }
   }
 
