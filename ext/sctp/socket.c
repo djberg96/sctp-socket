@@ -204,7 +204,9 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
  *   socket = SCTP::Socket.new
  *   socket.connectx(:port => 62354, :addresses => ['10.0.4.5', '10.0.5.5'])
  *
- * Note that this will also set/update the object's association_id.
+ * Note that this will also set/update the object's association_id. Also note that
+ * this method is not strictly necessary on the client side, since the various send
+ * methods will automatically establish associations.
  */
 static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
   struct sockaddr_in addrs[8];
