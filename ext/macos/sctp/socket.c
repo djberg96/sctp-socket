@@ -23,31 +23,6 @@ VALUE v_sctp_rtoinfo_struct;
 VALUE v_sctp_associnfo_struct;
 VALUE v_sctp_default_send_params_struct;
 
-#if !defined(IOV_MAX)
-#if defined(_SC_IOV_MAX)
-#define IOV_MAX (sysconf(_SC_IOV_MAX))
-#else
-// Assume infinity, or let the syscall return with error
-#define IOV_MAX INT_MAX
-#endif
-#endif
-
-#define ARY2IOVEC(iov,ary) \
-   do { \
-      VALUE *cur; \
-      struct iovec *tmp; \
-      long n; \
-      cur = RARRAY_PTR(ary); \
-      n = RARRAY_LEN(ary); \
-      iov = tmp = alloca(sizeof(struct iovec) * n); \
-      for (; --n >= 0; tmp++, cur++) { \
-         if (TYPE(*cur) != T_STRING) \
-            rb_raise(rb_eArgError, "must be an array of strings"); \
-         tmp->iov_base = RSTRING_PTR(*cur); \
-         tmp->iov_len = RSTRING_LEN(*cur); \
-      } \
-   } while (0)
-
 // TODO: Yes, I know I need to update the signature.
 VALUE convert_sockaddr_in_to_struct(struct sockaddr_in* addr){
   char ipbuf[INET6_ADDRSTRLEN];
@@ -95,7 +70,7 @@ VALUE rb_hash_aref2(VALUE v_hash, const char* key){
  *   socket2 = SCTP::Socket.new(Socket::AF_INET, Socket::SOCK_STREAM)
  */
 static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
-  struct socket* sock_fd;
+  struct socket* fileno;
   VALUE v_domain, v_type;
 
   rb_scan_args(argc, argv, "02", &v_domain, &v_type);
@@ -108,14 +83,14 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
 
   usrsctp_init(9899, NULL, NULL);
 
-  sock_fd = usrsctp_socket(NUM2INT(v_domain), NUM2INT(v_type), IPPROTO_SCTP, NULL, NULL, 0, NULL);
+  fileno = usrsctp_socket(NUM2INT(v_domain), NUM2INT(v_type), IPPROTO_SCTP, NULL, NULL, 0, NULL);
 
-  if(sock_fd < 0)
+  if(fileno < 0)
     rb_raise(rb_eSystemCallError, "socket: %s", strerror(errno));
 
   rb_iv_set(self, "@domain", v_domain);
   rb_iv_set(self, "@type", v_type);
-  rb_iv_set(self, "@sock_fd", LONG2NUM((long)sock_fd));
+  rb_iv_set(self, "@fileno", LONG2NUM((long)fileno));
   rb_iv_set(self, "@association_id", INT2NUM(0));
 
   return self;
@@ -1290,7 +1265,7 @@ void Init_socket(){
 
   rb_define_attr(cSocket, "domain", 1, 1);
   rb_define_attr(cSocket, "type", 1, 1);
-  rb_define_attr(cSocket, "sock_fd", 1, 1);
+  rb_define_attr(cSocket, "fileno", 1, 1);
   rb_define_attr(cSocket, "association_id", 1, 1);
   rb_define_attr(cSocket, "port", 1, 1);
 
