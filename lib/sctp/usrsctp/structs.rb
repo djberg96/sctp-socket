@@ -18,13 +18,22 @@ module SCTP
     end
 
     class SockAddrIn < FFI::Struct
-      layout(
-        :sin_len, :uint8_t,
-        :sin_family, :sa_family_t,
-        :sin_port, :in_port_t,
-        :sin_addr, InAddr,
-        :sin_zero, [:char, 8]
-      )
+      if RbConfig::CONFIG['host_os'] =~ /darwin/i
+        layout(
+          :sin_len, :uint8_t,
+          :sin_family, :sa_family_t,
+          :sin_port, :in_port_t,
+          :sin_addr, InAddr,
+          :sin_zero, [:char, 8]
+        )
+      else
+        layout(
+          :sin_family, :short,
+          :sin_port, :ushort,
+          :sin_addr, InAddr,
+          :sin_zero, [:char, 8]
+        )
+      end
     end
 
     class SockaddrStorage < FFI::Struct

@@ -5,7 +5,11 @@ require 'mkmf/lite'
 RSpec.describe SCTPSocket do
   include Mkmf::Lite
 
-  let(:sctp_header){ 'netinet/sctp.h' }
+  if have_func('main', 'usrsctp.h')
+    let(:sctp_header){ 'usrsctp.h' }
+  else
+    let(:sctp_header){ 'netinet/sctp.h' }
+  end
 
   context "structs" do
     example "SCTP::Struct::Sockaddr is the expected size" do
