@@ -67,7 +67,18 @@ class SCTPSocket
 
   def close
     usrsctp_close(@socket) if @socket
-    usrsctp_finish
+  end
+
+  def finish
+    if usrsctp_finish < 0
+      raise SystemCallError.new('usrsctp_finish', FFI.errno)
+    end
+  end
+
+  def shutdown(how = SHUT_RDWR)
+    if usrsctp_shutdown(@socket, how) < 0
+      raise SystemCallError.new('usrsctp_shutdown', FFI.errno)
+    end
   end
 end
 
@@ -89,11 +100,12 @@ if $0 == __FILE__
     addr[:sin_addr]   = inaddr
     addr[:sin_port]   = SCTPSocket.c_htons(port)
 
-    socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
+    #socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
+    #socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
 
-    if SCTPSocket.usrsctp_bind(socket, addr, addr.size) < 0
-      raise SystemCallError.new('usrsctp_bind', FFI.errno)
-    end
+    #if SCTPSocket.usrsctp_bind(socket, addr, addr.size) < 0
+    #  raise SystemCallError.new('usrsctp_bind', FFI.errno)
+    #end
   ensure
     socket.close if socket
   end

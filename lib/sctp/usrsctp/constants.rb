@@ -134,5 +134,9 @@ module SCTP
 
     SCTP_BINDX_ADD_ADDR = 0x00008001
     SCTP_BINDX_REM_ADDR = 0x00008002
+
+    SHUT_RD   = 1
+    SHUT_WR   = 2
+    SHUT_RDWR = 3
   end
 end
