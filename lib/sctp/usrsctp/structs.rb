@@ -18,7 +18,7 @@ module SCTP
     end
 
     class SockAddrIn < FFI::Struct
-      if RbConfig::CONFIG['host_os'] =~ /darwin/i
+      if RbConfig::CONFIG['host_os'] =~ /darwin|bsd|dragonfly/i
         layout(
           :sin_len, :uint8_t,
           :sin_family, :sa_family_t,
