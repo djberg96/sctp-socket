@@ -5,7 +5,7 @@ require 'mkmf/lite'
 RSpec.describe SCTPSocket do
   include Mkmf::Lite
 
-  if have_func('main', 'usrsctp.h')
+  if have_header('usrsctp.h', '/usr/local/include')
     let(:sctp_header){ 'usrsctp.h' }
   else
     let(:sctp_header){ 'netinet/sctp.h' }
