@@ -57,6 +57,7 @@ end
 
 * Add more specs.
 * Subclass the Socket class (but see known issues below).
+* Create a wrapper for the usrlibsctp implementation using FFI.
 
 ## Known Issues
 
