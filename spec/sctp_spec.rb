@@ -11,6 +11,8 @@ RSpec.describe SCTPSocket do
     let(:sctp_header){ 'netinet/sctp.h' }
   end
 
+  ENV['CPATH'] ||= '/usr/local/include'
+
   before do
     if RbConfig::CONFIG['host_os'] =~ /bsd|dragonfly/i
       @sockaddr_header = "sys/socket.h"
