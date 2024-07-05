@@ -69,12 +69,22 @@ class SCTPSocket
     usrsctp_close(@socket) if @socket
   end
 
+  # Frees all the memory that was allocated before. This should be the very last
+  # call. You will typically only want to call this in a finalizer, if at all.
+  #
   def finish
     if usrsctp_finish < 0
       raise SystemCallError.new('usrsctp_finish', FFI.errno)
     end
   end
 
+  # Shuts down the read and/or write operations. The +how+ specifies the nature
+  # of the shutdown. There are three possible values:
+  #
+  # * SHUT_RD - Disables further receives, but no protocol action is taken.
+  # * SHUT_WR - Disables further sends, and initiates the shutdown sequence
+  # * SHUT_RDWR - Disables further sends and receives, and initiates the shutdown sequence.
+  #
   def shutdown(how = SHUT_RDWR)
     if usrsctp_shutdown(@socket, how) < 0
       raise SystemCallError.new('usrsctp_shutdown', FFI.errno)
@@ -100,6 +110,7 @@ if $0 == __FILE__
     addr[:sin_addr]   = inaddr
     addr[:sin_port]   = SCTPSocket.c_htons(port)
 
+    socket = SCTPSocket.new
     #socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
     #socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
 
