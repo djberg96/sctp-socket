@@ -11,17 +11,25 @@ RSpec.describe SCTPSocket do
     let(:sctp_header){ 'netinet/sctp.h' }
   end
 
+  before do
+    if RbConfig::CONFIG['host_os'] =~ /bsd|dragonfly/i
+      @inet_header = "netinet/in.h"
+    else
+      @inet_header = "arpa/inet.h"
+    end
+  end
+
   context "structs" do
     example "SCTP::Struct::Sockaddr is the expected size" do
-      expect(check_sizeof("struct sockaddr", "arpa/inet.h")).to eq(SCTP::Structs::Sockaddr.size)
+      expect(check_sizeof("struct sockaddr", @inet_header)).to eq(SCTP::Structs::Sockaddr.size)
     end
 
     example "SCTP::Struct::SockAddrIn is the expected size" do
-      expect(check_sizeof("struct sockaddr_in", "arpa/inet.h")).to eq(SCTP::Structs::SockAddrIn.size)
+      expect(check_sizeof("struct sockaddr_in", @inet_header)).to eq(SCTP::Structs::SockAddrIn.size)
     end
 
     example "SCTP::Struct::InAddr is the expected size" do
-      expect(check_sizeof("struct in_addr", "arpa/inet.h")).to eq(SCTP::Structs::InAddr.size)
+      expect(check_sizeof("struct in_addr", @inet_header)).to eq(SCTP::Structs::InAddr.size)
     end
   end
 
