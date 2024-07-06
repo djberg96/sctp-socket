@@ -65,6 +65,31 @@ class SCTPSocket
     end
   end
 
+  def bindx(**options)
+    addresses = options.fetch(:addresses)
+    flags = options[:flags] || SCTP_BINDX_ADD_ADDR
+    port  = options[:port] || 0
+
+    addrs = FFI::MemoryPointer.new(SCTPSocket::SockAddrIn, addresses.size)
+
+    addresses.each_with_index do |address, i|
+      struct = SCTPSocket::SockAddrIn.new
+      struct[:sin_len]  = struct.size
+      struct[:sin_family] = @domain
+      struct[:sin_port]  = SCTPSocket.c_htons(port)
+      struct[:sin_addr][:s_addr] = c_inet_addr(address)
+      addrs[i].put_bytes(0, struct.to_ptr.get_bytes(0, SCTPSocket::SockAddrIn.size))
+    end
+
+    if usrsctp_bindx(@socket, addrs, addrs.size, flags) < 0
+      raise SystemCallError.new('usrsctp_bindx', FFI.errno)
+    end
+
+    port
+  end
+
+  # Close the socket.
+  #
   def close
     usrsctp_close(@socket) if @socket
   end
@@ -99,24 +124,10 @@ if $0 == __FILE__
       puts "DATA: #{data}"
     end
 
-    port = 7
-
-    inaddr = SCTPSocket::InAddr.new
-    inaddr[:s_addr] = Socket::INADDR_ANY
-
-    addr = SCTPSocket::SockAddrIn.new
-    addr[:sin_len]    = addr.size
-    addr[:sin_family] = Socket::AF_INET
-    addr[:sin_addr]   = inaddr
-    addr[:sin_port]   = SCTPSocket.c_htons(port)
-
     socket = SCTPSocket.new
+    socket.bindx(:addresses => ['127.0.0.1'])
     #socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
     #socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
-
-    #if SCTPSocket.usrsctp_bind(socket, addr, addr.size) < 0
-    #  raise SystemCallError.new('usrsctp_bind', FFI.errno)
-    #end
   ensure
     socket.close if socket
   end
