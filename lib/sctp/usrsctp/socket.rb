@@ -23,7 +23,7 @@ class SCTPSocket
   #   :threshold - amount of free space in buffer before send, default is zero.
   #
   def initialize(**options)
-    @domain    = options[:domain]    || options[:family] || Socket::PF_INET
+    @domain    = options[:domain]    || options[:family] || Socket::AF_INET
     @type      = options[:type]      || Socket::SOCK_SEQPACKET
     @port      = options[:port]      || 9899
     @send      = options[:send]      || options[:send_callback]
@@ -32,7 +32,7 @@ class SCTPSocket
 
     @protocol = IPPROTO_SCTP
 
-    unless [Socket::PF_INET, Socket::PF_INET6].include?(@domain)
+    unless [Socket::AF_INET, Socket::AF_INET6].include?(@domain)
       raise ArgumentError, "invalid domain: #{@domain}"
     end
 
@@ -48,6 +48,8 @@ class SCTPSocket
     if @socket.nil? || @socket.null?
       raise SystemCallError.new('usrsctp_socket', FFI.errno)
     end
+
+    ObjectSpace.define_finalizer(@socket, proc{ finish })
   end
 
   def bind
@@ -74,11 +76,11 @@ class SCTPSocket
 
     addresses.each_with_index do |address, i|
       struct = SockAddrIn.new
-      struct[:sin_len]  = struct.size
+      struct[:sin_len] = struct.size if struct.members.include?(:sin_len)
       struct[:sin_family] = @domain
       struct[:sin_port]  = c_htons(port)
       struct[:sin_addr][:s_addr] = c_inet_addr(address)
-      addrs[i].put_bytes(0, struct.to_ptr.get_bytes(0, SCTPSocket::SockAddrIn.size))
+      addrs[i].write_pointer(struct)
     end
 
     if usrsctp_bindx(@socket, addrs, addrs.size, flags) < 0
@@ -124,11 +126,14 @@ if $0 == __FILE__
       puts "DATA: #{data}"
     end
 
+    addresses = ['1.1.1.1', '1.1.1.2']
+
     socket = SCTPSocket.new
-    socket.bindx(:addresses => ['127.0.0.1'])
+    socket.bindx(:addresses => addresses)
     #socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
     #socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
   ensure
     socket.close if socket
+    #socket.finish
   end
 end
