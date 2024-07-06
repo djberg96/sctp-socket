@@ -70,13 +70,13 @@ class SCTPSocket
     flags = options[:flags] || SCTP_BINDX_ADD_ADDR
     port  = options[:port] || 0
 
-    addrs = FFI::MemoryPointer.new(SCTPSocket::SockAddrIn, addresses.size)
+    addrs = FFI::MemoryPointer.new(SockAddrIn, addresses.size)
 
     addresses.each_with_index do |address, i|
-      struct = SCTPSocket::SockAddrIn.new
+      struct = SockAddrIn.new
       struct[:sin_len]  = struct.size
       struct[:sin_family] = @domain
-      struct[:sin_port]  = SCTPSocket.c_htons(port)
+      struct[:sin_port]  = c_htons(port)
       struct[:sin_addr][:s_addr] = c_inet_addr(address)
       addrs[i].put_bytes(0, struct.to_ptr.get_bytes(0, SCTPSocket::SockAddrIn.size))
     end
