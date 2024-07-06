@@ -1,8 +1,18 @@
 #include "ruby.h"
 #include <string.h>
 #include <errno.h>
+
+#ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
+#else
+#include <sys/socket.h>
+#endif
+
+#ifdef HAVE_USRSCTP_H
+#include <usrsctp.h>
+#else
 #include <netinet/sctp.h>
+#endif
 
 VALUE mSCTP;
 VALUE cSocket;
@@ -38,7 +48,7 @@ VALUE v_sender_dry_event_struct;
 VALUE convert_sockaddr_in_to_struct(struct sockaddr_in* addr){
   char ipbuf[INET6_ADDRSTRLEN];
 
-  if(addr->sin_family == AF_INET6)
+  if(addr->sin_family == PF_INET6)
     inet_ntop(addr->sin_family, &(((struct sockaddr_in6 *)addr)->sin6_addr), ipbuf, sizeof(ipbuf));
   else
     inet_ntop(addr->sin_family, &(((struct sockaddr_in *)addr)->sin_addr), ipbuf, sizeof(ipbuf));
@@ -65,7 +75,7 @@ VALUE rb_hash_aref2(VALUE v_hash, const char* key){
 
 /*
  * Create and return a new SCTP::Socket instance. You may optionally pass in
- * a domain (aka family) value and socket type. By default these are AF_INET
+ * a domain (aka family) value and socket type. By default these are PF_INET
  * and SOCK_SEQPACKET, respectively.
  *
  * There are only two supported families: SOCK_SEQPACKET for the creation
@@ -78,28 +88,38 @@ VALUE rb_hash_aref2(VALUE v_hash, const char* key){
  *   require 'sctp/socket'
  *
  *   socket1 = SCTP::Socket.new
- *   socket2 = SCTP::Socket.new(Socket::AF_INET, Socket::SOCK_STREAM)
+ *   socket2 = SCTP::Socket.new(Socket::PF_INET, Socket::SOCK_STREAM)
  */
 static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
+#ifdef HAVE_USRSCTP_H
+  struct socket* fileno;
+#else
   int fileno;
+#endif
+
   VALUE v_domain, v_type;
 
   rb_scan_args(argc, argv, "02", &v_domain, &v_type);
 
   if(NIL_P(v_domain))
-    v_domain = INT2NUM(AF_INET);
+    v_domain = INT2NUM(PF_INET);
   
   if(NIL_P(v_type))
     v_type = INT2NUM(SOCK_SEQPACKET);
 
+#ifdef HAVE_USRSCTP_H
+  usrsctp_init(0, NULL, NULL);
+  fileno = usrsctp_socket(NUM2INT(v_domain), NUM2INT(v_type), IPPROTO_SCTP, NULL, NULL, 0, NULL);
+  if(!fileno)
+#else
   fileno = socket(NUM2INT(v_domain), NUM2INT(v_type), IPPROTO_SCTP);
-
   if(fileno < 0)
+#endif
     rb_raise(rb_eSystemCallError, "socket: %s", strerror(errno));
 
   rb_iv_set(self, "@domain", v_domain);
   rb_iv_set(self, "@type", v_type);
-  rb_iv_set(self, "@fileno", INT2NUM(fileno));
+  rb_iv_set(self, "@fileno", INT2NUM((intptr_t)fileno));
   rb_iv_set(self, "@association_id", INT2NUM(0));
 
   return self;
@@ -128,6 +148,7 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
  *
  *  Returns the port that it was bound to.
  */
+/*
 static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   struct sockaddr_in addrs[8];
   int i, fileno, num_ip, flags, domain, port;
@@ -194,6 +215,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
 
   return INT2NUM(port);
 }
+*/
 
 /*
  * Connect the socket to a multihomed peer via the provided array of addresses
@@ -208,6 +230,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
  * this method is not strictly necessary on the client side, since the various send
  * methods will automatically establish associations.
  */
+/*
 static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
   struct sockaddr_in addrs[8];
   int i, num_ip, fileno;
@@ -251,6 +274,7 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
 
   return self;
 }
+*/
 
 /*
  * Close the socket. You should always do this.
@@ -263,11 +287,24 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
 static VALUE rsctp_close(VALUE self){
   VALUE v_fileno = rb_iv_get(self, "@fileno");
 
+#ifdef HAVE_USRSCTP_H
+  usrsctp_close((struct socket*)(uintptr_t)NUM2INT(v_fileno));
+#else
   if(close(NUM2INT(v_fileno)))
     rb_raise(rb_eSystemCallError, "close: %s", strerror(errno));
+#endif
 
   return self;
 }
+
+#ifdef HAVE_USRSCTP_H
+static VALUE rsctp_finish(VALUE self){
+  if(usrsctp_finish() < 0)
+    rb_raise(rb_eSystemCallError, "finish: %s", strerror(errno));
+
+  return self;
+}
+#endif
 
 /*
  *  Return an array of all addresses of a peer of the current socket
@@ -287,6 +324,7 @@ static VALUE rsctp_close(VALUE self){
  *
  *    p socket.getpeernames(association_fileno, info.association_id)
  */
+/*
 static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
   sctp_assoc_t assoc_id;
   struct sockaddr* addrs;
@@ -317,7 +355,7 @@ static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
   }
 
   for(i = 0; i < num_addrs; i++){
-    inet_ntop(AF_INET, &(((struct sockaddr_in *)&addrs[i])->sin_addr), str, sizeof(str));
+    inet_ntop(PF_INET, &(((struct sockaddr_in *)&addrs[i])->sin_addr), str, sizeof(str));
     rb_ary_push(v_array, rb_str_new2(str));
     bzero(&str, sizeof(str));
   }
@@ -326,6 +364,7 @@ static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
 
   return v_array;
 }
+*/
 
 /*
  * Return an array of local addresses that are part of the association.
@@ -341,6 +380,7 @@ static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
  *  assoc_fileno = socket.peeloff(some_association_id)
  *  socket.getlocalnames(assoc_fileno, some_association_id)
  */
+/*
 static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
   sctp_assoc_t assoc_id;
   struct sockaddr* addrs;
@@ -371,7 +411,7 @@ static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
   }
 
   for(i = 0; i < num_addrs; i++){
-    inet_ntop(AF_INET, &(((struct sockaddr_in *)&addrs[i])->sin_addr), str, sizeof(str));
+    inet_ntop(PF_INET, &(((struct sockaddr_in *)&addrs[i])->sin_addr), str, sizeof(str));
     rb_ary_push(v_array, rb_str_new2(str));
     bzero(&str, sizeof(str));
   }
@@ -380,6 +420,7 @@ static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
 
   return v_array;
 }
+*/
 
 #ifdef HAVE_SCTP_SENDV
 /*
@@ -405,6 +446,7 @@ static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
  *
  *  Returns the number of bytes sent.
  */
+/*
 static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   VALUE v_msg, v_message, v_addresses;
   struct iovec iov[IOV_MAX];
@@ -490,9 +532,11 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
 
   return INT2NUM(num_bytes);
 }
+*/
 #endif
 
 #ifdef HAVE_SCTP_RECVV
+/*
 static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
   VALUE v_flags;
   int fileno, flags, bytes, on;
@@ -558,6 +602,7 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
     );
   }
 }
+*/
 #endif
 
 /*
@@ -572,6 +617,7 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
  *   socket.send(:message => "Hello World", :association_id => 37)
  *
  */
+/*
 static VALUE rsctp_send(VALUE self, VALUE v_options){
   uint16_t stream;
   uint32_t ppid, send_flags, ctrl_flags, ttl, context;
@@ -652,6 +698,7 @@ static VALUE rsctp_send(VALUE self, VALUE v_options){
 
   return INT2NUM(num_bytes);
 }
+*/
 
 /*
  * Transmit a message to an SCTP endpoint. The following hash of options
@@ -682,6 +729,7 @@ static VALUE rsctp_send(VALUE self, VALUE v_options){
  *
  *  Returns the number of bytes sent.
  */
+/*
 static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   VALUE v_msg, v_ppid, v_flags, v_stream, v_ttl, v_context, v_addresses;
   uint16_t stream;
@@ -775,6 +823,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
 
   return INT2NUM(num_bytes);
 }
+*/
 
 /*
  * Receive a message from another SCTP endpoint.
@@ -795,6 +844,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
  *     socket.close
  *   end
  */
+/*
 static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   VALUE v_flags, v_notification, v_message;
   struct sctp_sndrcvinfo sndrcvinfo;
@@ -1031,6 +1081,7 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
     convert_sockaddr_in_to_struct(&clientaddr)
   );
 }
+*/
 
 /*
  * Set the initial parameters used by the socket when sending out the INIT message.
@@ -1049,6 +1100,7 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
  *
  * By default these values are set to zero (i.e. ignored).
  */
+/*
 static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
   int fileno;
   struct sctp_initmsg initmsg;
@@ -1080,6 +1132,7 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
 
   return self;
 }
+*/
 
 /*
  * Subscribe to various notification type events, which will generate additional
@@ -1116,6 +1169,7 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
  *   socket.bind(:port => port, :addresses => ['127.0.0.1'])
  *   socket.subscribe(:data_io => true, :shutdown => true, :send_failure => true)
  */
+/*
 static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
   int fileno;
   struct sctp_event_subscribe events;
@@ -1164,6 +1218,7 @@ static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
 
   return self;
 }
+*/
 
 /*
  * Marks the socket referred to by sockfd as a passive socket, i.e. a socket that
@@ -1186,6 +1241,7 @@ static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
  *  socket.bind(:port => 62534, :addresses => ['127.0.0.1'])
  *  socket.listen
  */
+/*
 static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
   VALUE v_backlog;
   int backlog, fileno;
@@ -1207,6 +1263,7 @@ static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
   
   return self;
 }
+*/
 
 /*
  * Extracts an association contained by a one-to-many socket connection into
@@ -1223,6 +1280,7 @@ static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
  *     # ... Do something with this new fileno
  *   end
  */
+/*
 static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
   int fileno, assoc_fileno;
   sctp_assoc_t assoc_id;
@@ -1237,6 +1295,7 @@ static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
 
   return INT2NUM(assoc_fileno);
 }
+*/
 
 /*
  * Returns the default set of parameters that a call to the sendto function
@@ -1253,6 +1312,7 @@ static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
  *  * cumtsn
  *  * association_id
  */
+/*
 static VALUE rsctp_get_default_send_params(VALUE self){
   int fileno;
   socklen_t size;
@@ -1281,6 +1341,7 @@ static VALUE rsctp_get_default_send_params(VALUE self){
     INT2NUM(sndrcv.sinfo_assoc_id)
   );
 }
+*/
 
 /*
  * Returns the association specific parameters. This is a struct
@@ -1295,6 +1356,7 @@ static VALUE rsctp_get_default_send_params(VALUE self){
  *
  *  All values that refer to time values are measured in milliseconds.
  */
+/*
 static VALUE rsctp_get_association_info(VALUE self){
   int fileno;
   socklen_t size;
@@ -1320,6 +1382,7 @@ static VALUE rsctp_get_association_info(VALUE self){
     INT2NUM(assoc.sasoc_cookie_life)
   );
 }
+*/
 
 /*
  * Shuts down socket send and receive operations.
@@ -1333,6 +1396,7 @@ static VALUE rsctp_get_association_info(VALUE self){
  *
  *  The default is SHUT_RDWR.
  */
+/*
 static VALUE rsctp_shutdown(int argc, VALUE* argv, VALUE self){
   int how, fileno;
   VALUE v_how;
@@ -1354,6 +1418,7 @@ static VALUE rsctp_shutdown(int argc, VALUE* argv, VALUE self){
 
   return self;
 }
+*/
 
 /*
  * Returns the protocol parameters that are used to initialize and bind the
@@ -1365,6 +1430,7 @@ static VALUE rsctp_shutdown(int argc, VALUE* argv, VALUE self){
  *  * max
  *  * min
  */
+/*
 static VALUE rsctp_get_retransmission_info(VALUE self){
   int fileno;
   socklen_t size;
@@ -1388,6 +1454,7 @@ static VALUE rsctp_get_retransmission_info(VALUE self){
     INT2NUM(rto.srto_min)
   );
 }
+*/
 
 /*
  * Get the status of a connected socket.
@@ -1410,6 +1477,7 @@ static VALUE rsctp_get_retransmission_info(VALUE self){
  *  * fragmentation_point
  *  * primary (IP)
  */
+/*
 static VALUE rsctp_get_status(VALUE self){
   int fileno;
   socklen_t size;
@@ -1429,15 +1497,15 @@ static VALUE rsctp_get_status(VALUE self){
 
   spinfo = &status.sstat_primary;
 
-  if (spinfo->spinfo_address.ss_family == AF_INET6) {
+  if (spinfo->spinfo_address.ss_family == PF_INET6) {
 		struct sockaddr_in6 *sin6;
 		sin6 = (struct sockaddr_in6 *)&spinfo->spinfo_address;
-		inet_ntop(AF_INET6, &sin6->sin6_addr, tmpname, sizeof (tmpname));
+		inet_ntop(PF_INET6, &sin6->sin6_addr, tmpname, sizeof (tmpname));
 	}
   else {
 		struct sockaddr_in *sin;
 		sin = (struct sockaddr_in *)&spinfo->spinfo_address;
-		inet_ntop(AF_INET, &sin->sin_addr, tmpname, sizeof (tmpname));
+		inet_ntop(PF_INET, &sin->sin_addr, tmpname, sizeof (tmpname));
   }
 
   return rb_struct_new(v_sctp_status_struct,
@@ -1452,6 +1520,7 @@ static VALUE rsctp_get_status(VALUE self){
     rb_str_new2(tmpname)
   );
 }
+*/
 
 /*
  * Returns a struct of events detailing which events have been
@@ -1473,6 +1542,7 @@ static VALUE rsctp_get_status(VALUE self){
  *  * stream_change
  *  * send_failure_event
  */
+/*
 static VALUE rsctp_get_subscriptions(VALUE self){
   int fileno;
   socklen_t size;
@@ -1505,7 +1575,9 @@ static VALUE rsctp_get_subscriptions(VALUE self){
     (events.sctp_send_failure_event_event ? Qtrue : Qfalse)
   );
 }
+*/
 
+/*
 static VALUE rsctp_get_peer_address_params(VALUE self){
   int fileno;
   char str[16];
@@ -1523,7 +1595,7 @@ static VALUE rsctp_get_peer_address_params(VALUE self){
   if(sctp_opt_info(fileno, assoc_id, SCTP_PEER_ADDR_PARAMS, (void*)&paddr, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
-  inet_ntop(AF_INET, ((struct sockaddr_in*)&paddr.spp_address), str, sizeof(str));
+  inet_ntop(PF_INET, ((struct sockaddr_in*)&paddr.spp_address), str, sizeof(str));
 
   return rb_struct_new(
     v_sctp_peer_addr_params_struct,
@@ -1533,6 +1605,7 @@ static VALUE rsctp_get_peer_address_params(VALUE self){
     INT2NUM(paddr.spp_pathmaxrxt)
   );
 }
+*/
 
 void Init_socket(void){
   mSCTP   = rb_define_module("SCTP");
@@ -1629,8 +1702,9 @@ void Init_socket(void){
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
 
-  rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
+  //rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
   rb_define_method(cSocket, "close", rsctp_close, 0);
+  /*
   rb_define_method(cSocket, "connectx", rsctp_connectx, -1);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, -1);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, -1);
@@ -1644,19 +1718,26 @@ void Init_socket(void){
   rb_define_method(cSocket, "peeloff", rsctp_peeloff, 1);
   rb_define_method(cSocket, "recvmsg", rsctp_recvmsg, -1);
   rb_define_method(cSocket, "send", rsctp_send, 1);
+  */
+
+#ifdef HAVE_USRSCTP_H
+  rb_define_method(cSocket, "finish", rsctp_finish, 0);
+#endif
 
 #ifdef HAVE_SCTP_SENDV
-  rb_define_method(cSocket, "sendv", rsctp_sendv, 1);
+  // rb_define_method(cSocket, "sendv", rsctp_sendv, 1);
 #endif
 
 #ifdef HAVE_SCTP_RECVV
-  rb_define_method(cSocket, "recvv", rsctp_recvv, -1);
+  // rb_define_method(cSocket, "recvv", rsctp_recvv, -1);
 #endif
 
+  /*
   rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, 1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
   rb_define_method(cSocket, "shutdown", rsctp_shutdown, -1);
   rb_define_method(cSocket, "subscribe", rsctp_subscribe, 1);
+  */
 
   rb_define_attr(cSocket, "domain", 1, 1);
   rb_define_attr(cSocket, "type", 1, 1);
@@ -1664,8 +1745,8 @@ void Init_socket(void){
   rb_define_attr(cSocket, "association_id", 1, 1);
   rb_define_attr(cSocket, "port", 1, 1);
 
-  /* 0.1.0: The version of this library */
-  rb_define_const(cSocket, "VERSION", rb_str_new2("0.1.0"));
+  /* 0.2.0: The version of this library */
+  rb_define_const(cSocket, "VERSION", rb_str_new2("0.2.0"));
 
   /* send flags */
 
@@ -1688,6 +1769,7 @@ void Init_socket(void){
 
   // ASSOCIATION STATES //
 
+  /*
   rb_define_const(cSocket, "SCTP_EMPTY", INT2NUM(SCTP_EMPTY));
   rb_define_const(cSocket, "SCTP_CLOSED", INT2NUM(SCTP_CLOSED));
   rb_define_const(cSocket, "SCTP_COOKIE_WAIT", INT2NUM(SCTP_COOKIE_WAIT));
@@ -1697,6 +1779,7 @@ void Init_socket(void){
   rb_define_const(cSocket, "SCTP_SHUTDOWN_SENT", INT2NUM(SCTP_SHUTDOWN_SENT));
   rb_define_const(cSocket, "SCTP_SHUTDOWN_RECEIVED", INT2NUM(SCTP_SHUTDOWN_RECEIVED));
   rb_define_const(cSocket, "SCTP_SHUTDOWN_ACK_SENT", INT2NUM(SCTP_SHUTDOWN_ACK_SENT));
+  */
 
   // BINDING //
 

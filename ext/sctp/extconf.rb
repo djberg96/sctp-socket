@@ -1,6 +1,7 @@
 require 'mkmf'
 
 dir_config('sctp')
+have_header('arpa/inet.h')
 
 # Prefer libusrsctp if found.
 if have_header('usrsctp.h')

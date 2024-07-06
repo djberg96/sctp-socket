@@ -10,16 +10,17 @@ begin
   socket = SCTP::Socket.new
 
   # Optional, but could bind to a subset of available addresses
-  p socket.bindx(:addresses => addresses)
+  #p socket.bindx(:addresses => addresses)
 
   # Initial connection
-  p socket.connectx(:addresses => addresses, :port => port)
-  p socket.get_status
+  #p socket.connectx(:addresses => addresses, :port => port)
+  #p socket.get_status
 
   # Try a sendv
-  p socket.sendv(:message => ["Hello ", "World!"])
+  #p socket.sendv(:message => ["Hello ", "World!"])
 
   # Send messages on separate streams of the same connection
+=begin
   arr = []
 
   0.upto(4) do |n|
@@ -36,6 +37,8 @@ begin
   end
 
   arr.map(&:join)
+=end
 ensure
   socket.close if socket
+  socket.finish
 end
