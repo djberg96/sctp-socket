@@ -52,6 +52,20 @@ class SCTPSocket
     ObjectSpace.define_finalizer(@socket, proc{ finish })
   end
 
+  def bind(address = Socket::INADDR_ANY)
+    addr = SockAddrIn.new
+    addr[:sin_len] = struct.size if struct.members.include?(:sin_len)
+    addr[:sin_family] = @domain
+    addr[:sin_port]  = c_htons(port)
+    addr[:sin_addr][:s_addr] = c_inet_addr(address)
+
+    if usrsctp_bind(@socket, addr, addr.size) < 0
+      raise SystemCallError.new('usrsctp_bind', FFI.errno)
+    end
+
+    address
+  end
+
   def bindx(**options)
     addresses = options.fetch(:addresses)
     flags = options[:flags] || SCTP_BINDX_ADD_ADDR
