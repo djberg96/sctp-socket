@@ -23,7 +23,7 @@ class SCTPSocket
   #   :threshold - amount of free space in buffer before send, default is zero.
   #
   def initialize(**options)
-    @domain    = options[:domain]    || options[:family] || Socket::AF_INET
+    @domain    = options[:domain]    || options[:family] || Socket::PF_INET
     @type      = options[:type]      || Socket::SOCK_SEQPACKET
     @port      = options[:port]      || 9899
     @send      = options[:send]      || options[:send_callback]
@@ -32,7 +32,7 @@ class SCTPSocket
 
     @protocol = IPPROTO_SCTP
 
-    unless [Socket::AF_INET, Socket::AF_INET6].include?(@domain)
+    unless [Socket::PF_INET, Socket::PF_INET6].include?(@domain)
       raise ArgumentError, "invalid domain: #{@domain}"
     end
 
@@ -50,21 +50,6 @@ class SCTPSocket
     end
 
     ObjectSpace.define_finalizer(@socket, proc{ finish })
-  end
-
-  def bind
-    inaddr = SCTPSocket::InAddr.new
-    inaddr[:s_addr] = Socket::INADDR_ANY
-
-    addr = SCTPSocket::SockAddrIn.new
-    addr[:sin_len]    = addr.size
-    addr[:sin_family] = Socket::AF_INET
-    addr[:sin_addr]   = inaddr
-    addr[:sin_port]   = SCTPSocket.c_htons(@port)
-
-    if usrsctp_bind(@socket, addr, addr.size) < 0
-      raise SystemCallError.new('usrsctp_bind', FFI.errno)
-    end
   end
 
   def bindx(**options)
