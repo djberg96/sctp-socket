@@ -89,6 +89,12 @@ class SCTPSocket
     port
   end
 
+  def listen(backlog = 128)
+    if usrsctp_listen(@socket, backlog) < 0
+      raise SystemCallError.new('usrsctp_listen', FFI.errno)
+    end
+  end
+
   # Close the socket.
   #
   def close
