@@ -54,10 +54,10 @@ class SCTPSocket
 
   def bind(address = Socket::INADDR_ANY)
     addr = SockAddrIn.new
-    addr[:sin_len] = struct.size if struct.members.include?(:sin_len)
+    addr[:sin_len] = addr.size if addr.members.include?(:sin_len)
     addr[:sin_family] = @domain
     addr[:sin_port]  = c_htons(port)
-    addr[:sin_addr][:s_addr] = c_inet_addr(address)
+    addr[:sin_addr][:s_addr] = c_htonl(address)
 
     if usrsctp_bind(@socket, addr, addr.size) < 0
       raise SystemCallError.new('usrsctp_bind', FFI.errno)
@@ -128,7 +128,8 @@ if $0 == __FILE__
     addresses = ['1.1.1.1', '1.1.1.2']
 
     socket = SCTPSocket.new
-    socket.bindx(:addresses => addresses)
+    socket.bind
+    #socket.bindx(:addresses => addresses)
     #socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
     #socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
   ensure
