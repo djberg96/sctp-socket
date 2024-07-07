@@ -110,16 +110,26 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
 #ifdef HAVE_USRSCTP_H
   usrsctp_init(0, NULL, NULL);
   fileno = usrsctp_socket(NUM2INT(v_domain), NUM2INT(v_type), IPPROTO_SCTP, NULL, NULL, 0, NULL);
-  if(!fileno)
+
+  if(!fileno){
+    rb_raise(rb_eSystemCallError, "socket: %s", strerror(errno));
+  }
+  else{
+    rb_iv_set(self, "@fileno", INT2NUM((intptr_t)fileno)); // TODO: Not sure this works
+  }
 #else
   fileno = socket(NUM2INT(v_domain), NUM2INT(v_type), IPPROTO_SCTP);
-  if(fileno < 0)
-#endif
+
+  if(fileno < 0){
     rb_raise(rb_eSystemCallError, "socket: %s", strerror(errno));
+  }
+  else{
+    rb_iv_set(self, "@fileno", INT2NUM(fileno));
+  }
+#endif
 
   rb_iv_set(self, "@domain", v_domain);
   rb_iv_set(self, "@type", v_type);
-  rb_iv_set(self, "@fileno", INT2NUM((intptr_t)fileno));
   rb_iv_set(self, "@association_id", INT2NUM(0));
 
   return self;
@@ -288,7 +298,7 @@ static VALUE rsctp_close(VALUE self){
   VALUE v_fileno = rb_iv_get(self, "@fileno");
 
 #ifdef HAVE_USRSCTP_H
-  usrsctp_close((struct socket*)(uintptr_t)NUM2INT(v_fileno));
+  usrsctp_close((struct socket*)(uintptr_t)NUM2INT(v_fileno)); // This go boom
 #else
   if(close(NUM2INT(v_fileno)))
     rb_raise(rb_eSystemCallError, "close: %s", strerror(errno));
