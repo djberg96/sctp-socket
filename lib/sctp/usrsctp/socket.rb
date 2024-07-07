@@ -95,6 +95,43 @@ class SCTPSocket
     end
   end
 
+  def connect(address = Socket::INADDR_ANY)
+    addr = SockAddrIn.new
+    addr[:sin_len] = addr.size if addr.members.include?(:sin_len)
+    addr[:sin_family] = @domain
+    addr[:sin_port]  = c_htons(port)
+    addr[:sin_addr][:s_addr] = c_htonl(address)
+
+    if usrsctp_connect(@socket, addr, addr.size) < 0
+      raise SystemCallError.new('usrsctp_connect', FFI.errno)
+    end
+
+    address
+  end
+
+  def connectx(**options)
+    addresses = options.fetch(:addresses)
+    flags = options[:flags] || 0
+    association_id  = options[:association_id]
+
+    addrs = FFI::MemoryPointer.new(SockAddrIn, addresses.size)
+
+    addresses.each_with_index do |address, i|
+      struct = SockAddrIn.new
+      struct[:sin_len] = struct.size if struct.members.include?(:sin_len)
+      struct[:sin_family] = @domain
+      struct[:sin_port]  = c_htons(port)
+      struct[:sin_addr][:s_addr] = c_inet_addr(address)
+      addrs[i].write_pointer(struct)
+    end
+
+    if usrsctp_connectx(@socket, addrs, addrs.size, association_id) < 0
+      raise SystemCallError.new('usrsctp_connectx', FFI.errno)
+    end
+
+    association_id
+  end
+
   # Close the socket.
   #
   def close
