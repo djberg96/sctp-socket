@@ -2,3 +2,5 @@
 *.o
 *.log
 Makefile
+Gemfile.lock
+/tmp
