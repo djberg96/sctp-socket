@@ -31,6 +31,12 @@ module SCTP
     attach_function :usrsctp_setsockopt, %i[pointer int int pointer pointer], :int
     attach_function :usrsctp_shutdown, %i[pointer int], :int
 
+    # sysctl functions
+    attach_function :usrsctp_sysctl_get_sctp_rto_max_default, [], :uint32_t
+    attach_function :usrsctp_sysctl_get_sctp_rto_min_default, [], :uint32_t
+    attach_function :usrsctp_sysctl_get_sctp_rto_initial_default, [], :uint32_t
+    attach_function :usrsctp_sysctl_get_sctp_init_rto_max_default, [], :uint32_t
+
     ffi_lib :libc
 
     attach_function :c_bind, :bind, [:int, :pointer, :socklen_t], :int

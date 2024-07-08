@@ -181,6 +181,14 @@ class SCTPSocket
       raise SystemCallError.new('usrsctp_shutdown', FFI.errno)
     end
   end
+
+  def sysctl_get(method_name)
+    send("usrsctp_sysctl_get_sctp_#{method_name}".to_sym)
+  end
+
+  def sysctl_set(method_name, value)
+    send("usrsctp_sysctl_set_sctp_#{method_name}".to_sym, value)
+  end
 end
 
 if $0 == __FILE__
@@ -193,7 +201,9 @@ if $0 == __FILE__
     addresses = ['1.1.1.1', '1.1.1.2']
 
     socket = SCTPSocket.new
-    socket.bind
+    #socket.bind
+    p socket.sysctl_get(:rto_min_default)
+    p socket.sysctl_get(:rto_max_default)
     #socket.bindx(:addresses => addresses)
     #socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
     #socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
