@@ -52,11 +52,33 @@ class SCTPSocket
     ObjectSpace.define_finalizer(@socket, proc{ finish })
   end
 
+  def accept(**options)
+    addresses = options.fetch(:addresses)
+    port = options[:port] || 0
+
+    addrs = FFI::MemoryPointer.new(SockAddrIn, addresses.size)
+
+    addresses.each_with_index do |address, i|
+      struct = SockAddrIn.new
+      struct[:sin_len] = struct.size if struct.members.include?(:sin_len)
+      struct[:sin_family] = @domain
+      struct[:sin_port] = c_htons(port)
+      struct[:sin_addr][:s_addr] = c_inet_addr(address)
+      addrs[i].write_pointer(struct)
+    end
+
+    if usrsctp_accept(@socket, addrs, addrs.size) < 0
+      raise SystemCallError.new('usrsctp_accept', FFI.errno)
+    end
+
+    port
+  end
+
   def bind(address = Socket::INADDR_ANY)
     addr = SockAddrIn.new
     addr[:sin_len] = addr.size if addr.members.include?(:sin_len)
     addr[:sin_family] = @domain
-    addr[:sin_port]  = c_htons(port)
+    addr[:sin_port] = c_htons(port)
     addr[:sin_addr][:s_addr] = c_htonl(address)
 
     if usrsctp_bind(@socket, addr, addr.size) < 0
@@ -77,7 +99,7 @@ class SCTPSocket
       struct = SockAddrIn.new
       struct[:sin_len] = struct.size if struct.members.include?(:sin_len)
       struct[:sin_family] = @domain
-      struct[:sin_port]  = c_htons(port)
+      struct[:sin_port] = c_htons(port)
       struct[:sin_addr][:s_addr] = c_inet_addr(address)
       addrs[i].write_pointer(struct)
     end
@@ -99,7 +121,7 @@ class SCTPSocket
     addr = SockAddrIn.new
     addr[:sin_len] = addr.size if addr.members.include?(:sin_len)
     addr[:sin_family] = @domain
-    addr[:sin_port]  = c_htons(port)
+    addr[:sin_port] = c_htons(port)
     addr[:sin_addr][:s_addr] = c_htonl(address)
 
     if usrsctp_connect(@socket, addr, addr.size) < 0
@@ -112,7 +134,7 @@ class SCTPSocket
   def connectx(**options)
     addresses = options.fetch(:addresses)
     flags = options[:flags] || 0
-    association_id  = options[:association_id]
+    association_id = options[:association_id]
 
     addrs = FFI::MemoryPointer.new(SockAddrIn, addresses.size)
 
@@ -120,7 +142,7 @@ class SCTPSocket
       struct = SockAddrIn.new
       struct[:sin_len] = struct.size if struct.members.include?(:sin_len)
       struct[:sin_family] = @domain
-      struct[:sin_port]  = c_htons(port)
+      struct[:sin_port] = c_htons(port)
       struct[:sin_addr][:s_addr] = c_inet_addr(address)
       addrs[i].write_pointer(struct)
     end
