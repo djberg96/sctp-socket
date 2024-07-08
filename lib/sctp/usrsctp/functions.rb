@@ -32,6 +32,7 @@ module SCTP
     attach_function :usrsctp_shutdown, %i[pointer int], :int
 
     # sysctl functions
+    attach_function :usrsctp_sysctl_get_sctp_sendspace, [], :uint32_t
     attach_function :usrsctp_sysctl_get_sctp_recvspace, [], :uint32_t
     attach_function :usrsctp_sysctl_get_sctp_hashtblsize, [], :uint32_t
     attach_function :usrsctp_sysctl_get_sctp_pcbtblsize, [], :uint32_t
@@ -44,6 +45,13 @@ module SCTP
     attach_function :usrsctp_sysctl_get_sctp_rto_min_default, [], :uint32_t
     attach_function :usrsctp_sysctl_get_sctp_rto_initial_default, [], :uint32_t
     attach_function :usrsctp_sysctl_get_sctp_init_rto_max_default, [], :uint32_t
+
+    attach_function :usrsctp_sysctl_get_sctp_valid_cookie_life_default, [], :uint32_t
+    attach_function :usrsctp_sysctl_get_sctp_heartbeat_interval_default, [], :uint32_t
+    attach_function :usrsctp_sysctl_get_sctp_shutdown_guard_time_default, [], :uint32_t
+    attach_function :usrsctp_sysctl_get_sctp_pmtu_raise_time_default, [], :uint32_t
+    attach_function :usrsctp_sysctl_get_sctp_secret_lifetime_default, [], :uint32_t
+    attach_function :usrsctp_sysctl_get_sctp_vtag_time_wait, [], :uint32_t
 
     ffi_lib :libc
 
