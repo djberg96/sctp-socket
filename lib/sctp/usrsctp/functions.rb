@@ -32,6 +32,14 @@ module SCTP
     attach_function :usrsctp_shutdown, %i[pointer int], :int
 
     # sysctl functions
+    attach_function :usrsctp_sysctl_get_sctp_recvspace, [], :uint32_t
+    attach_function :usrsctp_sysctl_get_sctp_hashtblsize, [], :uint32_t
+    attach_function :usrsctp_sysctl_get_sctp_pcbtblsize, [], :uint32_t
+    attach_function :usrsctp_sysctl_get_sctp_system_free_resc_limit, [], :uint32_t
+    attach_function :usrsctp_sysctl_get_sctp_asoc_free_resc_limit, [], :uint32_t
+    attach_function :usrsctp_sysctl_get_sctp_mbuf_threshold_count, [], :uint32_t
+    attach_function :usrsctp_sysctl_get_sctp_add_more_threshold, [], :uint32_t
+
     attach_function :usrsctp_sysctl_get_sctp_rto_max_default, [], :uint32_t
     attach_function :usrsctp_sysctl_get_sctp_rto_min_default, [], :uint32_t
     attach_function :usrsctp_sysctl_get_sctp_rto_initial_default, [], :uint32_t
