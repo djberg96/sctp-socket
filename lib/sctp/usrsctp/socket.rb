@@ -159,6 +159,10 @@ class SCTPSocket
     message = options.fetch(:message)
     flags = options[:flags] || 0
 
+    info = SctpSndinfo.new
+    info[:snd_flags] = SCTP_UNORDERED
+    info[:snd_assoc_id] = options[:association_id]
+
     addrs = FFI::MemoryPointer.new(SockAddrIn, addresses.size)
 
     addresses.each_with_index do |address, i|
@@ -170,7 +174,7 @@ class SCTPSocket
       addrs[i].write_pointer(struct)
     end
 
-    bytes = usrsctp_sendv(@socket, message, message.size, addrs, addrs.size, nil, 0, SCTP_SENDV_SNDINFO, flags)
+    bytes = usrsctp_sendv(@socket, message, message.size, addrs, addrs.size, info, info.size, SCTP_SENDV_SNDINFO, flags)
 
     if bytes < 0
       raise SystemCallError.new('usrsctp_sendv', FFI.errno)
