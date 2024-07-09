@@ -154,6 +154,29 @@ class SCTPSocket
     association_id
   end
 
+  def recvv(**options)
+    addresses = options.fetch(:addresses)
+    flags = options[:flags] || 0
+    buf = FFI::MemoryPointer.new(:char, 1028)
+
+    info = SctpRcvinfo.new
+
+    on = FFI::MemoryPointer.new(:int)
+    on.write_int(1)
+
+    if usrsctp_setsockopt(@socket, IPPROTO_SCTP, SCTP_RECRCVINFO, on, on.size) < 0
+      raise SystemCallError.new('usrsctp_setsockopt', FFI.errno)
+    end
+
+    bytes = usrsctp_recvv(@socket, buf, buf.size, nil, nil, info, info.size, SCTP_RECVRCVINFO, flags)
+
+    if bytes < 0
+      raise SystemCallError.new('usrsctp_recvv', FFI.errno)
+    end
+
+    buf.read_string(bytes)
+  end
+
   def sendv(**options)
     addresses = options.fetch(:addresses)
     message = options.fetch(:message)
