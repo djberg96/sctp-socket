@@ -177,6 +177,19 @@ class SCTPSocket
     buf.read_string(bytes)
   end
 
+  def subscribe(**options)
+    event = SctpEvent.new
+    event[:se_assoc_id] = options[:association_id] || SCTP_FUTURE_ASSOC
+    event[:se_on] = 1
+
+    options.each do |key, value|
+      event[:se_type] = Object.const_get(key.to_s.upcase)
+      if usrsctp_setsockopt(@socket, IPPROTO_SCTP, SCTP_EVENT, event, on.size) < 0
+        raise SystemCallError.new('usrsctp_setsockopt SCTP_EVENT', FFI.errno)
+      end
+    end
+  end
+
   def sendv(**options)
     addresses = options.fetch(:addresses)
     message = options.fetch(:message)
