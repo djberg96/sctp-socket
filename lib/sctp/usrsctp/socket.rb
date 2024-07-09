@@ -183,7 +183,7 @@ class SCTPSocket
     event[:se_on] = 1
 
     options.each do |key, value|
-      event[:se_type] = Object.const_get(key.to_s.upcase)
+      event[:se_type] = Object.const_get("SCTP_#{key}".upcase) || Object.const_get("SCTP_#{key}_EVENT".upcase)
       if usrsctp_setsockopt(@socket, IPPROTO_SCTP, SCTP_EVENT, event, on.size) < 0
         raise SystemCallError.new('usrsctp_setsockopt SCTP_EVENT', FFI.errno)
       end
@@ -267,8 +267,6 @@ if $0 == __FILE__
 
     socket = SCTPSocket.new
     #socket.bind
-    p socket.sysctl_get(:rto_min_default)
-    p socket.sysctl_get(:rto_max_default)
     #socket.bindx(:addresses => addresses)
     #socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
     #socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
