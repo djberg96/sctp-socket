@@ -290,7 +290,7 @@ module SCTP
         :sctp_send_failure_event, :uint8_t,
         :sctp_peer_error_event, :uint8_t,
         :sctp_shutdown_event, :uint8_t,
-        :sctp_partial_deliery_event, :uint8_t,
+        :sctp_partial_delivery_event, :uint8_t,
         :sctp_adaptation_layer_event, :uint8_t,
         :sctp_authentication_event, :uint8_t,
         :sctp_sender_dry_event, :uint8_t,
