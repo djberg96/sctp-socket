@@ -179,7 +179,7 @@ class SCTPSocket
 
   def subscribe(**options)
     event = SctpEvent.new
-    event[:se_assoc_id] = options[:association_id] || SCTP_FUTURE_ASSOC
+    event[:se_assoc_id] = options.delete(:association_id) || SCTP_FUTURE_ASSOC
     event[:se_on] = 1
 
     options.each do |key, value|
