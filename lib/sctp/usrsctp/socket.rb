@@ -154,6 +154,31 @@ class SCTPSocket
     association_id
   end
 
+  def sendv(**options)
+    addresses = options.fetch(:addresses)
+    message = options.fetch(:message)
+    flags = options[:flags] || 0
+
+    addrs = FFI::MemoryPointer.new(SockAddrIn, addresses.size)
+
+    addresses.each_with_index do |address, i|
+      struct = SockAddrIn.new
+      struct[:sin_len] = struct.size if struct.members.include?(:sin_len)
+      struct[:sin_family] = @domain
+      struct[:sin_port] = c_htons(port)
+      struct[:sin_addr][:s_addr] = c_inet_addr(address)
+      addrs[i].write_pointer(struct)
+    end
+
+    bytes = usrsctp_sendv(@socket, message, message.size, addrs, addrs.size, nil, 0, SCTP_SENDV_SNDINFO, flags)
+
+    if bytes < 0
+      raise SystemCallError.new('usrsctp_sendv', FFI.errno)
+    end
+
+    bytes
+  end
+
   # Close the socket.
   #
   def close
