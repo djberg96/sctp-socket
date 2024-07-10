@@ -81,6 +81,8 @@ Please report any issues on the github project page.
 * https://www.linuxjournal.com/article/9748
 * https://www.linuxjournal.com/article/9749
 * https://www.linuxjournal.com/article/9784
+* SCTP in Theory and Practice - Svetomir Dimitrov
+* Stream Control Transmission Protocol (A Reference Guide) - Randall Stewart and Qiaobing Xie
 
 ## License
 
