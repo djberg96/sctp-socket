@@ -1,12 +1,13 @@
-$:.unshift 'lib'
-require 'socket'
+$:.unshift 'lib/sctp/usrsctp'
+#require 'socket'
 require 'sctp/socket'
 
 begin
-  port = 42000
-  socket = SCTP::Socket.new
+  #port = 42000
+  socket = SCTPSocket.new
+  socket.subscribe(:shutdown => true, :partial_deliver => true)
   #bytes_sent = socket.sendmsg(:message => "Hello World!", :addresses => ['127.0.0.1'], :port => port, :stream => 2)
-  socket.connect(:port => port, :addresses => ['127.0.0.1'])
+  #socket.connect(:port => port, :addresses => ['127.0.0.1'])
   #bytes_sent = socket.sendv(:messages => ["Hello ", "World!\n", "How ", "are ", "you?"])
   #bytes_sent = socket.sendv(:messages => ["Hello", "World"])
   #bytes_sent = socket.sendv(:messages => ["Hello"])

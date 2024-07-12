@@ -11,6 +11,15 @@ class SCTPSocket
 
   attr_reader :port
 
+  EVENT_TYPES_MAP = {
+    :assoc_change => SCTP_ASSOC_CHANGE,
+    :peer_addr_change => SCTP_PEER_ADDR_CHANGE,
+    :remote_error => SCTP_REMOTE_ERROR,
+    :shutdown => SCTP_SHUTDOWN_EVENT,
+    :adaptation_indication => SCTP_ADAPTATION_INDICATION,
+    :partial_delivery => SCTP_PARTIAL_DELIVERY_EVENT
+  }
+
   # Create a new SCTP socket using UDP port.
   #
   # Possible options are:
@@ -183,8 +192,9 @@ class SCTPSocket
     event[:se_on] = 1
 
     options.each do |key, value|
-      event[:se_type] = Object.const_get("SCTP_#{key}".upcase) || Object.const_get("SCTP_#{key}_EVENT".upcase)
-      if usrsctp_setsockopt(@socket, IPPROTO_SCTP, SCTP_EVENT, event, on.size) < 0
+      event[:se_type] = EVENT_TYPES_MAP[key]
+
+      if usrsctp_setsockopt(@socket, IPPROTO_SCTP, SCTP_EVENT, event, event.size) < 0
         raise SystemCallError.new('usrsctp_setsockopt SCTP_EVENT', FFI.errno)
       end
     end
@@ -266,6 +276,7 @@ if $0 == __FILE__
     addresses = ['1.1.1.1', '1.1.1.2']
 
     socket = SCTPSocket.new
+    socket.subscribe(:shutdown => true, :partial_deliver => true)
     #socket.bind
     #socket.bindx(:addresses => addresses)
     #socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
