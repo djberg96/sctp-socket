@@ -12,12 +12,12 @@ class SCTPSocket
   attr_reader :port
 
   EVENT_TYPES_MAP = {
-    :assoc_change => SCTP_ASSOC_CHANGE,
-    :peer_addr_change => SCTP_PEER_ADDR_CHANGE,
-    :remote_error => SCTP_REMOTE_ERROR,
-    :shutdown => SCTP_SHUTDOWN_EVENT,
+    :assoc_change          => SCTP_ASSOC_CHANGE,
+    :peer_addr_change      => SCTP_PEER_ADDR_CHANGE,
+    :remote_error          => SCTP_REMOTE_ERROR,
+    :shutdown              => SCTP_SHUTDOWN_EVENT,
     :adaptation_indication => SCTP_ADAPTATION_INDICATION,
-    :partial_delivery => SCTP_PARTIAL_DELIVERY_EVENT
+    :partial_delivery      => SCTP_PARTIAL_DELIVERY_EVENT
   }
 
   # Create a new SCTP socket using UDP port.
