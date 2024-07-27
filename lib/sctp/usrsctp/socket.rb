@@ -192,7 +192,7 @@ class SCTPSocket
     event[:se_on] = 1
 
     options.each do |key, value|
-      event[:se_type] = EVENT_TYPES_MAP[key]
+      event[:se_type] = EVENT_TYPES_MAP.fetch(key)
 
       if usrsctp_setsockopt(@socket, IPPROTO_SCTP, SCTP_EVENT, event, event.size) < 0
         raise SystemCallError.new('usrsctp_setsockopt SCTP_EVENT', FFI.errno)
@@ -276,7 +276,7 @@ if $0 == __FILE__
     addresses = ['1.1.1.1', '1.1.1.2']
 
     socket = SCTPSocket.new
-    socket.subscribe(:shutdown => true, :partial_deliver => true)
+    socket.subscribe(:shutdown => true, :partial_delivery => true)
     #socket.bind
     #socket.bindx(:addresses => addresses)
     #socket = SCTPSocket.new(port: 11111, threshold: 128, receive: receive_cb)
