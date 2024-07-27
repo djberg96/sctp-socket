@@ -28,7 +28,7 @@ module SCTP
     attach_function :usrsctp_recvv, %i[pointer pointer size_t pointer pointer pointer pointer pointer], :ssize_t
     attach_function :usrsctp_socket, %i[int int int receive_cb send_cb uint32_t pointer], :pointer
     attach_function :usrsctp_sendv, %i[pointer pointer size_t pointer int pointer pointer uint int], :ssize_t
-    attach_function :usrsctp_setsockopt, %i[pointer int int pointer pointer], :int
+    attach_function :usrsctp_setsockopt, %i[pointer int int pointer socklen_t], :int
     attach_function :usrsctp_shutdown, %i[pointer int], :int
 
     # sysctl functions
