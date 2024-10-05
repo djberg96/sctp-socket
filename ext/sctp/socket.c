@@ -2,7 +2,12 @@
 #include <string.h>
 #include <errno.h>
 #include <arpa/inet.h>
+
+#ifdef HAVE_LINUX_SCTP_H
+#include <linux/sctp.h>
+#else
 #include <netinet/sctp.h>
+#endif
 
 VALUE mSCTP;
 VALUE cSocket;

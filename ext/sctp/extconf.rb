@@ -2,7 +2,7 @@ require 'mkmf'
 
 dir_config('sctp')
 
-unless have_header('netinet/sctp.h')
+unless have_header('netinet/sctp.h') || have_header('linux/sctp.h')
   os = IO.readlines('/etc/os-release').first.split('=').last
   msg = "\nSCTP HEADERS NOT FOUND. PLEASE INSTALL THEM FIRST LIKE SO:\n\n"
 
