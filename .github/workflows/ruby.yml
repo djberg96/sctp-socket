@@ -14,12 +14,11 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ruby-version: ['3.2', '3.3']
     steps:
-    - name: Install Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: 3.3
-        bundler-cache: true
+    - uses: actions/checkout@v4
     - name: Install SCTP headers
       run: |
           sudo apt-get install libsctp-dev lksctp-tools
@@ -29,8 +28,10 @@ jobs:
           sudo ip addr add 1.1.1.2/24 dev dummy2
           sudo ip link set dummy1 up
           sudo ip link set dummy2 up
-    - name: Run specs
-      run: |
-          gem install bundler --no-document
-          bundle install --quiet
-          bundle exec rake
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ matrix.ruby-version }}
+        bundler-cache: true
+    - name: Run Specs
+      run: bundle exec rake
