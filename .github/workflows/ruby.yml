@@ -15,12 +15,17 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - name: Install Ruby and SCTP headers       
+    - name: Install Ruby
+      uses: ruby/setup-ruby@v1
+       with:
+        ruby-version: 3.3
+        bundler-cache: true
+    - name: Install SCTP headers
       uses: actions/checkout@v4
       with:
         usesh: true
         prepare: |
-          apt-get install libsctp-dev lksctp-tools ruby
+          apt-get install libsctp-dev lksctp-tools
           ip link add dummy1 type dummy
           ip link add dummy2 type dummy
           ip addr add 1.1.1.1/24 dev dummy1
