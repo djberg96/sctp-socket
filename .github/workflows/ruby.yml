@@ -23,7 +23,6 @@ jobs:
     - name: Install SCTP headers
       uses: actions/checkout@v4
       with:
-        usesh: true
         prepare: |
           apt-get install libsctp-dev lksctp-tools
           ip link add dummy1 type dummy
