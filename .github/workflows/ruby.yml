@@ -22,16 +22,16 @@ jobs:
         bundler-cache: true
     - name: Install SCTP headers
       uses: actions/checkout@v4
-      with:
-        prepare: |
-          apt-get install libsctp-dev lksctp-tools
-          ip link add dummy1 type dummy
-          ip link add dummy2 type dummy
-          ip addr add 1.1.1.1/24 dev dummy1
-          ip addr add 1.1.1.2/24 dev dummy2
-          ip link set dummy1 up
-          ip link set dummy2 up
+      run: |
+          sudo apt-get install libsctp-dev lksctp-tools
+          sudo ip link add dummy1 type dummy
+          sudo ip link add dummy2 type dummy
+          sudo ip addr add 1.1.1.1/24 dev dummy1
+          sudo ip addr add 1.1.1.2/24 dev dummy2
+          sudo ip link set dummy1 up
+          sudo ip link set dummy2 up
     - name: Run specs
+      uses: ruby/setup-ruby@v1
       run: |
           gem install bundler --no-document
           bundle install --quiet
