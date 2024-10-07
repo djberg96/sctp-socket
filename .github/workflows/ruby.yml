@@ -26,6 +26,7 @@ jobs:
         ruby-version: ${{ matrix.ruby-version }}
         bundler-cache: true
     - name: Run specs
+      uses: actions/checkout@v4
       with:
         usesh: true
         prepare: |
