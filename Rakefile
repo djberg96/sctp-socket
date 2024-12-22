@@ -37,6 +37,17 @@ Rake::ExtensionTask.new('socket') do |t|
   t.lib_dir = 'lib/sctp'
 end
 
+desc "Create dummy IP addresses to use for testing"
+task :create_dummy_links do
+  system('sudo ip link add dummy1 type dummy')
+  system('sudo ip link add dummy2 type dummy')
+  system('sudo ip addr add 1.1.1.1/24 dev dummy1')
+  system('sudo ip addr add 1.1.1.2/24 dev dummy2')
+  system('sudo ip link set dummy1 up')
+  system('sudo ip link set dummy2 up')
+  system('ip link show')
+end
+
 RSpec::Core::RakeTask.new
 
 task :spec => :compile
