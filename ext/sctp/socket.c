@@ -63,6 +63,191 @@ VALUE rb_hash_aref2(VALUE v_hash, const char* key){
   return v_val;
 }
 
+VALUE get_notification_info(char* buffer){
+  uint32_t i;
+  char str[16];
+  union sctp_notification* snp;
+  VALUE v_notification = Qnil;
+  VALUE v_str = Qnil;
+  VALUE* v_temp;
+
+  snp = (union sctp_notification*)buffer;
+
+  switch(snp->sn_header.sn_type){
+    case SCTP_ASSOC_CHANGE:
+      switch(snp->sn_assoc_change.sac_state){
+        case SCTP_COMM_LOST:
+          v_str = rb_str_new2("comm lost");
+          break;
+        case SCTP_COMM_UP:
+          v_str = rb_str_new2("comm up");
+          break;
+        case SCTP_RESTART:
+          v_str = rb_str_new2("restart");
+          break;
+        case SCTP_SHUTDOWN_COMP:
+          v_str = rb_str_new2("shutdown complete");
+          break;
+        case SCTP_CANT_STR_ASSOC:
+          v_str = rb_str_new2("association setup failed");
+          break;
+        default:
+          v_str = rb_str_new2("unknown");
+      }
+
+      v_notification = rb_struct_new(v_assoc_change_struct,
+        UINT2NUM(snp->sn_assoc_change.sac_type),
+        UINT2NUM(snp->sn_assoc_change.sac_length),
+        UINT2NUM(snp->sn_assoc_change.sac_state),
+        UINT2NUM(snp->sn_assoc_change.sac_error),
+        UINT2NUM(snp->sn_assoc_change.sac_outbound_streams),
+        UINT2NUM(snp->sn_assoc_change.sac_inbound_streams),
+        UINT2NUM(snp->sn_assoc_change.sac_assoc_id),
+        v_str
+      );
+      break;
+    case SCTP_PEER_ADDR_CHANGE:
+      switch(snp->sn_paddr_change.spc_state){
+        case SCTP_ADDR_AVAILABLE:
+          v_str = rb_str_new2("available");
+          break;
+        case SCTP_ADDR_UNREACHABLE:
+          v_str = rb_str_new2("unreachable");
+          break;
+        case SCTP_ADDR_REMOVED:
+          v_str = rb_str_new2("removed from association");
+          break;
+        case SCTP_ADDR_ADDED:
+          v_str = rb_str_new2("added to association");
+          break;
+        case SCTP_ADDR_MADE_PRIM:
+          v_str = rb_str_new2("primary destination");
+          break;
+        default:
+          v_str = rb_str_new2("unknown");
+      }
+
+      inet_ntop(
+        ((struct sockaddr_in *)&snp->sn_paddr_change.spc_aaddr)->sin_family,
+        &(((struct sockaddr_in *)&snp->sn_paddr_change.spc_aaddr)->sin_addr),
+        str,
+        sizeof(str)
+      );
+
+      v_notification = rb_struct_new(v_peeraddr_change_struct,
+        UINT2NUM(snp->sn_paddr_change.spc_type),
+        UINT2NUM(snp->sn_paddr_change.spc_length),
+        rb_str_new2(str),
+        UINT2NUM(snp->sn_paddr_change.spc_state),
+        UINT2NUM(snp->sn_paddr_change.spc_error),
+        UINT2NUM(snp->sn_paddr_change.spc_assoc_id),
+        v_str
+      );
+      break;
+    case SCTP_REMOTE_ERROR:
+      v_temp = ALLOCA_N(VALUE, snp->sn_remote_error.sre_length);
+
+      for(i = 0; i < snp->sn_remote_error.sre_length; i++){
+        v_temp[i] = UINT2NUM(snp->sn_remote_error.sre_data[i]);
+      }
+
+      v_notification = rb_struct_new(v_remote_error_struct,
+        UINT2NUM(snp->sn_remote_error.sre_type),
+        UINT2NUM(snp->sn_remote_error.sre_flags),
+        UINT2NUM(snp->sn_remote_error.sre_length),
+        UINT2NUM(snp->sn_remote_error.sre_error),
+        UINT2NUM(snp->sn_remote_error.sre_assoc_id),
+        rb_ary_new4(snp->sn_remote_error.sre_length, v_temp)
+      );
+      break;
+#ifdef SCTP_SEND_FAILED_EVENT
+    case SCTP_SEND_FAILED_EVENT:
+      v_temp = ALLOCA_N(VALUE, snp->sn_send_failed_event.ssf_length);
+
+      for(i = 0; i < snp->sn_send_failed_event.ssf_length; i++){
+        v_temp[i] = UINT2NUM(snp->sn_send_failed_event.ssf_data[i]);
+      }
+
+      v_notification = rb_struct_new(v_send_failed_event_struct,
+        UINT2NUM(snp->sn_send_failed_event.ssf_type),
+        UINT2NUM(snp->sn_send_failed_event.ssf_length),
+        UINT2NUM(snp->sn_send_failed_event.ssf_error),
+        rb_struct_new(v_sndinfo_struct,
+          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_sid),
+          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_flags),
+          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_ppid),
+          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_context),
+          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_assoc_id)
+        ),
+        UINT2NUM(snp->sn_send_failed_event.ssf_assoc_id),
+        rb_ary_new4(snp->sn_send_failed_event.ssf_length, v_temp)
+      );
+      break;
+#else
+    case SCTP_SEND_FAILED:
+      v_temp = ALLOCA_N(VALUE, snp->sn_send_failed.ssf_length);
+
+      for(i = 0; i < snp->sn_send_failed.ssf_length; i++){
+        v_temp[i] = UINT2NUM(snp->sn_send_failed.ssf_data[i]);
+      }
+
+      v_notification = rb_struct_new(v_send_failed_event_struct,
+        UINT2NUM(snp->sn_send_failed.ssf_type),
+        UINT2NUM(snp->sn_send_failed.ssf_length),
+        UINT2NUM(snp->sn_send_failed.ssf_error),
+        Qnil,
+        UINT2NUM(snp->sn_send_failed.ssf_assoc_id),
+        rb_ary_new4(snp->sn_send_failed.ssf_length, v_temp)
+      );
+      break;
+#endif
+    case SCTP_SHUTDOWN_EVENT:
+      v_notification = rb_struct_new(v_shutdown_event_struct,
+        UINT2NUM(snp->sn_shutdown_event.sse_type),
+        UINT2NUM(snp->sn_shutdown_event.sse_length),
+        UINT2NUM(snp->sn_shutdown_event.sse_assoc_id)
+      );
+      break;
+    case SCTP_ADAPTATION_INDICATION:
+      v_notification = rb_struct_new(v_adaptation_event_struct,
+        UINT2NUM(snp->sn_adaptation_event.sai_type),
+        UINT2NUM(snp->sn_adaptation_event.sai_length),
+        UINT2NUM(snp->sn_adaptation_event.sai_adaptation_ind),
+        UINT2NUM(snp->sn_adaptation_event.sai_assoc_id)
+      );
+      break;
+    case SCTP_PARTIAL_DELIVERY_EVENT:
+      v_notification = rb_struct_new(v_partial_delivery_event_struct,
+        UINT2NUM(snp->sn_pdapi_event.pdapi_type),
+        UINT2NUM(snp->sn_pdapi_event.pdapi_length),
+        UINT2NUM(snp->sn_pdapi_event.pdapi_indication),
+        UINT2NUM(snp->sn_pdapi_event.pdapi_stream),
+        UINT2NUM(snp->sn_pdapi_event.pdapi_seq),
+        UINT2NUM(snp->sn_pdapi_event.pdapi_assoc_id)
+      );
+      break;
+    case SCTP_AUTHENTICATION_EVENT:
+      v_notification = rb_struct_new(v_auth_event_struct,
+        UINT2NUM(snp->sn_authkey_event.auth_type),
+        UINT2NUM(snp->sn_authkey_event.auth_length),
+        UINT2NUM(snp->sn_authkey_event.auth_keynumber),
+        UINT2NUM(snp->sn_authkey_event.auth_indication),
+        UINT2NUM(snp->sn_authkey_event.auth_assoc_id)
+      );
+      break;
+    case SCTP_SENDER_DRY_EVENT:
+      v_notification = rb_struct_new(v_sender_dry_event_struct,
+        UINT2NUM(snp->sn_sender_dry_event.sender_dry_type),
+        UINT2NUM(snp->sn_sender_dry_event.sender_dry_flags),
+        UINT2NUM(snp->sn_sender_dry_event.sender_dry_length),
+        UINT2NUM(snp->sn_sender_dry_event.sender_dry_assoc_id)
+      );
+      break;
+  }
+
+  return v_notification;
+}
+
 /*
  * Create and return a new SCTP::Socket instance. You may optionally pass in
  * a domain (aka family) value and socket type. By default these are AF_INET
@@ -832,187 +1017,8 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
 
   v_notification = Qnil;
 
-  if(flags & MSG_NOTIFICATION){
-    uint32_t i;
-    char str[16];
-    union sctp_notification* snp;
-    VALUE v_str;
-    VALUE* v_temp;
-
-    snp = (union sctp_notification*)buffer;
-
-    switch(snp->sn_header.sn_type){
-      case SCTP_ASSOC_CHANGE:
-        switch(snp->sn_assoc_change.sac_state){
-          case SCTP_COMM_LOST:
-            v_str = rb_str_new2("comm lost");
-            break;
-          case SCTP_COMM_UP:
-            v_str = rb_str_new2("comm up");
-            break;
-          case SCTP_RESTART:
-            v_str = rb_str_new2("restart");
-            break;
-          case SCTP_SHUTDOWN_COMP:
-            v_str = rb_str_new2("shutdown complete");
-            break;
-          case SCTP_CANT_STR_ASSOC:
-            v_str = rb_str_new2("association setup failed");
-            break;
-          default:
-            v_str = rb_str_new2("unknown");
-        }
-
-        v_notification = rb_struct_new(v_assoc_change_struct,
-          UINT2NUM(snp->sn_assoc_change.sac_type),
-          UINT2NUM(snp->sn_assoc_change.sac_length),
-          UINT2NUM(snp->sn_assoc_change.sac_state),
-          UINT2NUM(snp->sn_assoc_change.sac_error),
-          UINT2NUM(snp->sn_assoc_change.sac_outbound_streams),
-          UINT2NUM(snp->sn_assoc_change.sac_inbound_streams),
-          UINT2NUM(snp->sn_assoc_change.sac_assoc_id),
-          v_str
-        );
-        break;
-      case SCTP_PEER_ADDR_CHANGE:
-        switch(snp->sn_paddr_change.spc_state){
-          case SCTP_ADDR_AVAILABLE:
-            v_str = rb_str_new2("available");
-            break;
-          case SCTP_ADDR_UNREACHABLE:
-            v_str = rb_str_new2("unreachable");
-            break;
-          case SCTP_ADDR_REMOVED:
-            v_str = rb_str_new2("removed from association");
-            break;
-          case SCTP_ADDR_ADDED:
-            v_str = rb_str_new2("added to association");
-            break;
-          case SCTP_ADDR_MADE_PRIM:
-            v_str = rb_str_new2("primary destination");
-            break;
-          default:
-            v_str = rb_str_new2("unknown");
-        }
-
-        inet_ntop(
-          ((struct sockaddr_in *)&snp->sn_paddr_change.spc_aaddr)->sin_family,
-          &(((struct sockaddr_in *)&snp->sn_paddr_change.spc_aaddr)->sin_addr),
-          str,
-          sizeof(str)
-        );
-
-        v_notification = rb_struct_new(v_peeraddr_change_struct,
-          UINT2NUM(snp->sn_paddr_change.spc_type),
-          UINT2NUM(snp->sn_paddr_change.spc_length),
-          rb_str_new2(str),
-          UINT2NUM(snp->sn_paddr_change.spc_state),
-          UINT2NUM(snp->sn_paddr_change.spc_error),
-          UINT2NUM(snp->sn_paddr_change.spc_assoc_id),
-          v_str
-        );
-        break;
-      case SCTP_REMOTE_ERROR:
-        v_temp = ALLOCA_N(VALUE, snp->sn_remote_error.sre_length);
-
-        for(i = 0; i < snp->sn_remote_error.sre_length; i++){
-          v_temp[i] = UINT2NUM(snp->sn_remote_error.sre_data[i]);
-        }
-
-        v_notification = rb_struct_new(v_remote_error_struct,
-          UINT2NUM(snp->sn_remote_error.sre_type),
-          UINT2NUM(snp->sn_remote_error.sre_flags),
-          UINT2NUM(snp->sn_remote_error.sre_length),
-          UINT2NUM(snp->sn_remote_error.sre_error),
-          UINT2NUM(snp->sn_remote_error.sre_assoc_id),
-          rb_ary_new4(snp->sn_remote_error.sre_length, v_temp)
-        );
-        break;
-#ifdef SCTP_SEND_FAILED_EVENT
-      case SCTP_SEND_FAILED_EVENT:
-        v_temp = ALLOCA_N(VALUE, snp->sn_send_failed_event.ssf_length);
-
-        for(i = 0; i < snp->sn_send_failed_event.ssf_length; i++){
-          v_temp[i] = UINT2NUM(snp->sn_send_failed_event.ssf_data[i]);
-        }
-
-        v_notification = rb_struct_new(v_send_failed_event_struct,
-          UINT2NUM(snp->sn_send_failed_event.ssf_type),
-          UINT2NUM(snp->sn_send_failed_event.ssf_length),
-          UINT2NUM(snp->sn_send_failed_event.ssf_error),
-          rb_struct_new(v_sndinfo_struct,
-            UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_sid),
-            UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_flags),
-            UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_ppid),
-            UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_context),
-            UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_assoc_id)
-          ),
-          UINT2NUM(snp->sn_send_failed_event.ssf_assoc_id),
-          rb_ary_new4(snp->sn_send_failed_event.ssf_length, v_temp)
-        );
-        break;
-#else
-      case SCTP_SEND_FAILED:
-        v_temp = ALLOCA_N(VALUE, snp->sn_send_failed.ssf_length);
-
-        for(i = 0; i < snp->sn_send_failed.ssf_length; i++){
-          v_temp[i] = UINT2NUM(snp->sn_send_failed.ssf_data[i]);
-        }
-
-        v_notification = rb_struct_new(v_send_failed_event_struct,
-          UINT2NUM(snp->sn_send_failed.ssf_type),
-          UINT2NUM(snp->sn_send_failed.ssf_length),
-          UINT2NUM(snp->sn_send_failed.ssf_error),
-          Qnil,
-          UINT2NUM(snp->sn_send_failed.ssf_assoc_id),
-          rb_ary_new4(snp->sn_send_failed.ssf_length, v_temp)
-        );
-        break;
-#endif
-      case SCTP_SHUTDOWN_EVENT:
-        v_notification = rb_struct_new(v_shutdown_event_struct,
-          UINT2NUM(snp->sn_shutdown_event.sse_type),
-          UINT2NUM(snp->sn_shutdown_event.sse_length),
-          UINT2NUM(snp->sn_shutdown_event.sse_assoc_id)
-        );
-        break;
-      case SCTP_ADAPTATION_INDICATION:
-        v_notification = rb_struct_new(v_adaptation_event_struct,
-          UINT2NUM(snp->sn_adaptation_event.sai_type),
-          UINT2NUM(snp->sn_adaptation_event.sai_length),
-          UINT2NUM(snp->sn_adaptation_event.sai_adaptation_ind),
-          UINT2NUM(snp->sn_adaptation_event.sai_assoc_id)
-        );
-        break;
-      case SCTP_PARTIAL_DELIVERY_EVENT:
-        v_notification = rb_struct_new(v_partial_delivery_event_struct,
-          UINT2NUM(snp->sn_pdapi_event.pdapi_type),
-          UINT2NUM(snp->sn_pdapi_event.pdapi_length),
-          UINT2NUM(snp->sn_pdapi_event.pdapi_indication),
-          UINT2NUM(snp->sn_pdapi_event.pdapi_stream),
-          UINT2NUM(snp->sn_pdapi_event.pdapi_seq),
-          UINT2NUM(snp->sn_pdapi_event.pdapi_assoc_id)
-        );
-        break;
-      case SCTP_AUTHENTICATION_EVENT:
-        v_notification = rb_struct_new(v_auth_event_struct,
-          UINT2NUM(snp->sn_authkey_event.auth_type),
-          UINT2NUM(snp->sn_authkey_event.auth_length),
-          UINT2NUM(snp->sn_authkey_event.auth_keynumber),
-          UINT2NUM(snp->sn_authkey_event.auth_indication),
-          UINT2NUM(snp->sn_authkey_event.auth_assoc_id)
-        );
-        break;
-      case SCTP_SENDER_DRY_EVENT:
-        v_notification = rb_struct_new(v_sender_dry_event_struct,
-          UINT2NUM(snp->sn_sender_dry_event.sender_dry_type),
-          UINT2NUM(snp->sn_sender_dry_event.sender_dry_flags),
-          UINT2NUM(snp->sn_sender_dry_event.sender_dry_length),
-          UINT2NUM(snp->sn_sender_dry_event.sender_dry_assoc_id)
-        );
-        break;
-    }
-  }
+  if(flags & MSG_NOTIFICATION)
+    v_notification = get_notification_info(buffer);
 
   if(NIL_P(v_notification))
     v_message = rb_str_new(buffer, bytes);
@@ -1664,8 +1670,8 @@ void Init_socket(void){
   rb_define_attr(cSocket, "association_id", 1, 1);
   rb_define_attr(cSocket, "port", 1, 1);
 
-  /* 0.1.0: The version of this library */
-  rb_define_const(cSocket, "VERSION", rb_str_new2("0.1.0"));
+  /* 0.1.1: The version of this library */
+  rb_define_const(cSocket, "VERSION", rb_str_new2("0.1.1"));
 
   /* send flags */
 
