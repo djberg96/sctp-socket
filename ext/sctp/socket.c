@@ -25,6 +25,7 @@ VALUE v_sctp_event_subscribe_struct;
 VALUE v_sctp_receive_info_struct;
 VALUE v_sctp_peer_addr_params_struct;
 VALUE v_sender_dry_event_struct;
+VALUE v_sctp_initmsg_struct;
 
 #if !defined(IOV_MAX)
 #if defined(_SC_IOV_MAX)
@@ -1540,6 +1541,30 @@ static VALUE rsctp_get_peer_address_params(VALUE self){
   );
 }
 
+static VALUE rsctp_get_init_msg(VALUE self){
+  int fileno;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  struct sctp_initmsg initmsg;
+
+  bzero(&initmsg, sizeof(initmsg));
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  size = sizeof(struct sctp_initmsg);
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_INITMSG, (void*)&initmsg, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return rb_struct_new(
+    v_sctp_initmsg_struct,
+    INT2NUM(initmsg.sinit_num_ostreams),
+    INT2NUM(initmsg.sinit_max_instreams),
+    INT2NUM(initmsg.sinit_max_attempts),
+    INT2NUM(initmsg.sinit_max_init_timeo)
+  );
+}
+
 void Init_socket(void){
   mSCTP   = rb_define_module("SCTP");
   cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
@@ -1633,6 +1658,10 @@ void Init_socket(void){
     "max_retransmission_count", NULL
   );
 
+  v_sctp_initmsg_struct = rb_struct_define(
+    "InitMsg", "num_ostreams", "max_instreams", "max_attempts", "max_init_timeout", NULL
+  );
+
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
 
   rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
@@ -1646,6 +1675,7 @@ void Init_socket(void){
   rb_define_method(cSocket, "get_association_info", rsctp_get_association_info, 0);
   rb_define_method(cSocket, "get_subscriptions", rsctp_get_subscriptions, 0);
   rb_define_method(cSocket, "get_peer_address_params", rsctp_get_peer_address_params, 0);
+  rb_define_method(cSocket, "get_initmsg", rsctp_get_init_msg, 0);
   rb_define_method(cSocket, "listen", rsctp_listen, -1);
   rb_define_method(cSocket, "peeloff", rsctp_peeloff, 1);
   rb_define_method(cSocket, "recvmsg", rsctp_recvmsg, -1);
