@@ -1565,6 +1565,49 @@ static VALUE rsctp_get_init_msg(VALUE self){
   );
 }
 
+static VALUE rsctp_get_nodelay(VALUE self){
+  int fileno;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  int value;
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  size = sizeof(int);
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_NODELAY, (void*)&value, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  if(value)
+    return Qtrue;
+  else
+    return Qfalse;
+}
+
+static VALUE rsctp_set_nodelay(VALUE self, VALUE v_bool){
+  int fileno;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  int value;
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  size = sizeof(int);
+
+  if(NIL_P(v_bool) || v_bool == Qfalse)
+    value = 0;
+  else
+    value = 1;
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_NODELAY, (void*)&value, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  if(value)
+    return Qtrue;
+  else
+    return Qfalse;
+}
+
 void Init_socket(void){
   mSCTP   = rb_define_module("SCTP");
   cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
@@ -1677,6 +1720,8 @@ void Init_socket(void){
   rb_define_method(cSocket, "get_peer_address_params", rsctp_get_peer_address_params, 0);
   rb_define_method(cSocket, "get_initmsg", rsctp_get_init_msg, 0);
   rb_define_method(cSocket, "listen", rsctp_listen, -1);
+  rb_define_method(cSocket, "nodelay?", rsctp_get_nodelay, 0);
+  rb_define_method(cSocket, "nodelay=", rsctp_set_nodelay, 1);
   rb_define_method(cSocket, "peeloff", rsctp_peeloff, 1);
   rb_define_method(cSocket, "recvmsg", rsctp_recvmsg, -1);
   rb_define_method(cSocket, "send", rsctp_send, 1);
