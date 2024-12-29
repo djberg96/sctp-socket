@@ -1608,6 +1608,39 @@ static VALUE rsctp_set_nodelay(VALUE self, VALUE v_bool){
     return Qfalse;
 }
 
+static VALUE rsctp_get_autoclose(VALUE self){
+  int fileno;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  int value;
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  size = sizeof(int);
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTOCLOSE, (void*)&value, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return INT2NUM(value);
+}
+
+static VALUE rsctp_set_autoclose(VALUE self, VALUE v_seconds){
+  int fileno;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  int value;
+
+  value = NUM2INT(v_seconds);
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  size = sizeof(int);
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTOCLOSE, (void*)&value, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return v_seconds;
+}
+
 void Init_socket(void){
   mSCTP   = rb_define_module("SCTP");
   cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
@@ -1707,11 +1740,13 @@ void Init_socket(void){
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
 
+  rb_define_method(cSocket, "autoclose=", rsctp_set_autoclose, 1);
   rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
   rb_define_method(cSocket, "close", rsctp_close, 0);
   rb_define_method(cSocket, "connectx", rsctp_connectx, -1);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, -1);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, -1);
+  rb_define_method(cSocket, "get_autoclose", rsctp_get_autoclose, 0);
   rb_define_method(cSocket, "get_status", rsctp_get_status, 0);
   rb_define_method(cSocket, "get_default_send_params", rsctp_get_default_send_params, 0);
   rb_define_method(cSocket, "get_retransmission_info", rsctp_get_retransmission_info, 0);
