@@ -1641,6 +1641,32 @@ static VALUE rsctp_set_autoclose(VALUE self, VALUE v_seconds){
   return v_seconds;
 }
 
+static VALUE rsctp_enable_auth_support(int argc, VALUE* argv, VALUE self){
+  int fileno;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  struct sctp_assoc_value assoc_value;
+  VALUE v_assoc_id;
+
+  rb_scan_args(argc, argv, "01", &v_assoc_id);
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  size = sizeof(struct sctp_assoc_value);
+
+  if(NIL_P(v_assoc_id))
+    assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  else
+    assoc_id = NUM2INT(v_assoc_id);
+
+  assoc_value.assoc_id = assoc_id;
+  assoc_value.assoc_value = 1;
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTH_SUPPORTED, (void*)&assoc_value, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return self;
+}
+
 void Init_socket(void){
   mSCTP   = rb_define_module("SCTP");
   cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
@@ -1744,6 +1770,7 @@ void Init_socket(void){
   rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
   rb_define_method(cSocket, "close", rsctp_close, 0);
   rb_define_method(cSocket, "connectx", rsctp_connectx, -1);
+  rb_define_method(cSocket, "enable_auth_support", rsctp_enable_auth_support, -1);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, -1);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, -1);
   rb_define_method(cSocket, "get_autoclose", rsctp_get_autoclose, 0);
