@@ -1667,10 +1667,9 @@ static VALUE rsctp_enable_auth_support(int argc, VALUE* argv, VALUE self){
   return self;
 }
 
-/*
 static VALUE rsctp_set_auth_key(int argc, VALUE* argv, VALUE self){
-  int fileno;
-  unsigned char* key;
+  int fileno, len;
+  char* key;
   uint keynum;
   socklen_t size;
   sctp_assoc_t assoc_id;
@@ -1680,7 +1679,14 @@ static VALUE rsctp_set_auth_key(int argc, VALUE* argv, VALUE self){
   rb_scan_args(argc, argv, "12", &v_key, &v_keynumber, &v_assoc_id);
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
-  key = (uint)StringValueCStr(v_key);
+  key = StringValuePtr(v_key);
+  len = strlen(key);
+  unsigned char byte_array[len+1];
+
+  for(int i = 0; i < len; i++)
+    byte_array[i] = key[i];
+
+  byte_array[len] = '\0';
 
   auth_key = malloc(sizeof(auth_key) + sizeof(char[strlen(key)+1]));
   size = sizeof(auth_key);
@@ -1698,14 +1704,13 @@ static VALUE rsctp_set_auth_key(int argc, VALUE* argv, VALUE self){
   auth_key->sca_assoc_id = assoc_id;
   auth_key->sca_keynumber = keynum;
   auth_key->sca_keylength = strlen(key); 
-  // auth_key->sca_key = key;
+  memcpy(auth_key->sca_key, byte_array, sizeof(byte_array));
 
   if(sctp_opt_info(fileno, assoc_id, SCTP_AUTH_KEY, (void*)auth_key, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
   return self;
 }
-*/
 
 void Init_socket(void){
   mSCTP   = rb_define_module("SCTP");
@@ -1837,7 +1842,7 @@ void Init_socket(void){
 #endif
 
   rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, 1);
-  //rb_define_method(cSocket, "set_auth_key", rsctp_set_auth_key, -1);
+  rb_define_method(cSocket, "set_auth_key", rsctp_set_auth_key, -1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
   rb_define_method(cSocket, "shutdown", rsctp_shutdown, -1);
   rb_define_method(cSocket, "subscribe", rsctp_subscribe, 1);
