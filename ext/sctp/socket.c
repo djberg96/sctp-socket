@@ -1743,6 +1743,28 @@ static VALUE rsctp_get_shared_key(int argc, VALUE* argv, VALUE self){
   return INT2NUM(authkey.scact_keynumber);
 }
 
+/*
+ * call-seq:
+ *    SCTP::Socket#set_shared_key(keynum, association_id=nil)
+ *
+ * Sets the active shared key to be used to build the association shared key.
+ *
+ * Th +keynum+ parameter is the shared key identifier which the application is
+ * requesting to become the active shared key to be used for sending
+ * authenticated chunks. The key identifier MUST correspond to an existing
+ * shared key. Note that shared key identifier '0' defaults to a null key.
+ *
+ * The association_idparameter, if non-zero, indicates what association that
+ * the shared key identifier is being set active upon. If this element contains
+ * zero, then the activation applies to the endpoint and all future
+ * associations will use the specified shared key identifier.
+ *
+ * For one-to-one sockets, this parameter is ignored.  Note, however, that this
+ * option will set the active key on the association if the socket is connected,
+ * otherwise this will set the default active key for the endpoint.
+ *
+ * By default, the association_id is the result of SCTP::Socket#association_id.
+ */
 static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
   int fileno;
   socklen_t size;
