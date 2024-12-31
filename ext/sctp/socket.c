@@ -1771,6 +1771,37 @@ static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
   return self;
 }
 
+static VALUE rsctp_delete_shared_key(int argc, VALUE* argv, VALUE self){
+  int fileno;
+  socklen_t size;
+  struct sctp_authkeyid authkey;
+  sctp_assoc_t assoc_id;
+  VALUE v_assoc_id, v_keynum;
+  uint keynum;
+
+  rb_scan_args(argc, argv, "11", &v_keynum, &v_assoc_id);
+
+  bzero(&authkey, sizeof(authkey));
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  keynum = NUM2UINT(v_keynum);
+
+  if(NIL_P(v_assoc_id))
+    assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  else
+    assoc_id = NUM2INT(v_assoc_id);
+
+  authkey.scact_assoc_id = assoc_id;
+  authkey.scact_keynumber = keynum;
+
+  size = sizeof(struct sctp_authkeyid);
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTH_DELETE_KEY, (void*)&authkey, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return INT2NUM(authkey.scact_keynumber);
+}
+
 void Init_socket(void){
   mSCTP   = rb_define_module("SCTP");
   cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
@@ -1874,6 +1905,7 @@ void Init_socket(void){
   rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
   rb_define_method(cSocket, "close", rsctp_close, 0);
   rb_define_method(cSocket, "connectx", rsctp_connectx, -1);
+  rb_define_method(cSocket, "delete_shared_key", rsctp_delete_shared_key, -1);
   rb_define_method(cSocket, "enable_auth_support", rsctp_enable_auth_support, -1);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, -1);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, -1);
