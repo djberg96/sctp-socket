@@ -1667,7 +1667,33 @@ static VALUE rsctp_enable_auth_support(int argc, VALUE* argv, VALUE self){
   return self;
 }
 
-static VALUE rsctp_set_auth_key(int argc, VALUE* argv, VALUE self){
+/*
+ * call-seq:
+ *    SCTP::Socket#set_shared_key(key, keynum, association_id=nil)
+ *
+ *  This option will set a shared secret key which is used to build an
+ *  association shared key.
+ *
+ *  The +key+ parameter should be a string (converted to an array of bytes
+ *  internally) that is to be used by the endpoint (or association) as the
+ *  shared secret key. If an empty string is used, then a null key is set.
+ *
+ *  The +keynum+ parameter is the shared key identifier by which the
+ *  application will refer to this key. If a key of the specified index already
+ *  exists, then this new key will replace the old existing key. Note that
+ *  shared key identifier '0' defaults to a null key.
+ *
+ *  The +association_id+, if non-zero, indicates what association that the shared
+ *  key is being set upon. If this argument is zero, then the shared key is set
+ *  upon the endpoint and all future associations will use this key (if not
+ *  changed by subsequent calls). By default this is the result of the
+ *  SCTP::Socket#association_id method.
+ *
+ *  For one-to-one sockets, this parameter is ignored. Note, however, that this
+ *  option will set a key on the association if the socket is connected,
+ *  otherwise this will set a key on the endpoint.
+*/
+static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
   int fileno, len;
   char* key;
   uint keynum;
@@ -2016,9 +2042,9 @@ void Init_socket(void){
 
   rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, 1);
   rb_define_method(cSocket, "set_active_shared_key", rsctp_set_active_shared_key, -1);
-  rb_define_method(cSocket, "set_auth_key", rsctp_set_auth_key, -1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
   //rb_define_method(cSocket, "set_retransmission_info", rsctp_set_retransmission_info, -1);
+  rb_define_method(cSocket, "set_shared_key", rsctp_set_shared_key, -1);
   rb_define_method(cSocket, "shutdown", rsctp_shutdown, -1);
   rb_define_method(cSocket, "subscribe", rsctp_subscribe, 1);
 
