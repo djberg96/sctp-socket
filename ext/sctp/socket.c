@@ -1714,9 +1714,11 @@ static VALUE rsctp_set_auth_key(int argc, VALUE* argv, VALUE self){
 
 /*
  * call-seq:
- *    SCTP::Socket#shared_key(keynum, association_id=nil)
+ *    SCTP::Socket#get_active_shared_key(keynum, association_id=nil)
+ *
+ * Gets the active shared key to be used to build the association shared key.
  */
-static VALUE rsctp_get_shared_key(int argc, VALUE* argv, VALUE self){
+static VALUE rsctp_get_active_shared_key(int argc, VALUE* argv, VALUE self){
   int fileno;
   socklen_t size;
   struct sctp_authkeyid authkey;
@@ -1749,7 +1751,7 @@ static VALUE rsctp_get_shared_key(int argc, VALUE* argv, VALUE self){
 
 /*
  * call-seq:
- *    SCTP::Socket#set_shared_key(keynum, association_id=nil)
+ *    SCTP::Socket#set_active_shared_key(keynum, association_id=nil)
  *
  * Sets the active shared key to be used to build the association shared key.
  *
@@ -1769,7 +1771,7 @@ static VALUE rsctp_get_shared_key(int argc, VALUE* argv, VALUE self){
  *
  * By default, the association_id is the result of SCTP::Socket#association_id.
  */
-static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
+static VALUE rsctp_set_active_shared_key(int argc, VALUE* argv, VALUE self){
   int fileno;
   socklen_t size;
   struct sctp_authkeyid authkey;
@@ -1987,13 +1989,13 @@ void Init_socket(void){
   rb_define_method(cSocket, "enable_auth_support", rsctp_enable_auth_support, -1);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, -1);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, -1);
+  rb_define_method(cSocket, "get_active_shared_key", rsctp_get_active_shared_key, -1);
   rb_define_method(cSocket, "get_association_info", rsctp_get_association_info, 0);
   rb_define_method(cSocket, "get_autoclose", rsctp_get_autoclose, 0);
   rb_define_method(cSocket, "get_default_send_params", rsctp_get_default_send_params, 0);
   rb_define_method(cSocket, "get_initmsg", rsctp_get_init_msg, 0);
   rb_define_method(cSocket, "get_peer_address_params", rsctp_get_peer_address_params, 0);
   rb_define_method(cSocket, "get_retransmission_info", rsctp_get_retransmission_info, 0);
-  rb_define_method(cSocket, "get_shared_key", rsctp_get_shared_key, -1);
   rb_define_method(cSocket, "get_status", rsctp_get_status, 0);
   rb_define_method(cSocket, "get_subscriptions", rsctp_get_subscriptions, 0);
   rb_define_method(cSocket, "listen", rsctp_listen, -1);
@@ -2013,10 +2015,10 @@ void Init_socket(void){
 #endif
 
   rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, 1);
+  rb_define_method(cSocket, "set_active_shared_key", rsctp_set_active_shared_key, -1);
   rb_define_method(cSocket, "set_auth_key", rsctp_set_auth_key, -1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
-  rb_define_method(cSocket, "set_retransmission_info", rsctp_set_retransmission_info, -1);
-  rb_define_method(cSocket, "set_shared_key", rsctp_set_shared_key, -1);
+  //rb_define_method(cSocket, "set_retransmission_info", rsctp_set_retransmission_info, -1);
   rb_define_method(cSocket, "shutdown", rsctp_shutdown, -1);
   rb_define_method(cSocket, "subscribe", rsctp_subscribe, 1);
 
