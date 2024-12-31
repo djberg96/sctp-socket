@@ -1771,6 +1771,31 @@ static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
   return self;
 }
 
+/*
+ * call-seq:
+ *    SCTP::Socket#delete_shared_key(keynum, association_id=nil)
+ *
+ * Delete a shared secret key from use.
+ *
+ * The +keynum+ parameter is the shared key identifier which the application
+ * is requesting to be deleted. The key identifier MUST correspond to an
+ * existing shared key and MUST NOT be the current active key.
+ *
+ * If this parameter is zero, use of the null key identifier '0' is disabled
+ * on the endpoint and/or association.
+ *
+ * The +association_id+ parameter, if non-zero, indicates what association that
+ * the shared key identifier is being deleted from. By default this is the
+ * association that's returned via SCTP::Socket#association_id.
+ *
+ * If set to zero, then the shared key is deleted from the endpoint and
+ * and ALL associations will no longer use the specified shared key identifier
+ * (unless otherwise set on the association using SCTP_AUTH_KEY).
+ *
+ * For one-to-one sockets, this parameter is ignored. Note, however, that this
+ * option will delete the key from the association if the socket is connected,
+ * otherwise this will delete the key from the endpoint.
+ */
 static VALUE rsctp_delete_shared_key(int argc, VALUE* argv, VALUE self){
   int fileno;
   socklen_t size;
@@ -1802,6 +1827,15 @@ static VALUE rsctp_delete_shared_key(int argc, VALUE* argv, VALUE self){
   return INT2NUM(authkey.scact_keynumber);
 }
 
+/*
+ * call-seq:
+ *    SCTP::Socket#map_ipv4=(bool)
+ *
+ * If set to true and the socket is type PF_INET6, then IPv4 addresses will be
+ * mapped to V6 representation. If set to false (the default), then no mapping
+ * will be done of V4 addresses and a user will receive both PF_INET6 and
+ * PF_INET type addresses on the socket.
+ */
 static VALUE rsctp_map_ipv4(VALUE self, VALUE v_bool){
   int fileno, boolean;
   sctp_assoc_t assoc_id;
@@ -1954,6 +1988,7 @@ void Init_socket(void){
   rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, 1);
   rb_define_method(cSocket, "set_auth_key", rsctp_set_auth_key, -1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
+  rb_define_method(cSocket, "set_retransmission_info", rsctp_set_retransmission_info, -1);
   rb_define_method(cSocket, "shared_key", rsctp_get_shared_key, -1);
   rb_define_method(cSocket, "shared_key=", rsctp_set_shared_key, -1);
   rb_define_method(cSocket, "shutdown", rsctp_shutdown, -1);
