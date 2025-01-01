@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name        = 'sctp-socket'
-  spec.version     = '0.1.0'
+  spec.version     = '0.1.1'
   spec.author      = 'Daniel Berger'
   spec.email       = 'djberg96@gmail.com'
   spec.summary     = 'Ruby bindings for SCTP sockets'
@@ -26,7 +26,8 @@ Gem::Specification.new do |spec|
     'documentation_uri'     => 'https://github.com/djberg96/sctp-socket/wiki',
     'source_code_uri'       => 'https://github.com/djberg96/sctp-socket',
     'wiki_uri'              => 'https://github.com/djberg96/sctp-socket/wiki',
-    'rubygems_mfa_required' => 'true'
+    'rubygems_mfa_required' => 'true',
+    'funding_uri'           => 'https://github.com/sponsors/djberg96'
   }
 
   spec.description = <<-EOF

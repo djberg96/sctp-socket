@@ -1,3 +1,16 @@
+## 0.1.1 - 1-Jan-2025
+* Added the set_shared_key method.
+* Added the get_active_shared_key and set_active_shared_key methods.
+* Added the get_initmsg method.
+* Added autoclose getter and setter methods.
+* Added the enable_auth_support method.
+* Added methods for getting, setting or deleting a shared key.
+* Added the map_ipv4 method.
+* Updated the get_peer_address_params method to include more info.
+* Many comment additions and updates.
+* Added a rake task to create dummy IP addresses for testing.
+* Added a funding_uri to the gemspec.
+
 ## 0.1.0 - 31-May-2024
 * Added support for sender dry events.
 * Added the get_peer_address_params method.

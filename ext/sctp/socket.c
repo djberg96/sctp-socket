@@ -25,6 +25,7 @@ VALUE v_sctp_event_subscribe_struct;
 VALUE v_sctp_receive_info_struct;
 VALUE v_sctp_peer_addr_params_struct;
 VALUE v_sender_dry_event_struct;
+VALUE v_sctp_initmsg_struct;
 
 #if !defined(IOV_MAX)
 #if defined(_SC_IOV_MAX)
@@ -249,6 +250,9 @@ VALUE get_notification_info(char* buffer){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket.new(domain = Socket::AF_INET, type = Socket::SOCK_STREAM)
+ *
  * Create and return a new SCTP::Socket instance. You may optionally pass in
  * a domain (aka family) value and socket type. By default these are AF_INET
  * and SOCK_SEQPACKET, respectively.
@@ -291,27 +295,30 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
 }
 
 /*
- *  Bind a subset of IP addresses associated with the host system on the
- *  given port, or a port assigned by the operating system if none is provided.
+ * call-seq:
+ *    SCTP::Socket#bindx(options)
  *
- *  Note that you can both add or remove an address to or from the socket
- *  using the SCTP_BINDX_ADD_ADDR (default) or SCTP_BINDX_REM_ADDR constants,
- *  respectively.
+ * Bind a subset of IP addresses associated with the host system on the
+ * given port, or a port assigned by the operating system if none is provided.
  *
- *  Example:
+ * Note that you can both add or remove an address to or from the socket
+ * using the SCTP_BINDX_ADD_ADDR (default) or SCTP_BINDX_REM_ADDR constants,
+ * respectively.
  *
- *    socket = SCTP::Socket.new
+ * Example:
  *
- *    # Bind 2 addresses
- *    socket.bindx(:port => 64325, :addresses => ['10.0.4.5', '10.0.5.5'])
+ *   socket = SCTP::Socket.new
  *
- *    # Remove 1 later
- *    socket.bindx(:addresses => ['10.0.4.5'], :flags => SCTP::Socket::BINDX_REM_ADDR)
+ *   # Bind 2 addresses
+ *   socket.bindx(:port => 64325, :addresses => ['10.0.4.5', '10.0.5.5'])
  *
- *  If no addresses are specified, then it will bind to all available interfaces. If
- *  no port is specified, then one will be assigned by the host.
+ *   # Remove 1 later
+ *   socket.bindx(:addresses => ['10.0.4.5'], :flags => SCTP::Socket::BINDX_REM_ADDR)
  *
- *  Returns the port that it was bound to.
+ * If no addresses are specified, then it will bind to all available interfaces. If
+ * no port is specified, then one will be assigned by the host.
+ *
+ * Returns the port that it was bound to.
  */
 static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   struct sockaddr_in addrs[8];
@@ -381,6 +388,9 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#connectx(options)
+ *
  * Connect the socket to a multihomed peer via the provided array of addresses
  * using the domain specified in the constructor. You must also specify the port.
  *
@@ -438,6 +448,9 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#close
+ *
  * Close the socket. You should always do this.
  *
  * Example:
@@ -455,22 +468,25 @@ static VALUE rsctp_close(VALUE self){
 }
 
 /*
- *  Return an array of all addresses of a peer of the current socket
- *  and association number.
+ * call-seq:
+ *    SCTP::Socket#getpeernames 
  *
- *  You may optionally pass a assocation fileno and association ID. Typically
- *  this information would come from the peeloff method.
+ * Return an array of all addresses of a peer of the current socket
+ * and association number.
  *
- *  Example:
+ * You may optionally pass a assocation fileno and association ID. Typically
+ * this information would come from the peeloff method.
  *
- *    socket = SCTP::Socket.new
- *    # ...
- *    p socket.getpeernames
+ * Example:
  *
- *    info = socket.recvmsg
- *    association_fileno = socket.peeloff(info.association_id)
+ *   socket = SCTP::Socket.new
+ *   # ...
+ *   p socket.getpeernames
+ * 
+ *   info = socket.recvmsg
+ *   association_fileno = socket.peeloff(info.association_id)
  *
- *    p socket.getpeernames(association_fileno, info.association_id)
+ *   p socket.getpeernames(association_fileno, info.association_id)
  */
 static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
   sctp_assoc_t assoc_id;
@@ -513,6 +529,9 @@ static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#getlocalnames
+ *
  * Return an array of local addresses that are part of the association.
  *
  * Example:
@@ -568,6 +587,9 @@ static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
 
 #ifdef HAVE_SCTP_SENDV
 /*
+ * call-seq:
+ *    SCTP::Socket#sendv(options)
+ *
  * Transmit a message to an SCTP endpoint using a gather-write. The following
  * hash of options is permitted:
  *
@@ -746,6 +768,9 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
 #endif
 
 /*
+ * call-seq:
+ *    SCTP::Socket.send(options)
+ *
  * Send a message on an already-connected socket to a specific association.
  *
  * Example:
@@ -839,6 +864,9 @@ static VALUE rsctp_send(VALUE self, VALUE v_options){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#sendmsg(options)
+ *
  * Transmit a message to an SCTP endpoint. The following hash of options
  * is permitted:
  *
@@ -962,6 +990,9 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#recvmsg(flags=0)
+ *
  * Receive a message from another SCTP endpoint.
  *
  * Example:
@@ -1039,6 +1070,9 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#set_initmsg(options)
+ *
  * Set the initial parameters used by the socket when sending out the INIT message.
  *
  * Example:
@@ -1088,6 +1122,9 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#subscribe(options)
+ *
  * Subscribe to various notification type events, which will generate additional
  * data that the socket may receive. The possible notification type events are
  * as follows:
@@ -1172,6 +1209,9 @@ static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#listen(backlog=128)
+ *
  * Marks the socket referred to by sockfd as a passive socket, i.e. a socket that
  * will be used to accept incoming connection requests.
  *
@@ -1215,6 +1255,9 @@ static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#peeloff(association_id)
+ *
  * Extracts an association contained by a one-to-many socket connection into
  * a one-to-one style socket. Returns the socket descriptor (fileno).
  *
@@ -1245,6 +1288,9 @@ static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#get_default_send_params
+ *
  * Returns the default set of parameters that a call to the sendto function
  * uses on this association. This is a struct that contains the following
  * members:
@@ -1289,6 +1335,9 @@ static VALUE rsctp_get_default_send_params(VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#get_association_info
+ *
  * Returns the association specific parameters. This is a struct
  * that contains the following members:
  *
@@ -1328,6 +1377,9 @@ static VALUE rsctp_get_association_info(VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#shutdown
+ *
  * Shuts down socket send and receive operations.
  *
  * Optionally accepts an argument that specifieds the type of shutdown.
@@ -1362,6 +1414,9 @@ static VALUE rsctp_shutdown(int argc, VALUE* argv, VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#get_retransmission_info
+ *
  * Returns the protocol parameters that are used to initialize and bind the
  * retransmission timeout (RTO) tunable. This is a struct with the following
  * members:
@@ -1396,6 +1451,9 @@ static VALUE rsctp_get_retransmission_info(VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#get_status
+ *
  * Get the status of a connected socket.
  *
  * Example:
@@ -1460,6 +1518,9 @@ static VALUE rsctp_get_status(VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#get_subscriptions
+ *
  * Returns a struct of events detailing which events have been
  * subscribed to by the socket. The struct contains the following
  * members:
@@ -1512,6 +1573,27 @@ static VALUE rsctp_get_subscriptions(VALUE self){
   );
 }
 
+/*
+ * call-seq:
+ *    SCTP::Socket#get_peer_address_params
+ *
+ * Applications can enable or disable heartbeats for any peer address of
+ * an association, modify an address's heartbeat interval, force a
+ * heartbeat to be sent immediately, and adjust the address's maximum
+ * number of retransmissions sent before an address is considered
+ * unreachable.
+ *
+ * This method returns a struct that contains this information. It contains
+ * the following struct members.
+ *
+ * * association_id
+ * * address
+ * * heartbeat_interval
+ * * max_retransmission_count
+ * * path_mtu
+ * * flags
+ * * ipv6_flowlabel
+ */
 static VALUE rsctp_get_peer_address_params(VALUE self){
   int fileno;
   char str[16];
@@ -1536,8 +1618,445 @@ static VALUE rsctp_get_peer_address_params(VALUE self){
     INT2NUM(paddr.spp_assoc_id),
     rb_str_new2(str),
     INT2NUM(paddr.spp_hbinterval),
-    INT2NUM(paddr.spp_pathmaxrxt)
+    INT2NUM(paddr.spp_pathmaxrxt),
+    INT2NUM(paddr.spp_pathmtu),
+    INT2NUM(paddr.spp_flags),
+    INT2NUM(paddr.spp_ipv6_flowlabel)
   );
+}
+
+/*
+ * call-seq:
+ *    SCTP::Socket#get_init_msg
+ *
+ * Returns a structure that contains various initialization parameters.
+ *
+ * * num_ostreams: A number representing the number of streams that the
+ *     application wishes to be able to send to.
+ *
+ * * max_instreams: The maximum number of inbound streams the application
+ *     is prepared to support.
+ *
+ * * max_attempts: The number of attempts the SCTP endpoint should make at
+ *     resending the INIT.
+ *
+ * * max_init_timeout: This value represents the largest Timeout or RTO value
+ *     (in milliseconds) to use in attempting an INIT.
+ */
+static VALUE rsctp_get_init_msg(VALUE self){
+  int fileno;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  struct sctp_initmsg initmsg;
+
+  bzero(&initmsg, sizeof(initmsg));
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  size = sizeof(struct sctp_initmsg);
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_INITMSG, (void*)&initmsg, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return rb_struct_new(
+    v_sctp_initmsg_struct,
+    INT2NUM(initmsg.sinit_num_ostreams),
+    INT2NUM(initmsg.sinit_max_instreams),
+    INT2NUM(initmsg.sinit_max_attempts),
+    INT2NUM(initmsg.sinit_max_init_timeo)
+  );
+}
+
+/*
+ * call-seq:
+ *    SCTP::Socket#nodelay?
+ *
+ * Returns whether or not the nodelay option has been set.
+ */
+static VALUE rsctp_get_nodelay(VALUE self){
+  int fileno;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  int value;
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  size = sizeof(int);
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_NODELAY, (void*)&value, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  if(value)
+    return Qtrue;
+  else
+    return Qfalse;
+}
+
+/*
+ * call-seq:
+ *    SCTP::Socket#nodelay=(bool)
+ *
+ * Turn on/off any Nagle-like algorithm. This means that packets are generally
+ * sent as soon as possible and no unnecessary delays are introduced, at the
+ * cost of more packets in the network.
+ */
+static VALUE rsctp_set_nodelay(VALUE self, VALUE v_bool){
+  int fileno;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  int value;
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  size = sizeof(int);
+
+  if(NIL_P(v_bool) || v_bool == Qfalse)
+    value = 0;
+  else
+    value = 1;
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_NODELAY, (void*)&value, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  if(value)
+    return Qtrue;
+  else
+    return Qfalse;
+}
+
+/*
+ * call-seq:
+ *    SCTP::Socket#autoclose
+ *
+ * Returns the number of seconds before socket associations automatically
+ * shut down.
+ */
+static VALUE rsctp_get_autoclose(VALUE self){
+  int fileno;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  int value;
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  size = sizeof(int);
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTOCLOSE, (void*)&value, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return INT2NUM(value);
+}
+
+/*
+ * call-seq:
+ *    SCTP::Socket#autoclose=(seconds=0)
+ *
+ * When set it will cause associations that are idle for more than the specified
+ * number of seconds to automatically close using the graceful shutdown
+ * procedure. An association being idle is defined as an association that has
+ * NOT sent or received user data.
+ *
+ * The special value of 0 indicates that no automatic close of any associations
+ * should be performed, this is the default value. The option expects an integer
+ * defining the number of seconds of idle time before an association is closed.
+ *
+ * An application using this option should enable receiving the association
+ * change notification. This is the only mechanism an application is informed
+ * about the closing of an association. After an association is closed, the
+ * association ID assigned to it can be reused. An application should be aware
+ * of this to avoid the possible problem of sending data to an incorrect peer
+ * end point.
+ *
+ * This socket option is applicable to the one-to-many style socket only.
+ */
+static VALUE rsctp_set_autoclose(VALUE self, VALUE v_seconds){
+  int fileno;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  int value;
+
+  value = NUM2INT(v_seconds);
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  size = sizeof(int);
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTOCLOSE, (void*)&value, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return v_seconds;
+}
+
+/*
+ * call-seq:
+ *    SCTP::Socket#enable_auth_support(association_id=nil)
+ *
+ * Enables auth for future associations.
+ */
+static VALUE rsctp_enable_auth_support(int argc, VALUE* argv, VALUE self){
+  int fileno;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  struct sctp_assoc_value assoc_value;
+  VALUE v_assoc_id;
+
+  rb_scan_args(argc, argv, "01", &v_assoc_id);
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  size = sizeof(struct sctp_assoc_value);
+
+  if(NIL_P(v_assoc_id))
+    assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  else
+    assoc_id = NUM2INT(v_assoc_id);
+
+  assoc_value.assoc_id = assoc_id;
+  assoc_value.assoc_value = 1;
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTH_SUPPORTED, (void*)&assoc_value, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return self;
+}
+
+/*
+ * call-seq:
+ *    SCTP::Socket#set_shared_key(key, keynum, association_id=nil)
+ *
+ *  This option will set a shared secret key which is used to build an
+ *  association shared key.
+ *
+ *  The +key+ parameter should be a string (converted to an array of bytes
+ *  internally) that is to be used by the endpoint (or association) as the
+ *  shared secret key. If an empty string is used, then a null key is set.
+ *
+ *  The +keynum+ parameter is the shared key identifier by which the
+ *  application will refer to this key. If a key of the specified index already
+ *  exists, then this new key will replace the old existing key. Note that
+ *  shared key identifier '0' defaults to a null key.
+ *
+ *  The +association_id+, if non-zero, indicates what association that the shared
+ *  key is being set upon. If this argument is zero, then the shared key is set
+ *  upon the endpoint and all future associations will use this key (if not
+ *  changed by subsequent calls). By default this is the result of the
+ *  SCTP::Socket#association_id method.
+ *
+ *  For one-to-one sockets, this parameter is ignored. Note, however, that this
+ *  option will set a key on the association if the socket is connected,
+ *  otherwise this will set a key on the endpoint.
+*/
+static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
+  int fileno, len;
+  char* key;
+  uint keynum;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  struct sctp_authkey* auth_key;
+  VALUE v_key, v_keynumber, v_assoc_id;
+
+  rb_scan_args(argc, argv, "12", &v_key, &v_keynumber, &v_assoc_id);
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  key = StringValuePtr(v_key);
+  len = strlen(key);
+  unsigned char byte_array[len+1];
+
+  for(int i = 0; i < len; i++)
+    byte_array[i] = key[i];
+
+  byte_array[len] = '\0';
+
+  auth_key = malloc(sizeof(auth_key) + sizeof(char[strlen(key)+1]));
+  size = sizeof(auth_key);
+
+  if(NIL_P(v_assoc_id))
+    assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  else
+    assoc_id = NUM2INT(v_assoc_id);
+
+  if(NIL_P(v_keynumber))
+    keynum = 1;
+  else
+    keynum = NUM2INT(v_keynumber);
+
+  auth_key->sca_assoc_id = assoc_id;
+  auth_key->sca_keynumber = keynum;
+  auth_key->sca_keylength = strlen(key); 
+  memcpy(auth_key->sca_key, byte_array, sizeof(byte_array));
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTH_KEY, (void*)auth_key, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return self;
+}
+
+/*
+ * call-seq:
+ *    SCTP::Socket#get_active_shared_key(keynum, association_id=nil)
+ *
+ * Gets the active shared key to be used to build the association shared key.
+ */
+static VALUE rsctp_get_active_shared_key(int argc, VALUE* argv, VALUE self){
+  int fileno;
+  socklen_t size;
+  struct sctp_authkeyid authkey;
+  sctp_assoc_t assoc_id;
+  VALUE v_assoc_id, v_keynum;
+  uint keynum;
+
+  rb_scan_args(argc, argv, "11", &v_keynum, &v_assoc_id);
+
+  bzero(&authkey, sizeof(authkey));
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  keynum = NUM2UINT(v_keynum);
+
+  if(NIL_P(v_assoc_id))
+    assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  else
+    assoc_id = NUM2INT(v_assoc_id);
+
+  authkey.scact_assoc_id = assoc_id;
+  authkey.scact_keynumber = keynum;
+
+  size = sizeof(struct sctp_authkeyid);
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTH_ACTIVE_KEY, (void*)&authkey, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return INT2NUM(authkey.scact_keynumber);
+}
+
+/*
+ * call-seq:
+ *    SCTP::Socket#set_active_shared_key(keynum, association_id=nil)
+ *
+ * Sets the active shared key to be used to build the association shared key.
+ *
+ * Th +keynum+ parameter is the shared key identifier which the application is
+ * requesting to become the active shared key to be used for sending
+ * authenticated chunks. The key identifier MUST correspond to an existing
+ * shared key. Note that shared key identifier '0' defaults to a null key.
+ *
+ * The association_idparameter, if non-zero, indicates what association that
+ * the shared key identifier is being set active upon. If this element contains
+ * zero, then the activation applies to the endpoint and all future
+ * associations will use the specified shared key identifier.
+ *
+ * For one-to-one sockets, this parameter is ignored.  Note, however, that this
+ * option will set the active key on the association if the socket is connected,
+ * otherwise this will set the default active key for the endpoint.
+ *
+ * By default, the association_id is the result of SCTP::Socket#association_id.
+ */
+static VALUE rsctp_set_active_shared_key(int argc, VALUE* argv, VALUE self){
+  int fileno;
+  socklen_t size;
+  struct sctp_authkeyid authkey;
+  sctp_assoc_t assoc_id;
+  VALUE v_assoc_id, v_keynum;
+  uint keynum;
+
+  rb_scan_args(argc, argv, "11", &v_keynum, &v_assoc_id);
+
+  keynum = NUM2UINT(v_keynum);
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+
+  if(NIL_P(v_assoc_id))
+    assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  else
+    assoc_id = NUM2INT(v_assoc_id);
+
+  authkey.scact_assoc_id = assoc_id;
+  authkey.scact_keynumber = keynum;
+  size = sizeof(struct sctp_authkeyid);
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTH_ACTIVE_KEY, (void*)&authkey, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return self;
+}
+
+/*
+ * call-seq:
+ *    SCTP::Socket#delete_shared_key(keynum, association_id=nil)
+ *
+ * Delete a shared secret key from use.
+ *
+ * The +keynum+ parameter is the shared key identifier which the application
+ * is requesting to be deleted. The key identifier MUST correspond to an
+ * existing shared key and MUST NOT be the current active key.
+ *
+ * If this parameter is zero, use of the null key identifier '0' is disabled
+ * on the endpoint and/or association.
+ *
+ * The +association_id+ parameter, if non-zero, indicates what association that
+ * the shared key identifier is being deleted from. By default this is the
+ * association that's returned via SCTP::Socket#association_id.
+ *
+ * If set to zero, then the shared key is deleted from the endpoint and
+ * and ALL associations will no longer use the specified shared key identifier
+ * (unless otherwise set on the association using SCTP_AUTH_KEY).
+ *
+ * For one-to-one sockets, this parameter is ignored. Note, however, that this
+ * option will delete the key from the association if the socket is connected,
+ * otherwise this will delete the key from the endpoint.
+ */
+static VALUE rsctp_delete_shared_key(int argc, VALUE* argv, VALUE self){
+  int fileno;
+  socklen_t size;
+  struct sctp_authkeyid authkey;
+  sctp_assoc_t assoc_id;
+  VALUE v_assoc_id, v_keynum;
+  uint keynum;
+
+  rb_scan_args(argc, argv, "11", &v_keynum, &v_assoc_id);
+
+  bzero(&authkey, sizeof(authkey));
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  keynum = NUM2UINT(v_keynum);
+
+  if(NIL_P(v_assoc_id))
+    assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  else
+    assoc_id = NUM2INT(v_assoc_id);
+
+  authkey.scact_assoc_id = assoc_id;
+  authkey.scact_keynumber = keynum;
+
+  size = sizeof(struct sctp_authkeyid);
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTH_DELETE_KEY, (void*)&authkey, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return INT2NUM(authkey.scact_keynumber);
+}
+
+/*
+ * call-seq:
+ *    SCTP::Socket#map_ipv4=(bool)
+ *
+ * If set to true and the socket is type PF_INET6, then IPv4 addresses will be
+ * mapped to V6 representation. If set to false (the default), then no mapping
+ * will be done of V4 addresses and a user will receive both PF_INET6 and
+ * PF_INET type addresses on the socket.
+ */
+static VALUE rsctp_map_ipv4(VALUE self, VALUE v_bool){
+  int fileno, boolean;
+  sctp_assoc_t assoc_id;
+  socklen_t size;
+
+  boolean = 0;
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+
+  if(v_bool == Qtrue)
+    boolean = 1;
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_I_WANT_MAPPED_V4_ADDR, (void*)&boolean, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return v_bool;
 }
 
 void Init_socket(void){
@@ -1630,23 +2149,37 @@ void Init_socket(void){
 
   v_sctp_peer_addr_params_struct = rb_struct_define(
     "PeerAddressParams", "association_id", "address", "heartbeat_interval",
-    "max_retransmission_count", NULL
+    "max_retransmission_count", "path_mtu", "flags",
+    "ipv6_flowlabel", NULL
+  );
+
+  v_sctp_initmsg_struct = rb_struct_define(
+    "InitMsg", "num_ostreams", "max_instreams", "max_attempts", "max_init_timeout", NULL
   );
 
   rb_define_method(cSocket, "initialize", rsctp_init, -1);
 
+  rb_define_method(cSocket, "autoclose=", rsctp_set_autoclose, 1);
   rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
   rb_define_method(cSocket, "close", rsctp_close, 0);
   rb_define_method(cSocket, "connectx", rsctp_connectx, -1);
+  rb_define_method(cSocket, "delete_shared_key", rsctp_delete_shared_key, -1);
+  rb_define_method(cSocket, "enable_auth_support", rsctp_enable_auth_support, -1);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, -1);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, -1);
-  rb_define_method(cSocket, "get_status", rsctp_get_status, 0);
-  rb_define_method(cSocket, "get_default_send_params", rsctp_get_default_send_params, 0);
-  rb_define_method(cSocket, "get_retransmission_info", rsctp_get_retransmission_info, 0);
+  rb_define_method(cSocket, "get_active_shared_key", rsctp_get_active_shared_key, -1);
   rb_define_method(cSocket, "get_association_info", rsctp_get_association_info, 0);
-  rb_define_method(cSocket, "get_subscriptions", rsctp_get_subscriptions, 0);
+  rb_define_method(cSocket, "get_autoclose", rsctp_get_autoclose, 0);
+  rb_define_method(cSocket, "get_default_send_params", rsctp_get_default_send_params, 0);
+  rb_define_method(cSocket, "get_initmsg", rsctp_get_init_msg, 0);
   rb_define_method(cSocket, "get_peer_address_params", rsctp_get_peer_address_params, 0);
+  rb_define_method(cSocket, "get_retransmission_info", rsctp_get_retransmission_info, 0);
+  rb_define_method(cSocket, "get_status", rsctp_get_status, 0);
+  rb_define_method(cSocket, "get_subscriptions", rsctp_get_subscriptions, 0);
   rb_define_method(cSocket, "listen", rsctp_listen, -1);
+  rb_define_method(cSocket, "map_ipv4=", rsctp_map_ipv4, 1);
+  rb_define_method(cSocket, "nodelay?", rsctp_get_nodelay, 0);
+  rb_define_method(cSocket, "nodelay=", rsctp_set_nodelay, 1);
   rb_define_method(cSocket, "peeloff", rsctp_peeloff, 1);
   rb_define_method(cSocket, "recvmsg", rsctp_recvmsg, -1);
   rb_define_method(cSocket, "send", rsctp_send, 1);
@@ -1660,7 +2193,10 @@ void Init_socket(void){
 #endif
 
   rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, 1);
+  rb_define_method(cSocket, "set_active_shared_key", rsctp_set_active_shared_key, -1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
+  //rb_define_method(cSocket, "set_retransmission_info", rsctp_set_retransmission_info, -1);
+  rb_define_method(cSocket, "set_shared_key", rsctp_set_shared_key, -1);
   rb_define_method(cSocket, "shutdown", rsctp_shutdown, -1);
   rb_define_method(cSocket, "subscribe", rsctp_subscribe, 1);
 
