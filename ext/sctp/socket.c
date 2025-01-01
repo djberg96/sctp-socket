@@ -1513,6 +1513,27 @@ static VALUE rsctp_get_subscriptions(VALUE self){
   );
 }
 
+/*
+ * call-seq:
+ *    SCTP::Socket#get_peer_address_params
+ *
+ * Applications can enable or disable heartbeats for any peer address of
+ * an association, modify an address's heartbeat interval, force a
+ * heartbeat to be sent immediately, and adjust the address's maximum
+ * number of retransmissions sent before an address is considered
+ * unreachable.
+ *
+ * This method returns a struct that contains this information. It contains
+ * the following struct members.
+ *
+ * * association_id
+ * * address
+ * * heartbeat_interval
+ * * max_retransmission_count
+ * * path_mtu
+ * * flags
+ * * ipv6_flowlabel
+ */
 static VALUE rsctp_get_peer_address_params(VALUE self){
   int fileno;
   char str[16];
@@ -1537,7 +1558,10 @@ static VALUE rsctp_get_peer_address_params(VALUE self){
     INT2NUM(paddr.spp_assoc_id),
     rb_str_new2(str),
     INT2NUM(paddr.spp_hbinterval),
-    INT2NUM(paddr.spp_pathmaxrxt)
+    INT2NUM(paddr.spp_pathmaxrxt),
+    INT2NUM(paddr.spp_pathmtu),
+    INT2NUM(paddr.spp_flags),
+    INT2NUM(paddr.spp_ipv6_flowlabel)
   );
 }
 
@@ -2065,7 +2089,8 @@ void Init_socket(void){
 
   v_sctp_peer_addr_params_struct = rb_struct_define(
     "PeerAddressParams", "association_id", "address", "heartbeat_interval",
-    "max_retransmission_count", NULL
+    "max_retransmission_count", "path_mtu", "flags",
+    "ipv6_flowlabel", NULL
   );
 
   v_sctp_initmsg_struct = rb_struct_define(
