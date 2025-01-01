@@ -1624,6 +1624,28 @@ static VALUE rsctp_get_autoclose(VALUE self){
   return INT2NUM(value);
 }
 
+/*
+ * call-seq:
+ *    SCTP::Socket#autoclose=(seconds=0)
+ *
+ * When set it will cause associations that are idle for more than the specified
+ * number of seconds to automatically close using the graceful shutdown
+ * procedure. An association being idle is defined as an association that has
+ * NOT sent or received user data.
+ *
+ * The special value of 0 indicates that no automatic close of any associations
+ * should be performed, this is the default value. The option expects an integer
+ * defining the number of seconds of idle time before an association is closed.
+ *
+ * An application using this option should enable receiving the association
+ * change notification. This is the only mechanism an application is informed
+ * about the closing of an association. After an association is closed, the
+ * association ID assigned to it can be reused. An application should be aware
+ * of this to avoid the possible problem of sending data to an incorrect peer
+ * end point.
+ *
+ * This socket option is applicable to the one-to-many style socket only.
+ */
 static VALUE rsctp_set_autoclose(VALUE self, VALUE v_seconds){
   int fileno;
   socklen_t size;
@@ -1641,6 +1663,12 @@ static VALUE rsctp_set_autoclose(VALUE self, VALUE v_seconds){
   return v_seconds;
 }
 
+/*
+ * call-seq:
+ *    SCTP::Socket#enable_auth_support(association_id=nil)
+ *
+ * Enables auth for future associations.
+ */
 static VALUE rsctp_enable_auth_support(int argc, VALUE* argv, VALUE self){
   int fileno;
   socklen_t size;
