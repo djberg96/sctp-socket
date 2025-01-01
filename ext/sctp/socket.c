@@ -1565,6 +1565,12 @@ static VALUE rsctp_get_init_msg(VALUE self){
   );
 }
 
+/*
+ * call-seq:
+ *    SCTP::Socket#nodelay?
+ *
+ * Returns whether or not the nodelay option has been set.
+ */
 static VALUE rsctp_get_nodelay(VALUE self){
   int fileno;
   socklen_t size;
@@ -1584,6 +1590,14 @@ static VALUE rsctp_get_nodelay(VALUE self){
     return Qfalse;
 }
 
+/*
+ * call-seq:
+ *    SCTP::Socket#nodelay=(bool)
+ *
+ * Turn on/off any Nagle-like algorithm. This means that packets are generally
+ * sent as soon as possible and no unnecessary delays are introduced, at the
+ * cost of more packets in the network.
+ */
 static VALUE rsctp_set_nodelay(VALUE self, VALUE v_bool){
   int fileno;
   socklen_t size;
@@ -1608,6 +1622,13 @@ static VALUE rsctp_set_nodelay(VALUE self, VALUE v_bool){
     return Qfalse;
 }
 
+/*
+ * call-seq:
+ *    SCTP::Socket#autoclose
+ *
+ * Returns the number of seconds before socket associations automatically
+ * shut down.
+ */
 static VALUE rsctp_get_autoclose(VALUE self){
   int fileno;
   socklen_t size;
