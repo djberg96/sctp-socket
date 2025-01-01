@@ -1378,6 +1378,74 @@ static VALUE rsctp_get_association_info(VALUE self){
 
 /*
  * call-seq:
+ *    SCTP::Socket#set_association_info(options)
+ *
+ * Sets the association specific parameters. The following are the possible
+ * options that you can set:
+ *
+ *  * association_id
+ *  * max_retransmission_count
+ *  * number_peer_destinations
+ *  * peer_receive_window
+ *  * local_receive_window
+ *  * cookie_life
+ *
+ *  All values that refer to time values are measured in milliseconds.
+ */
+static VALUE rsctp_set_association_info(int argc, VALUE* argv, VALUE self){
+  int fileno;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  struct sctp_assocparams assoc;
+  VALUE v_options, v_assoc_id, v_max_rxt, v_num_peer_dest;
+  VALUE v_peer_rcv, v_local_rcv, v_cookie_life;
+
+  rb_scan_args(argc, argv, "01", &v_options);
+
+  bzero(&assoc, sizeof(assoc));
+
+  if(NIL_P(v_options))
+    v_options = rb_hash_new();
+
+  v_assoc_id = rb_hash_aref2(v_options, "association_id");
+  v_max_rxt = rb_hash_aref2(v_options, "max_retransmission_count");
+  v_num_peer_dest = rb_hash_aref2(v_options, "number_peer_destinations");
+  v_peer_rcv = rb_hash_aref2(v_options, "peer_receive_window");
+  v_local_rcv = rb_hash_aref2(v_options, "local_receive_window");
+  v_cookie_life = rb_hash_aref2(v_options, "cookie_life");
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+
+  if(NIL_P(v_assoc_id))
+    assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  else
+    assoc_id = NUM2INT(v_assoc_id);
+
+  size = sizeof(struct sctp_assocparams);
+
+  assoc.sasoc_assoc_id = assoc_id;
+  assoc.sasoc_asocmaxrxt = NUM2UINT(v_max_rxt);
+  assoc.sasoc_number_peer_destinations = NUM2UINT(v_num_peer_dest);
+  assoc.sasoc_peer_rwnd = NUM2UINT(v_peer_rcv);
+  assoc.sasoc_local_rwnd = NUM2UINT(v_local_rcv);
+  assoc.sasoc_cookie_life = NUM2UINT(v_cookie_life);
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_ASSOCINFO, (void*)&assoc, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return rb_struct_new(
+    v_sctp_associnfo_struct,
+    INT2NUM(assoc.sasoc_assoc_id),
+    INT2NUM(assoc.sasoc_asocmaxrxt),
+    INT2NUM(assoc.sasoc_number_peer_destinations),
+    INT2NUM(assoc.sasoc_peer_rwnd),
+    INT2NUM(assoc.sasoc_local_rwnd),
+    INT2NUM(assoc.sasoc_cookie_life)
+  );
+}
+
+/*
+ * call-seq:
  *    SCTP::Socket#shutdown
  *
  * Shuts down socket send and receive operations.
@@ -2229,6 +2297,7 @@ void Init_socket(void){
 
   rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, 1);
   rb_define_method(cSocket, "set_active_shared_key", rsctp_set_active_shared_key, -1);
+  rb_define_method(cSocket, "set_association_info", rsctp_set_association_info, -1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
   //rb_define_method(cSocket, "set_retransmission_info", rsctp_set_retransmission_info, -1);
   rb_define_method(cSocket, "set_shared_key", rsctp_set_shared_key, -1);
