@@ -1541,6 +1541,24 @@ static VALUE rsctp_get_peer_address_params(VALUE self){
   );
 }
 
+/*
+ * call-seq:
+ *    SCTP::Socket#get_init_msg
+ *
+ * Returns a structure that contains various initialization parameters.
+ *
+ * * num_ostreams: A number representing the number of streams that the
+ *     application wishes to be able to send to.
+ *
+ * * max_instreams: The maximum number of inbound streams the application
+ *     is prepared to support.
+ *
+ * * max_attempts: The number of attempts the SCTP endpoint should make at
+ *     resending the INIT.
+ *
+ * * max_init_timeout: This value represents the largest Timeout or RTO value
+ *     (in milliseconds) to use in attempting an INIT.
+ */
 static VALUE rsctp_get_init_msg(VALUE self){
   int fileno;
   socklen_t size;
