@@ -250,6 +250,9 @@ VALUE get_notification_info(char* buffer){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket.new(domain = Socket::AF_INET, type = Socket::SOCK_STREAM)
+ *
  * Create and return a new SCTP::Socket instance. You may optionally pass in
  * a domain (aka family) value and socket type. By default these are AF_INET
  * and SOCK_SEQPACKET, respectively.
@@ -292,27 +295,30 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
 }
 
 /*
- *  Bind a subset of IP addresses associated with the host system on the
- *  given port, or a port assigned by the operating system if none is provided.
+ * call-seq:
+ *    SCTP::Socket#bindx(options)
  *
- *  Note that you can both add or remove an address to or from the socket
- *  using the SCTP_BINDX_ADD_ADDR (default) or SCTP_BINDX_REM_ADDR constants,
- *  respectively.
+ * Bind a subset of IP addresses associated with the host system on the
+ * given port, or a port assigned by the operating system if none is provided.
  *
- *  Example:
+ * Note that you can both add or remove an address to or from the socket
+ * using the SCTP_BINDX_ADD_ADDR (default) or SCTP_BINDX_REM_ADDR constants,
+ * respectively.
  *
- *    socket = SCTP::Socket.new
+ * Example:
  *
- *    # Bind 2 addresses
- *    socket.bindx(:port => 64325, :addresses => ['10.0.4.5', '10.0.5.5'])
+ *   socket = SCTP::Socket.new
  *
- *    # Remove 1 later
- *    socket.bindx(:addresses => ['10.0.4.5'], :flags => SCTP::Socket::BINDX_REM_ADDR)
+ *   # Bind 2 addresses
+ *   socket.bindx(:port => 64325, :addresses => ['10.0.4.5', '10.0.5.5'])
  *
- *  If no addresses are specified, then it will bind to all available interfaces. If
- *  no port is specified, then one will be assigned by the host.
+ *   # Remove 1 later
+ *   socket.bindx(:addresses => ['10.0.4.5'], :flags => SCTP::Socket::BINDX_REM_ADDR)
  *
- *  Returns the port that it was bound to.
+ * If no addresses are specified, then it will bind to all available interfaces. If
+ * no port is specified, then one will be assigned by the host.
+ *
+ * Returns the port that it was bound to.
  */
 static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   struct sockaddr_in addrs[8];
@@ -382,6 +388,9 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#connectx(options)
+ *
  * Connect the socket to a multihomed peer via the provided array of addresses
  * using the domain specified in the constructor. You must also specify the port.
  *
@@ -439,6 +448,9 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#close
+ *
  * Close the socket. You should always do this.
  *
  * Example:
@@ -456,22 +468,25 @@ static VALUE rsctp_close(VALUE self){
 }
 
 /*
- *  Return an array of all addresses of a peer of the current socket
- *  and association number.
+ * call-seq:
+ *    SCTP::Socket#getpeernames 
  *
- *  You may optionally pass a assocation fileno and association ID. Typically
- *  this information would come from the peeloff method.
+ * Return an array of all addresses of a peer of the current socket
+ * and association number.
  *
- *  Example:
+ * You may optionally pass a assocation fileno and association ID. Typically
+ * this information would come from the peeloff method.
  *
- *    socket = SCTP::Socket.new
- *    # ...
- *    p socket.getpeernames
+ * Example:
  *
- *    info = socket.recvmsg
- *    association_fileno = socket.peeloff(info.association_id)
+ *   socket = SCTP::Socket.new
+ *   # ...
+ *   p socket.getpeernames
+ * 
+ *   info = socket.recvmsg
+ *   association_fileno = socket.peeloff(info.association_id)
  *
- *    p socket.getpeernames(association_fileno, info.association_id)
+ *   p socket.getpeernames(association_fileno, info.association_id)
  */
 static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
   sctp_assoc_t assoc_id;
@@ -514,6 +529,9 @@ static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#getlocalnames
+ *
  * Return an array of local addresses that are part of the association.
  *
  * Example:
@@ -569,6 +587,9 @@ static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
 
 #ifdef HAVE_SCTP_SENDV
 /*
+ * call-seq:
+ *    SCTP::Socket#sendv(options)
+ *
  * Transmit a message to an SCTP endpoint using a gather-write. The following
  * hash of options is permitted:
  *
@@ -747,6 +768,9 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
 #endif
 
 /*
+ * call-seq:
+ *    SCTP::Socket.send(options)
+ *
  * Send a message on an already-connected socket to a specific association.
  *
  * Example:
@@ -840,6 +864,9 @@ static VALUE rsctp_send(VALUE self, VALUE v_options){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#sendmsg(options)
+ *
  * Transmit a message to an SCTP endpoint. The following hash of options
  * is permitted:
  *
@@ -963,6 +990,9 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#recvmsg(flags=0)
+ *
  * Receive a message from another SCTP endpoint.
  *
  * Example:
@@ -1040,6 +1070,9 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#set_initmsg(options)
+ *
  * Set the initial parameters used by the socket when sending out the INIT message.
  *
  * Example:
@@ -1089,6 +1122,9 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#subscribe(options)
+ *
  * Subscribe to various notification type events, which will generate additional
  * data that the socket may receive. The possible notification type events are
  * as follows:
@@ -1173,6 +1209,9 @@ static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#listen(backlog=128)
+ *
  * Marks the socket referred to by sockfd as a passive socket, i.e. a socket that
  * will be used to accept incoming connection requests.
  *
@@ -1216,6 +1255,9 @@ static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#peeloff(association_id)
+ *
  * Extracts an association contained by a one-to-many socket connection into
  * a one-to-one style socket. Returns the socket descriptor (fileno).
  *
@@ -1246,6 +1288,9 @@ static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#get_default_send_params
+ *
  * Returns the default set of parameters that a call to the sendto function
  * uses on this association. This is a struct that contains the following
  * members:
@@ -1290,6 +1335,9 @@ static VALUE rsctp_get_default_send_params(VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#get_association_info
+ *
  * Returns the association specific parameters. This is a struct
  * that contains the following members:
  *
@@ -1329,6 +1377,9 @@ static VALUE rsctp_get_association_info(VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#shutdown
+ *
  * Shuts down socket send and receive operations.
  *
  * Optionally accepts an argument that specifieds the type of shutdown.
@@ -1363,6 +1414,9 @@ static VALUE rsctp_shutdown(int argc, VALUE* argv, VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#get_retransmission_info
+ *
  * Returns the protocol parameters that are used to initialize and bind the
  * retransmission timeout (RTO) tunable. This is a struct with the following
  * members:
@@ -1397,6 +1451,9 @@ static VALUE rsctp_get_retransmission_info(VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#get_status
+ *
  * Get the status of a connected socket.
  *
  * Example:
@@ -1461,6 +1518,9 @@ static VALUE rsctp_get_status(VALUE self){
 }
 
 /*
+ * call-seq:
+ *    SCTP::Socket#get_subscriptions
+ *
  * Returns a struct of events detailing which events have been
  * subscribed to by the socket. The struct contains the following
  * members:
