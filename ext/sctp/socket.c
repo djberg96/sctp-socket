@@ -1726,6 +1726,40 @@ static VALUE rsctp_set_nodelay(VALUE self, VALUE v_bool){
 
 /*
  * call-seq:
+ *    SCTP::Socket#disable_fragments=(bool)
+ * 
+ * This option is a on/off flag and is passed an integer where a non-
+ * zero is on and a zero is off.  If enabled no SCTP message
+ * fragmentation will be performed.  Instead if a message being sent
+ * exceeds the current PMTU size, the message will NOT be sent and
+ * instead a error will be indicated to the user.
+ */
+static VALUE rsctp_disable_fragments(VALUE self, VALUE v_bool){
+  int fileno;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  int value;
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  size = sizeof(int);
+
+  if(NIL_P(v_bool) || v_bool == Qfalse)
+    value = 0;
+  else
+    value = 1;
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_DISABLE_FRAGMENTS, (void*)&value, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  if(value)
+    return Qtrue;
+  else
+    return Qfalse;
+}
+
+/*
+ * call-seq:
  *    SCTP::Socket#autoclose
  *
  * Returns the number of seconds before socket associations automatically
@@ -2164,6 +2198,7 @@ void Init_socket(void){
   rb_define_method(cSocket, "close", rsctp_close, 0);
   rb_define_method(cSocket, "connectx", rsctp_connectx, -1);
   rb_define_method(cSocket, "delete_shared_key", rsctp_delete_shared_key, -1);
+  rb_define_method(cSocket, "disable_fragments=", rsctp_disable_fragments, 1);
   rb_define_method(cSocket, "enable_auth_support", rsctp_enable_auth_support, -1);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, -1);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, -1);
