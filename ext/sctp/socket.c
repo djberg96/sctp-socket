@@ -1922,7 +1922,8 @@ static VALUE rsctp_enable_auth_support(int argc, VALUE* argv, VALUE self){
  *  otherwise this will set a key on the endpoint.
 */
 static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
-  int fileno, len;
+  int fileno;
+  size_t len;
   char* key;
   uint keynum;
   socklen_t size;
@@ -1937,7 +1938,7 @@ static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
   len = strlen(key);
   unsigned char byte_array[len+1];
 
-  for(int i = 0; i < len; i++)
+  for(size_t i = 0; i < len; i++)
     byte_array[i] = key[i];
 
   byte_array[len] = '\0';
