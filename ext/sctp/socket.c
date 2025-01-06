@@ -380,7 +380,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   if(NIL_P(v_addresses))
     num_ip = 1;
   else
-    num_ip = RARRAY_LEN(v_addresses);
+    num_ip = (int)RARRAY_LEN(v_addresses);
 
   domain = NUM2INT(rb_iv_get(self, "@domain"));
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
@@ -458,7 +458,7 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
 
   v_domain = rb_iv_get(self, "@domain");
 
-  num_ip = RARRAY_LEN(v_addresses);
+  num_ip = (int)RARRAY_LEN(v_addresses);
   bzero(&addrs, sizeof(addrs));
 
   for(i = 0; i < num_ip; i++){
@@ -663,7 +663,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
 
   if(!NIL_P(v_addresses)){
     Check_Type(v_addresses, T_ARRAY);
-    num_ip = RARRAY_LEN(v_addresses);
+    num_ip = (int)RARRAY_LEN(v_addresses);
     addrs = (struct sockaddr_in*)alloca(num_ip * sizeof(*addrs));
   }
   else{
@@ -672,7 +672,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   }
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
-  size = RARRAY_LEN(v_message);
+  size = (int)RARRAY_LEN(v_message);
 
   if(!size)
     rb_raise(rb_eArgError, "Must contain at least one message");
