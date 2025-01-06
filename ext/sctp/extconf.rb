@@ -24,8 +24,19 @@ unless have_header('netinet/sctp.h')
   exit
 end
 
+header = 'netinet/sctp.h'
+
 have_library('sctp')
-have_func('sctp_sendv', 'netinet/sctp.h')
-have_func('sctp_recvv', 'netinet/sctp.h')
-have_struct_member('struct sctp_event_subscribe', 'sctp_send_failure_event', 'netinet/sctp.h')
+
+have_func('sctp_sendv', header)
+have_func('sctp_recvv', header)
+
+have_struct_member('struct sctp_event_subscribe', 'sctp_send_failure_event', header)
+have_struct_member('struct sctp_event_subscribe', 'sctp_stream_reset_event', header)
+have_struct_member('struct sctp_event_subscribe', 'sctp_assoc_reset_event', header)
+have_struct_member('struct sctp_event_subscribe', 'sctp_stream_change_event', header)
+have_struct_member('struct sctp_event_subscribe', 'sctp_send_failure_event_event', header)
+
+have_const('SCTP_EMPTY', header)
+
 create_makefile('sctp/socket')

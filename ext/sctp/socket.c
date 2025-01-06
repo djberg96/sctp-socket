@@ -1566,10 +1566,18 @@ static VALUE rsctp_get_subscriptions(VALUE self){
     (events.sctp_adaptation_layer_event ? Qtrue : Qfalse),
     (events.sctp_authentication_event ? Qtrue : Qfalse),
     (events.sctp_sender_dry_event ? Qtrue : Qfalse),
+#ifdef HAVE_STRUCT_SCTP_EVENT_SUBSCRIBE_SCTP_STREAM_RESET_EVENT
     (events.sctp_stream_reset_event ? Qtrue : Qfalse),
+#endif
+#ifdef HAVE_STRUCT_SCTP_EVENT_SUBSCRIBE_SCTP_ASSOC_RESET_EVENT
     (events.sctp_assoc_reset_event ? Qtrue : Qfalse),
+#endif
+#ifdef HAVE_STRUCT_SCTP_EVENT_SUBSCRIBE_SCTP_STREAM_CHANGE_EVENT
     (events.sctp_stream_change_event ? Qtrue : Qfalse),
+#endif
+#ifdef HAVE_STRUCT_SCTP_EVENT_SUBSCRIBE_SCTP_SEND_FAILURE_EVENT_EVENT
     (events.sctp_send_failure_event_event ? Qtrue : Qfalse)
+#endif
   );
 }
 
@@ -2265,7 +2273,9 @@ void Init_socket(void){
 
   // ASSOCIATION STATES //
 
+#ifdef HAVE_SCTP_EMPTY
   rb_define_const(cSocket, "SCTP_EMPTY", INT2NUM(SCTP_EMPTY));
+#endif
   rb_define_const(cSocket, "SCTP_CLOSED", INT2NUM(SCTP_CLOSED));
   rb_define_const(cSocket, "SCTP_COOKIE_WAIT", INT2NUM(SCTP_COOKIE_WAIT));
   rb_define_const(cSocket, "SCTP_COOKIE_ECHOED", INT2NUM(SCTP_COOKIE_ECHOED));
