@@ -252,11 +252,19 @@ VALUE get_notification_info(char* buffer){
       break;
     case SCTP_AUTHENTICATION_EVENT:
       v_notification = rb_struct_new(v_auth_event_struct,
+#ifdef HAVE_UNION_SCTP_NOTIFICATION_SN_AUTH_EVENT
+        UINT2NUM(snp->sn_auth_event.auth_type),
+        UINT2NUM(snp->sn_auth_event.auth_length),
+        UINT2NUM(snp->sn_auth_event.auth_keynumber),
+        UINT2NUM(snp->sn_auth_event.auth_indication),
+        UINT2NUM(snp->sn_auth_event.auth_assoc_id)
+#else
         UINT2NUM(snp->sn_authkey_event.auth_type),
         UINT2NUM(snp->sn_authkey_event.auth_length),
         UINT2NUM(snp->sn_authkey_event.auth_keynumber),
         UINT2NUM(snp->sn_authkey_event.auth_indication),
         UINT2NUM(snp->sn_authkey_event.auth_assoc_id)
+#endif
       );
       break;
     case SCTP_SENDER_DRY_EVENT:
