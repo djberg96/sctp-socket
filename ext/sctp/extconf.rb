@@ -37,6 +37,8 @@ have_struct_member('struct sctp_event_subscribe', 'sctp_assoc_reset_event', head
 have_struct_member('struct sctp_event_subscribe', 'sctp_stream_change_event', header)
 have_struct_member('struct sctp_event_subscribe', 'sctp_send_failure_event_event', header)
 
+have_struct_member('struct sctp_send_failed_event', 'ssfe_length', header)
+
 have_const('SCTP_EMPTY', header)
 
 create_makefile('sctp/socket')

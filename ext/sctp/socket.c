@@ -163,6 +163,28 @@ VALUE get_notification_info(char* buffer){
       break;
 #ifdef SCTP_SEND_FAILED_EVENT
     case SCTP_SEND_FAILED_EVENT:
+#ifdef HAVE_STRUCT_SCTP_SEND_FAILED_EVENT_SSFE_LENGTH
+      v_temp = ALLOCA_N(VALUE, snp->sn_send_failed_event.ssfe_length);
+
+      for(i = 0; i < snp->sn_send_failed_event.ssfe_length; i++){
+        v_temp[i] = UINT2NUM(snp->sn_send_failed_event.ssfe_data[i]);
+      }
+
+      v_notification = rb_struct_new(v_send_failed_event_struct,
+        UINT2NUM(snp->sn_send_failed_event.ssfe_type),
+        UINT2NUM(snp->sn_send_failed_event.ssfe_length),
+        UINT2NUM(snp->sn_send_failed_event.ssfe_error),
+        rb_struct_new(v_sndinfo_struct,
+          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_sid),
+          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_flags),
+          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_ppid),
+          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_context),
+          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_assoc_id)
+        ),
+        UINT2NUM(snp->sn_send_failed_event.ssfe_assoc_id),
+        rb_ary_new4(snp->sn_send_failed_event.ssfe_length, v_temp)
+      );
+#else
       v_temp = ALLOCA_N(VALUE, snp->sn_send_failed_event.ssf_length);
 
       for(i = 0; i < snp->sn_send_failed_event.ssf_length; i++){
@@ -183,6 +205,7 @@ VALUE get_notification_info(char* buffer){
         UINT2NUM(snp->sn_send_failed_event.ssf_assoc_id),
         rb_ary_new4(snp->sn_send_failed_event.ssf_length, v_temp)
       );
+#endif
       break;
 #else
     case SCTP_SEND_FAILED:
