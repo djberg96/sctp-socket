@@ -648,7 +648,8 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   struct iovec iov[IOV_MAX];
   struct sockaddr_in* addrs;
   struct sctp_sendv_spa spa;
-  int i, fileno, num_bytes, size, num_ip;
+  int i, fileno, size, num_ip;
+  ssize_t num_bytes;
 
   Check_Type(v_options, T_HASH);
 
@@ -711,7 +712,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
     iov[i].iov_len = RSTRING_LEN(v_msg);
   }
 
-  num_bytes = sctp_sendv(
+  num_bytes = (ssize_t)sctp_sendv(
     fileno,
     iov,
     size,
@@ -726,14 +727,15 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   if(num_bytes < 0)
     rb_raise(rb_eSystemCallError, "sctp_sendv: %s", strerror(errno));
 
-  return INT2NUM(num_bytes);
+  return LONG2NUM(num_bytes);
 }
 #endif
 
 #ifdef HAVE_SCTP_RECVV
 static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
   VALUE v_flags;
-  int fileno, flags, bytes, on;
+  int fileno, flags, on;
+  ssize_t bytes;
   uint infotype;
   socklen_t infolen;
   struct iovec iov[1];
@@ -763,7 +765,7 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
   infolen = sizeof(struct sctp_rcvinfo);
   infotype = 0;
 
-  bytes = sctp_recvv(
+  bytes = (ssize_t)sctp_recvv(
     fileno,
     iov,
     1,
@@ -880,7 +882,7 @@ static VALUE rsctp_send(VALUE self, VALUE v_options){
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
-  num_bytes = sctp_send(
+  num_bytes = (ssize_t)sctp_send(
     fileno,
     StringValueCStr(v_msg),
     RSTRING_LEN(v_msg),
@@ -891,7 +893,7 @@ static VALUE rsctp_send(VALUE self, VALUE v_options){
   if(num_bytes < 0)
     rb_raise(rb_eSystemCallError, "sctp_send: %s", strerror(errno));
 
-  return INT2NUM(num_bytes);
+  return LONG2NUM(num_bytes);
 }
 
 /*
@@ -978,7 +980,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
     int i, num_ip, port;
     VALUE v_address, v_port;
 
-    num_ip = RARRAY_LEN(v_addresses);
+    num_ip = (int)RARRAY_LEN(v_addresses);
     v_port = rb_hash_aref2(v_options, "port");
 
     if(NIL_P(v_port))
@@ -1001,7 +1003,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
-  num_bytes = sctp_sendmsg(
+  num_bytes = (ssize_t)sctp_sendmsg(
     fileno,
     StringValueCStr(v_msg),
     RSTRING_LEN(v_msg),
@@ -1017,7 +1019,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   if(num_bytes < 0)
     rb_raise(rb_eSystemCallError, "sctp_sendmsg: %s", strerror(errno));
 
-  return INT2NUM(num_bytes);
+  return LONG2NUM(num_bytes);
 }
 
 /*
@@ -1046,7 +1048,8 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   VALUE v_flags, v_notification, v_message;
   struct sctp_sndrcvinfo sndrcvinfo;
   struct sockaddr_in clientaddr;
-  int flags, bytes, fileno;
+  int flags, fileno;
+  ssize_t bytes;
   char buffer[1024]; // TODO: Let this be configurable?
   socklen_t length;
 
@@ -1064,7 +1067,7 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   bzero(&clientaddr, sizeof(clientaddr));
   bzero(&sndrcvinfo, sizeof(sndrcvinfo));
 
-  bytes = sctp_recvmsg(
+  bytes = (ssize_t)sctp_recvmsg(
     fileno,
     buffer,
     sizeof(buffer),
@@ -1586,7 +1589,8 @@ static VALUE rsctp_get_subscriptions(VALUE self){
   if(sctp_opt_info(fileno, assoc_id, SCTP_EVENTS, (void*)&events, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
-  return rb_struct_new(v_sctp_event_subscribe_struct,
+  return rb_struct_new(
+    v_sctp_event_subscribe_struct,
     (events.sctp_data_io_event ? Qtrue : Qfalse),
     (events.sctp_association_event ? Qtrue : Qfalse),
     (events.sctp_address_event ? Qtrue : Qfalse),
