@@ -163,6 +163,28 @@ VALUE get_notification_info(char* buffer){
       break;
 #ifdef SCTP_SEND_FAILED_EVENT
     case SCTP_SEND_FAILED_EVENT:
+#ifdef HAVE_STRUCT_SCTP_SEND_FAILED_EVENT_SSFE_LENGTH
+      v_temp = ALLOCA_N(VALUE, snp->sn_send_failed_event.ssfe_length);
+
+      for(i = 0; i < snp->sn_send_failed_event.ssfe_length; i++){
+        v_temp[i] = UINT2NUM(snp->sn_send_failed_event.ssfe_data[i]);
+      }
+
+      v_notification = rb_struct_new(v_send_failed_event_struct,
+        UINT2NUM(snp->sn_send_failed_event.ssfe_type),
+        UINT2NUM(snp->sn_send_failed_event.ssfe_length),
+        UINT2NUM(snp->sn_send_failed_event.ssfe_error),
+        rb_struct_new(v_sndinfo_struct,
+          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_sid),
+          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_flags),
+          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_ppid),
+          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_context),
+          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_assoc_id)
+        ),
+        UINT2NUM(snp->sn_send_failed_event.ssfe_assoc_id),
+        rb_ary_new4(snp->sn_send_failed_event.ssfe_length, v_temp)
+      );
+#else
       v_temp = ALLOCA_N(VALUE, snp->sn_send_failed_event.ssf_length);
 
       for(i = 0; i < snp->sn_send_failed_event.ssf_length; i++){
@@ -183,6 +205,7 @@ VALUE get_notification_info(char* buffer){
         UINT2NUM(snp->sn_send_failed_event.ssf_assoc_id),
         rb_ary_new4(snp->sn_send_failed_event.ssf_length, v_temp)
       );
+#endif
       break;
 #else
     case SCTP_SEND_FAILED:
@@ -229,11 +252,19 @@ VALUE get_notification_info(char* buffer){
       break;
     case SCTP_AUTHENTICATION_EVENT:
       v_notification = rb_struct_new(v_auth_event_struct,
+#ifdef HAVE_UNION_SCTP_NOTIFICATION_SN_AUTH_EVENT
+        UINT2NUM(snp->sn_auth_event.auth_type),
+        UINT2NUM(snp->sn_auth_event.auth_length),
+        UINT2NUM(snp->sn_auth_event.auth_keynumber),
+        UINT2NUM(snp->sn_auth_event.auth_indication),
+        UINT2NUM(snp->sn_auth_event.auth_assoc_id)
+#else
         UINT2NUM(snp->sn_authkey_event.auth_type),
         UINT2NUM(snp->sn_authkey_event.auth_length),
         UINT2NUM(snp->sn_authkey_event.auth_keynumber),
         UINT2NUM(snp->sn_authkey_event.auth_indication),
         UINT2NUM(snp->sn_authkey_event.auth_assoc_id)
+#endif
       );
       break;
     case SCTP_SENDER_DRY_EVENT:
@@ -349,7 +380,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   if(NIL_P(v_addresses))
     num_ip = 1;
   else
-    num_ip = RARRAY_LEN(v_addresses);
+    num_ip = (int)RARRAY_LEN(v_addresses);
 
   domain = NUM2INT(rb_iv_get(self, "@domain"));
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
@@ -427,7 +458,7 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
 
   v_domain = rb_iv_get(self, "@domain");
 
-  num_ip = RARRAY_LEN(v_addresses);
+  num_ip = (int)RARRAY_LEN(v_addresses);
   bzero(&addrs, sizeof(addrs));
 
   for(i = 0; i < num_ip; i++){
@@ -617,7 +648,8 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   struct iovec iov[IOV_MAX];
   struct sockaddr_in* addrs;
   struct sctp_sendv_spa spa;
-  int i, fileno, num_bytes, size, num_ip;
+  int i, fileno, size, num_ip;
+  ssize_t num_bytes;
 
   Check_Type(v_options, T_HASH);
 
@@ -632,7 +664,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
 
   if(!NIL_P(v_addresses)){
     Check_Type(v_addresses, T_ARRAY);
-    num_ip = RARRAY_LEN(v_addresses);
+    num_ip = (int)RARRAY_LEN(v_addresses);
     addrs = (struct sockaddr_in*)alloca(num_ip * sizeof(*addrs));
   }
   else{
@@ -641,7 +673,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   }
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
-  size = RARRAY_LEN(v_message);
+  size = (int)RARRAY_LEN(v_message);
 
   if(!size)
     rb_raise(rb_eArgError, "Must contain at least one message");
@@ -680,7 +712,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
     iov[i].iov_len = RSTRING_LEN(v_msg);
   }
 
-  num_bytes = sctp_sendv(
+  num_bytes = (ssize_t)sctp_sendv(
     fileno,
     iov,
     size,
@@ -695,14 +727,15 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   if(num_bytes < 0)
     rb_raise(rb_eSystemCallError, "sctp_sendv: %s", strerror(errno));
 
-  return INT2NUM(num_bytes);
+  return LONG2NUM(num_bytes);
 }
 #endif
 
 #ifdef HAVE_SCTP_RECVV
 static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
   VALUE v_flags;
-  int fileno, flags, bytes, on;
+  int fileno, flags, on;
+  ssize_t bytes;
   uint infotype;
   socklen_t infolen;
   struct iovec iov[1];
@@ -732,7 +765,7 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
   infolen = sizeof(struct sctp_rcvinfo);
   infotype = 0;
 
-  bytes = sctp_recvv(
+  bytes = (ssize_t)sctp_recvv(
     fileno,
     iov,
     1,
@@ -849,7 +882,7 @@ static VALUE rsctp_send(VALUE self, VALUE v_options){
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
-  num_bytes = sctp_send(
+  num_bytes = (ssize_t)sctp_send(
     fileno,
     StringValueCStr(v_msg),
     RSTRING_LEN(v_msg),
@@ -860,7 +893,7 @@ static VALUE rsctp_send(VALUE self, VALUE v_options){
   if(num_bytes < 0)
     rb_raise(rb_eSystemCallError, "sctp_send: %s", strerror(errno));
 
-  return INT2NUM(num_bytes);
+  return LONG2NUM(num_bytes);
 }
 
 /*
@@ -947,7 +980,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
     int i, num_ip, port;
     VALUE v_address, v_port;
 
-    num_ip = RARRAY_LEN(v_addresses);
+    num_ip = (int)RARRAY_LEN(v_addresses);
     v_port = rb_hash_aref2(v_options, "port");
 
     if(NIL_P(v_port))
@@ -970,7 +1003,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
-  num_bytes = sctp_sendmsg(
+  num_bytes = (ssize_t)sctp_sendmsg(
     fileno,
     StringValueCStr(v_msg),
     RSTRING_LEN(v_msg),
@@ -986,7 +1019,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   if(num_bytes < 0)
     rb_raise(rb_eSystemCallError, "sctp_sendmsg: %s", strerror(errno));
 
-  return INT2NUM(num_bytes);
+  return LONG2NUM(num_bytes);
 }
 
 /*
@@ -1015,7 +1048,8 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   VALUE v_flags, v_notification, v_message;
   struct sctp_sndrcvinfo sndrcvinfo;
   struct sockaddr_in clientaddr;
-  int flags, bytes, fileno;
+  int flags, fileno;
+  ssize_t bytes;
   char buffer[1024]; // TODO: Let this be configurable?
   socklen_t length;
 
@@ -1033,7 +1067,7 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   bzero(&clientaddr, sizeof(clientaddr));
   bzero(&sndrcvinfo, sizeof(sndrcvinfo));
 
-  bytes = sctp_recvmsg(
+  bytes = (ssize_t)sctp_recvmsg(
     fileno,
     buffer,
     sizeof(buffer),
@@ -1555,7 +1589,8 @@ static VALUE rsctp_get_subscriptions(VALUE self){
   if(sctp_opt_info(fileno, assoc_id, SCTP_EVENTS, (void*)&events, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
-  return rb_struct_new(v_sctp_event_subscribe_struct,
+  return rb_struct_new(
+    v_sctp_event_subscribe_struct,
     (events.sctp_data_io_event ? Qtrue : Qfalse),
     (events.sctp_association_event ? Qtrue : Qfalse),
     (events.sctp_address_event ? Qtrue : Qfalse),
@@ -1565,11 +1600,19 @@ static VALUE rsctp_get_subscriptions(VALUE self){
     (events.sctp_partial_delivery_event ? Qtrue : Qfalse),
     (events.sctp_adaptation_layer_event ? Qtrue : Qfalse),
     (events.sctp_authentication_event ? Qtrue : Qfalse),
-    (events.sctp_sender_dry_event ? Qtrue : Qfalse),
-    (events.sctp_stream_reset_event ? Qtrue : Qfalse),
-    (events.sctp_assoc_reset_event ? Qtrue : Qfalse),
-    (events.sctp_stream_change_event ? Qtrue : Qfalse),
-    (events.sctp_send_failure_event_event ? Qtrue : Qfalse)
+    (events.sctp_sender_dry_event ? Qtrue : Qfalse)
+#ifdef HAVE_STRUCT_SCTP_EVENT_SUBSCRIBE_SCTP_STREAM_RESET_EVENT
+    ,(events.sctp_stream_reset_event ? Qtrue : Qfalse)
+#endif
+#ifdef HAVE_STRUCT_SCTP_EVENT_SUBSCRIBE_SCTP_ASSOC_RESET_EVENT
+    ,(events.sctp_assoc_reset_event ? Qtrue : Qfalse)
+#endif
+#ifdef HAVE_STRUCT_SCTP_EVENT_SUBSCRIBE_SCTP_STREAM_CHANGE_EVENT
+    ,(events.sctp_stream_change_event ? Qtrue : Qfalse)
+#endif
+#ifdef HAVE_STRUCT_SCTP_EVENT_SUBSCRIBE_SCTP_SEND_FAILURE_EVENT_EVENT
+    ,(events.sctp_send_failure_event_event ? Qtrue : Qfalse)
+#endif
   );
 }
 
@@ -1879,7 +1922,8 @@ static VALUE rsctp_enable_auth_support(int argc, VALUE* argv, VALUE self){
  *  otherwise this will set a key on the endpoint.
 */
 static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
-  int fileno, len;
+  int fileno;
+  size_t len;
   char* key;
   uint keynum;
   socklen_t size;
@@ -1894,7 +1938,7 @@ static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
   len = strlen(key);
   unsigned char byte_array[len+1];
 
-  for(int i = 0; i < len; i++)
+  for(size_t i = 0; i < len; i++)
     byte_array[i] = key[i];
 
   byte_array[len] = '\0';
@@ -2265,7 +2309,9 @@ void Init_socket(void){
 
   // ASSOCIATION STATES //
 
+#ifdef HAVE_SCTP_EMPTY
   rb_define_const(cSocket, "SCTP_EMPTY", INT2NUM(SCTP_EMPTY));
+#endif
   rb_define_const(cSocket, "SCTP_CLOSED", INT2NUM(SCTP_CLOSED));
   rb_define_const(cSocket, "SCTP_COOKIE_WAIT", INT2NUM(SCTP_COOKIE_WAIT));
   rb_define_const(cSocket, "SCTP_COOKIE_ECHOED", INT2NUM(SCTP_COOKIE_ECHOED));
