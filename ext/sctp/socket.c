@@ -716,6 +716,9 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
       addrs[i].sin_family = domain;
       addrs[i].sin_port = htons(port);
       addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
+#ifdef BSD
+      addrs[i].sin_len = sizeof(struct sockaddr_in);
+#endif
     }
   }
 
