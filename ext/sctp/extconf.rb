@@ -28,6 +28,8 @@ header = 'netinet/sctp.h'
 
 have_library('sctp')
 
+have_header('sys/param.h')
+
 have_func('sctp_sendv', header)
 have_func('sctp_recvv', header)
 
