@@ -63,8 +63,8 @@ end
 
 ## Known Issues
 
-Currently this has only been developed and tested on Linux. Other platforms
-will probably only be supported via community contributions.
+Currently this has only been developed and tested on Linux and BSD. Other
+platforms will probably only be supported via community contributions.
 
 The sendv and recvv methods may not be available. Use the sendmsg and recvmsg
 methods instead.
@@ -92,7 +92,7 @@ Apache-2.0
 
 ## Copyright
 
-(C) 2020-2024, Daniel J. Berger
+(C) 2020-2025, Daniel J. Berger
 Al Rights Reserved
 
 ## Author

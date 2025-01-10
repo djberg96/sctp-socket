@@ -1,3 +1,6 @@
+## 0.1.2 - 10-Jan-2025
+* Added support for BSD.
+
 ## 0.1.1 - 1-Jan-2025
 * Added the set_shared_key method.
 * Added the get_active_shared_key and set_active_shared_key methods.
