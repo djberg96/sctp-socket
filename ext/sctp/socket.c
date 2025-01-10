@@ -4,6 +4,10 @@
 #include <arpa/inet.h>
 #include <netinet/sctp.h>
 
+#ifdef HAVE_SYS_PARAM_H
+#include <sys/param.h>
+#endif
+
 VALUE mSCTP;
 VALUE cSocket;
 VALUE v_sndrcv_struct;
@@ -391,12 +395,18 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
       addrs[i].sin_family = domain;
       addrs[i].sin_port = htons(port);
       addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
+#ifdef BSD
+      addrs[i].sin_len = sizeof(struct sockaddr_in);
+#endif
     }
   }
   else{
     addrs[0].sin_family = domain;
     addrs[0].sin_port = htons(port);
     addrs[0].sin_addr.s_addr = htonl(INADDR_ANY);
+#ifdef BSD
+    addrs[0].sin_len = sizeof(struct sockaddr_in);
+#endif
   }
 
   if(sctp_bindx(fileno, (struct sockaddr *) addrs, num_ip, flags) != 0)
@@ -466,6 +476,9 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
     addrs[i].sin_family = NUM2INT(v_domain);
     addrs[i].sin_port = htons(NUM2INT(v_port));
     addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
+#ifdef BSD
+    addrs[i].sin_len = sizeof(struct sockaddr_in);
+#endif
   }
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
@@ -703,6 +716,9 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
       addrs[i].sin_family = domain;
       addrs[i].sin_port = htons(port);
       addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
+#ifdef BSD
+      addrs[i].sin_len = sizeof(struct sockaddr_in);
+#endif
     }
   }
 
@@ -934,7 +950,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   uint32_t ppid, flags, ttl, context;
   ssize_t num_bytes;
   struct sockaddr_in addrs[8];
-  int fileno, size;
+  int fileno, size, num_ip;
 
   Check_Type(v_options, T_HASH);
 
@@ -977,7 +993,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
     context = NUM2INT(v_context);
 
   if(!NIL_P(v_addresses)){
-    int i, num_ip, port;
+    int i, port;
     VALUE v_address, v_port;
 
     num_ip = (int)RARRAY_LEN(v_addresses);
@@ -993,16 +1009,50 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
       addrs[i].sin_family = NUM2INT(rb_iv_get(self, "@domain"));
       addrs[i].sin_port = htons(port);
       addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
+#ifdef BSD
+      addrs[i].sin_len = sizeof(struct sockaddr_in);
+#endif
     }
 
     size = sizeof(addrs);
   }
   else{
+    num_ip = 0;
     size = 0;
   }
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
+#ifdef BSD
+  if(num_ip){
+    num_bytes = (ssize_t)sctp_sendmsgx(
+      fileno,
+      StringValueCStr(v_msg),
+      RSTRING_LEN(v_msg),
+      (struct sockaddr*)addrs,
+      num_ip,
+      ppid,
+      flags,
+      stream,
+      ttl,
+      context
+    );
+  }
+  else{
+    num_bytes = (ssize_t)sctp_sendmsg(
+      fileno,
+      StringValueCStr(v_msg),
+      RSTRING_LEN(v_msg),
+      (struct sockaddr*)addrs,
+      size,
+      ppid,
+      flags,
+      stream,
+      ttl,
+      context
+    );
+  }
+#else
   num_bytes = (ssize_t)sctp_sendmsg(
     fileno,
     StringValueCStr(v_msg),
@@ -1015,9 +1065,18 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
     ttl,
     context
   );
+#endif
 
-  if(num_bytes < 0)
+  if(num_bytes < 0){
+#ifdef BSD
+    if(num_ip > 0)
+      rb_raise(rb_eSystemCallError, "sctp_sendmsgx: %s", strerror(errno));
+    else
+      rb_raise(rb_eSystemCallError, "sctp_sendmsg: %s", strerror(errno));
+#else
     rb_raise(rb_eSystemCallError, "sctp_sendmsg: %s", strerror(errno));
+#endif
+  }
 
   return LONG2NUM(num_bytes);
 }
@@ -2285,8 +2344,8 @@ void Init_socket(void){
   rb_define_attr(cSocket, "association_id", 1, 1);
   rb_define_attr(cSocket, "port", 1, 1);
 
-  /* 0.1.1: The version of this library */
-  rb_define_const(cSocket, "VERSION", rb_str_new2("0.1.1"));
+  /* 0.1.2: The version of this library */
+  rb_define_const(cSocket, "VERSION", rb_str_new2("0.1.2"));
 
   /* send flags */
 
