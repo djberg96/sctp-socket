@@ -45,9 +45,10 @@ jobs:
       with:
         usesh: true
         prepare: |
-          pkg install -y ruby devel/ruby-gems sctplib git-tiny
+          pkg install -y llvm ruby devel/ruby-gems sctplib git-tiny
 
         run: |
+          git config --global --add safe.directory /home/runner/work/sctp-socket/sctp-socket
           ifconfig lo1 create
           ifconfig lo1 1.1.1.1/24 up
           ifconfig lo2 create
