@@ -45,10 +45,10 @@ jobs:
         usesh: true
         prepare: |
           pkg install -y sctplib
-          sudo ifconfig lo1 create
-          sudo ifconfig lo1 1.1.1.1/24 up
-          sudo ifconfig lo2 create
-          sudo ifconfig lo2 1.1.1.2/24 up
+          ifconfig lo1 create
+          ifconfig lo1 1.1.1.1/24 up
+          ifconfig lo2 create
+          ifconfig lo2 1.1.1.2/24 up
     - uses: actions/checkout@v4
     - name: Test in FreeBSD
       id: test
