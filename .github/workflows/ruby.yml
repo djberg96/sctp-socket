@@ -39,24 +39,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Install SCTP Headers
-      uses: vmactions/freebsd-vm@v1
-      with:
-        usesh: true
-        prepare: |
-          pkg install -y sctplib
-          ifconfig lo1 create
-          ifconfig lo1 1.1.1.1/24 up
-          ifconfig lo2 create
-          ifconfig lo2 1.1.1.2/24 up
-    - uses: actions/checkout@v4
     - name: Test in FreeBSD
       id: test
       uses: vmactions/freebsd-vm@v1
       with:
         usesh: true
         prepare: |
+          pkg install -y sctplib
           pkg install -y ruby devel/ruby-gems
+          ifconfig lo1 create
+          ifconfig lo1 1.1.1.1/24 up
+          ifconfig lo2 create
+          ifconfig lo2 1.1.1.2/24 up
         run: |
           gem install bundler --no-document
           bundle install --quiet
