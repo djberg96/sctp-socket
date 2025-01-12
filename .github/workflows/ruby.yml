@@ -45,7 +45,7 @@ jobs:
       with:
         usesh: true
         prepare: |
-          pkg install -y ruby devel/ruby-gems sctplib
+          pkg install -y ruby devel/ruby-gems sctplib git-tiny
 
         run: |
           ifconfig lo1 create
