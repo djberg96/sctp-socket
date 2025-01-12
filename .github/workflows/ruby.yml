@@ -49,6 +49,7 @@ jobs:
 
         run: |
           git config --global --add safe.directory /home/runner/work/sctp-socket/sctp-socket
+          sysrc kld_list+=sctp
           ifconfig lo1 create
           ifconfig lo1 1.1.1.1/24 up
           ifconfig lo2 create
