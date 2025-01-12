@@ -39,13 +39,21 @@ end
 
 desc "Create dummy IP addresses to use for testing"
 task :create_dummy_links do
-  system('sudo ip link add dummy1 type dummy')
-  system('sudo ip link add dummy2 type dummy')
-  system('sudo ip addr add 1.1.1.1/24 dev dummy1')
-  system('sudo ip addr add 1.1.1.2/24 dev dummy2')
-  system('sudo ip link set dummy1 up')
-  system('sudo ip link set dummy2 up')
-  system('ip link show')
+  if RbConfig::CONFIG['host_os'] =~ /linux/i
+    system('sudo ip link add dummy1 type dummy')
+    system('sudo ip link add dummy2 type dummy')
+    system('sudo ip addr add 1.1.1.1/24 dev dummy1')
+    system('sudo ip addr add 1.1.1.2/24 dev dummy2')
+    system('sudo ip link set dummy1 up')
+    system('sudo ip link set dummy2 up')
+    system('ip link show')
+  else
+    system("sudo ifconfig lo1 create")
+    system("sudo ifconfig lo1 1.1.1.1/24 up")
+    system("sudo ifconfig lo2 create")
+    system("sudo ifconfig lo2 1.1.1.2/24 up")
+    system("sudo ifconfig -a")
+  end
 end
 
 RSpec::Core::RakeTask.new
