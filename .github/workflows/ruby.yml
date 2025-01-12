@@ -55,4 +55,4 @@ jobs:
           ifconfig lo2 1.1.1.2/24 up
           gem install bundler --no-document
           bundle install --quiet
-          bundle exec rspec
+          bundle exec rake
