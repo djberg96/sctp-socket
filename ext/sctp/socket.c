@@ -695,6 +695,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
     rb_raise(rb_eArgError, "Array size is greater than IOV_MAX");
 
   // TODO: Make this configurable
+  spa.sendv_flags = SCTP_SEND_SNDINFO_VALID;
   spa.sendv_sndinfo.snd_flags = SCTP_UNORDERED;
   spa.sendv_sndinfo.snd_assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
 
