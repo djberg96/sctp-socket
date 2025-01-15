@@ -30,6 +30,7 @@ begin
 
   while true
     info = socket.recvmsg
+    # info = socket.recvv # Or this
     p info
   end
 ensure

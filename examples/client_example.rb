@@ -10,7 +10,7 @@ begin
   socket = SCTP::Socket.new
 
   # Optional, but could bind to a subset of available addresses
-  p socket.bindx(:addresses => addresses)
+  # p socket.bindx(:addresses => addresses)
 
   # Initial connection
   p socket.connectx(:addresses => addresses, :port => port)
