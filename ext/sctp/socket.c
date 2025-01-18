@@ -504,10 +504,17 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
  */
 static VALUE rsctp_close(VALUE self){
   int on;
+  struct linger lin;
   int fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
   on = 1;
   if(setsockopt(fileno, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0)
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+
+  lin.l_onoff = 1;
+  lin.l_linger = 3;
+
+  if(setsockopt(fileno, SOL_SOCKET, SO_LINGER, &lin, sizeof(struct linger)) < 0)
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   if(close(fileno))
