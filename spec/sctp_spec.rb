@@ -8,6 +8,9 @@ require 'socket'
 require 'sctp/socket'
 
 RSpec.describe SCTP::Socket do
+  let(:addresses){ %w[1.1.1.1 1.1.1.2] }
+  let(:port){ 12345 }
+
   context "version" do
     example "version is set to the expected value" do
       expect(SCTP::Socket::VERSION).to eq('0.1.2')
@@ -55,9 +58,6 @@ RSpec.describe SCTP::Socket do
   end
 
   context "bindx" do
-    let(:addresses){ %w[1.1.1.1 1.1.1.2] }
-    let(:port){ 12345 }
-
     before do
       @server = described_class.new
     end
@@ -106,9 +106,6 @@ RSpec.describe SCTP::Socket do
   end
 
   context "connectx" do
-    let(:addresses){ %w[1.1.1.1 1.1.1.2] }
-    let(:port){ 12345 }
-
     before do
       @socket = described_class.new
       @server = described_class.new
@@ -156,9 +153,6 @@ RSpec.describe SCTP::Socket do
   end
 
   context "getpeernames" do
-    let(:addresses){ %w[1.1.1.1 1.1.1.2] }
-    let(:port){ 12345 }
-
     before do
       @socket = described_class.new
       @server = described_class.new
@@ -167,6 +161,7 @@ RSpec.describe SCTP::Socket do
     end
 
     after do
+      @server.shutdown rescue nil
       @socket.close if @socket
       @server.close if @server
     end
@@ -178,9 +173,6 @@ RSpec.describe SCTP::Socket do
   end
 
   context "getlocalnames" do
-    let(:addresses){ %w[1.1.1.1 1.1.1.2] }
-    let(:port){ 12345 }
-
     before do
       @server = described_class.new
       @socket = described_class.new
@@ -189,6 +181,7 @@ RSpec.describe SCTP::Socket do
     end
 
     after do
+      @server.shutdown rescue nil
       @socket.close if @socket
       @server.close if @server
     end
@@ -200,16 +193,11 @@ RSpec.describe SCTP::Socket do
     end
   end
 
-=begin
   context "get_status" do
-    let(:addresses){ %w[1.1.1.1 1.1.1.2] }
-    let(:port){ 12345 }
-
     before do
       @server = described_class.new
       @socket = described_class.new
       @server.bindx(:addresses => addresses, :port => port)
-      @server.listen
       @socket.connectx(:addresses => addresses, :port => port)
     end
 
@@ -235,6 +223,7 @@ RSpec.describe SCTP::Socket do
       expect(struct.primary).to eq(addresses.first)
     end
   end
+=begin
 
   context "subscribe" do
     let(:addresses){ %w[1.1.1.1 1.1.1.2] }
