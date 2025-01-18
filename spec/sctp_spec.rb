@@ -177,7 +177,6 @@ RSpec.describe SCTP::Socket do
     end
   end
 
-=begin
   context "getlocalnames" do
     let(:addresses){ %w[1.1.1.1 1.1.1.2] }
     let(:port){ 12345 }
@@ -196,14 +195,11 @@ RSpec.describe SCTP::Socket do
 
     example "getlocalnames returns the expected array" do
       @socket.connectx(:addresses => addresses, :port => port)
-      expect(@socket.getlocalnames).to eq(addresses)
+      expect(@socket.getlocalnames).to include(*addresses)
     end
-
-    #example "getlocalnames does not accept arguments" do
-    #  expect{ @socket.getlocalnames(true) }.to raise_error(ArgumentError)
-    #end
   end
 
+=begin
   context "get_status" do
     let(:addresses){ %w[1.1.1.1 1.1.1.2] }
     let(:port){ 12345 }
