@@ -105,18 +105,20 @@ RSpec.describe SCTP::Socket do
     end
   end
 
-=begin
   context "connectx" do
     let(:addresses){ %w[1.1.1.1 1.1.1.2] }
     let(:port){ 12345 }
 
     before do
       @socket = described_class.new
-      @socket.bindx(:port => port)
+      @server = described_class.new
+      @server.bindx(:port => port)
+      @server.listen
     end
 
     after do
       @socket.close if @socket
+      @server.close if @server
     end
 
     example "connectx basic check" do
@@ -134,6 +136,7 @@ RSpec.describe SCTP::Socket do
       expect{ @socket.connectx(:addresses => addresses) }.to raise_error(ArgumentError)
     end
   end
+=begin
 
   context "close" do
     before do
