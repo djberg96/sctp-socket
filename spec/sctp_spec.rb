@@ -193,6 +193,7 @@ RSpec.describe SCTP::Socket do
       @server.close if @server
     end
 
+    # TODO: FreeBSD is picking up localhost and em0 here, is that normal?
     example "getlocalnames returns the expected array" do
       @socket.connectx(:addresses => addresses, :port => port)
       expect(@socket.getlocalnames).to include(*addresses)
