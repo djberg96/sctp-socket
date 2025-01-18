@@ -503,9 +503,14 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
  *   socket.close
  */
 static VALUE rsctp_close(VALUE self){
-  VALUE v_fileno = rb_iv_get(self, "@fileno");
+  int on;
+  int fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
-  if(close(NUM2INT(v_fileno)))
+  on = 1;
+  if(setsockopt(fileno, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0)
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+
+  if(close(fileno))
     rb_raise(rb_eSystemCallError, "close: %s", strerror(errno));
 
   return self;
