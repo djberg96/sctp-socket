@@ -136,7 +136,6 @@ RSpec.describe SCTP::Socket do
       expect{ @socket.connectx(:addresses => addresses) }.to raise_error(ArgumentError)
     end
   end
-=begin
 
   context "close" do
     before do
@@ -161,8 +160,8 @@ RSpec.describe SCTP::Socket do
     let(:port){ 12345 }
 
     before do
-      @server = described_class.new
       @socket = described_class.new
+      @server = described_class.new
       @server.bindx(:addresses => addresses, :port => port)
       @server.listen
     end
@@ -176,12 +175,9 @@ RSpec.describe SCTP::Socket do
       @socket.connectx(:addresses => addresses, :port => port)
       expect(@socket.getpeernames).to eq(addresses)
     end
-
-    #example "getpeernames does not accept arguments" do
-    #  expect{ @socket.getpeernames(true) }.to raise_error(ArgumentError)
-    #end
   end
 
+=begin
   context "getlocalnames" do
     let(:addresses){ %w[1.1.1.1 1.1.1.2] }
     let(:port){ 12345 }
