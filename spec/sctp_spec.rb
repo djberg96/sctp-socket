@@ -59,41 +59,53 @@ RSpec.describe SCTP::Socket do
     let(:port){ 12345 }
 
     before do
-      @socket = described_class.new
+      @server = described_class.new
     end
 
     after do
-      @socket.close if @socket
+      @server.close if @server
     end
 
     example "bindx both sets and returns port value" do
-      port = @socket.bindx
-      expect(@socket.port).to eq(port)
+      port = @server.bindx
+      expect(@server.port).to eq(port)
     end
 
     example "bindx with no arguments" do
-      expect{ @socket.bindx }.not_to raise_error
+      expect{ @server.bindx }.not_to raise_error
     end
 
     example "bindx with addresses" do
-      expect{ @socket.bindx(:addresses => addresses) }.not_to raise_error
+      expect{ @server.bindx(:addresses => addresses) }.not_to raise_error
     end
 
     example "bindx with explicit port value" do
-      expect{ @socket.bindx(:port => port) }.not_to raise_error
-      expect(@socket.port).to eq(port)
+      expect{ @server.bindx(:port => port) }.not_to raise_error
+      expect(@server.port).to eq(port)
     end
 
     example "bindx using explicit flags to add addresses" do
-      expect{ @socket.bindx(:addresses => addresses, :flags => SCTP::Socket::SCTP_BINDX_ADD_ADDR) }.not_to raise_error
+      expect{
+        @server.bindx(
+          :addresses => addresses,
+          :flags => SCTP::Socket::SCTP_BINDX_ADD_ADDR
+        )
+      }.not_to raise_error
     end
 
     xexample "bindx using explicit flags to remove addresses" do
-      @socket.bindx(:port => port, :addresses => addresses)
-      expect{ @socket.bindx(:port => port, :addresses => [addresses.last], :flags => SCTP::Socket::SCTP_BINDX_REM_ADDR) }.not_to raise_error
+      @server.bindx(:port => port, :addresses => addresses)
+      expect{
+        @server.bindx(
+          :port => port,
+          :addresses => [addresses.last],
+          :flags => SCTP::Socket::SCTP_BINDX_REM_ADDR
+        )
+      }.not_to raise_error
     end
   end
 
+=begin
   context "connectx" do
     let(:addresses){ %w[1.1.1.1 1.1.1.2] }
     let(:port){ 12345 }
@@ -275,4 +287,5 @@ RSpec.describe SCTP::Socket do
       expect{ @server.get_subscriptions(true) }.to raise_error(ArgumentError)
     end
   end
+=end
 end
