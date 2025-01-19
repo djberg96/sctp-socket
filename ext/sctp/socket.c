@@ -502,20 +502,36 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
  *   socket = SCTP::Socket.new
  *   socket.close
  */
-static VALUE rsctp_close(VALUE self){
-  int on;
-  struct linger lin;
-  int fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
+  VALUE v_options, v_reuse_addr, v_linger;
+  int fileno, on;
 
-  on = 1;
-  if(setsockopt(fileno, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0)
-    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+  rb_scan_args(argc, argv, "01", &v_options);
 
-  lin.l_onoff = 1;
-  lin.l_linger = 3;
+  if(NIL_P(v_options))
+    v_options = rb_hash_new();
 
-  if(setsockopt(fileno, SOL_SOCKET, SO_LINGER, &lin, sizeof(struct linger)) < 0)
-    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+  Check_Type(v_options, T_HASH);
+
+  v_reuse_addr = rb_hash_aref2(v_options, "reuse_addr");
+  v_linger = rb_hash_aref2(v_options, "linger");
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+
+  if(v_reuse_addr == Qtrue){
+    on = 1;
+    if(setsockopt(fileno, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0)
+      rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+  }
+
+  if(!NIL_P(v_linger)){
+    struct linger lin;
+    lin.l_onoff = 1;
+    lin.l_linger = NUM2INT(v_linger);
+
+    if(setsockopt(fileno, SOL_SOCKET, SO_LINGER, &lin, sizeof(struct linger)) < 0)
+      rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+  }
 
   if(close(fileno))
     rb_raise(rb_eSystemCallError, "close: %s", strerror(errno));
@@ -2311,7 +2327,7 @@ void Init_socket(void){
 
   rb_define_method(cSocket, "autoclose=", rsctp_set_autoclose, 1);
   rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
-  rb_define_method(cSocket, "close", rsctp_close, 0);
+  rb_define_method(cSocket, "close", rsctp_close, -1);
   rb_define_method(cSocket, "connectx", rsctp_connectx, -1);
   rb_define_method(cSocket, "delete_shared_key", rsctp_delete_shared_key, -1);
   rb_define_method(cSocket, "disable_fragments=", rsctp_disable_fragments, 1);
