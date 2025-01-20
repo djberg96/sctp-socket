@@ -497,10 +497,24 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
  *
  * Close the socket. You should always do this.
  *
+ * By default the underlying close operation is non-blocking. This means that the
+ * bound IP addresses may not be available right away after closing. You may
+ * optionally control this behavior with two different options.
+ *
+ * * reuse_addr - If set to true, then the SO_REUSEADDR flag will be applied to
+ *     the socket. This will allow other sockets to reuse the addresses that
+ *     are currently bound to the socket.
+ *
+ * * linger - If present, this should be set to a numeric value, in seconds.
+ *     The value will cause the close operation to block for that number of
+ *     seconds, after which it will return (i.e. return to non-blocking).
+ *
  * Example:
  *
  *   socket = SCTP::Socket.new
- *   socket.close
+ *   socket.close # or
+ *   socket.close(reuse_addr: true) # or
+ *   socket.close(linger: 5)
  */
 static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
   VALUE v_options, v_reuse_addr, v_linger;
