@@ -208,27 +208,35 @@ RSpec.describe SCTP::Socket do
     end
   end
 
-=begin
   context "close" do
+    before do
+      @csocket = described_class.new
+      @cserver = described_class.new
+    end
+
+    after do
+      @csocket.close if @csocket rescue nil
+      @cserver.close if @cserver rescue nil
+    end
+
     example "close basic functionality" do
-      expect{ @socket.close }.not_to raise_error
+      expect{ @csocket.close }.not_to raise_error
     end
 
     example "close argument if present must be a Hash" do
-      expect{ @socket.close(1) }.to raise_error(TypeError)
+      expect{ @csocket.close(1) }.to raise_error(TypeError)
     end
 
     example "calling close on a closed socket raises an error" do
-      expect{ 2.times{ @socket.close } }.to raise_error(SystemCallError)
+      expect{ 2.times{ @csocket.close } }.to raise_error(SystemCallError)
     end
 
     example "close accepts a reuse_addr argument" do
-      expect{ @socket.close(reuse_addr: true) }.not_to raise_error
+      expect{ @csocket.close(reuse_addr: true) }.not_to raise_error
     end
 
     example "close accepts a linger argument" do
-      expect{ @socket.close(linger: 10) }.not_to raise_error
+      expect{ @csocket.close(linger: 10) }.not_to raise_error
     end
   end
-=end
 end
