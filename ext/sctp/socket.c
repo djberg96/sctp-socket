@@ -335,6 +335,7 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
  *
  * Bind a subset of IP addresses associated with the host system on the
  * given port, or a port assigned by the operating system if none is provided.
+ * You may bind a maximum of eight IP addresses.
  *
  * Note that you can both add or remove an address to or from the socket
  * using the SCTP_BINDX_ADD_ADDR (default) or SCTP_BINDX_REM_ADDR constants,
@@ -402,6 +403,9 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
     num_ip = 1;
   else
     num_ip = (int)RARRAY_LEN(v_addresses);
+
+  if(num_ip > 8)
+    rb_raise(rb_eArgError, "too many IP addresses to bind, maximum is eight");
 
   domain = NUM2INT(rb_iv_get(self, "@domain"));
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
