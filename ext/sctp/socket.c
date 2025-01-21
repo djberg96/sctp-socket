@@ -406,7 +406,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   domain = NUM2INT(rb_iv_get(self, "@domain"));
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
-  if(num_ip > 1){
+  if(!NIL_P(v_addresses)){
     for(i = 0; i < num_ip; i++){
       v_address = RARRAY_PTR(v_addresses)[i];
       addrs[i].sin_family = domain;
