@@ -497,15 +497,57 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
  *
  * Close the socket. You should always do this.
  *
+ * By default the underlying close operation is non-blocking. This means that the
+ * bound IP addresses may not be available right away after closing. You may
+ * optionally control this behavior with two different options.
+ *
+ * * reuse_addr - If set to true, then the SO_REUSEADDR flag will be applied to
+ *     the socket. This will allow other sockets to reuse the addresses that
+ *     are currently bound to the socket.
+ *
+ * * linger - If present, this should be set to a numeric value, in seconds.
+ *     The value will cause the close operation to block for that number of
+ *     seconds, after which it will return (i.e. return to non-blocking).
+ *
  * Example:
  *
  *   socket = SCTP::Socket.new
- *   socket.close
+ *   socket.close # or
+ *   socket.close(reuse_addr: true) # or
+ *   socket.close(linger: 5)
  */
-static VALUE rsctp_close(VALUE self){
-  VALUE v_fileno = rb_iv_get(self, "@fileno");
+static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
+  VALUE v_options, v_reuse_addr, v_linger;
+  int fileno, on;
 
-  if(close(NUM2INT(v_fileno)))
+  rb_scan_args(argc, argv, "01", &v_options);
+
+  if(NIL_P(v_options))
+    v_options = rb_hash_new();
+
+  Check_Type(v_options, T_HASH);
+
+  v_reuse_addr = rb_hash_aref2(v_options, "reuse_addr");
+  v_linger = rb_hash_aref2(v_options, "linger");
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+
+  if(v_reuse_addr == Qtrue){
+    on = 1;
+    if(setsockopt(fileno, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0)
+      rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+  }
+
+  if(!NIL_P(v_linger)){
+    struct linger lin;
+    lin.l_onoff = 1;
+    lin.l_linger = NUM2INT(v_linger);
+
+    if(setsockopt(fileno, SOL_SOCKET, SO_LINGER, &lin, sizeof(struct linger)) < 0)
+      rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+  }
+
+  if(close(fileno))
     rb_raise(rb_eSystemCallError, "close: %s", strerror(errno));
 
   return self;
@@ -2299,7 +2341,7 @@ void Init_socket(void){
 
   rb_define_method(cSocket, "autoclose=", rsctp_set_autoclose, 1);
   rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
-  rb_define_method(cSocket, "close", rsctp_close, 0);
+  rb_define_method(cSocket, "close", rsctp_close, -1);
   rb_define_method(cSocket, "connectx", rsctp_connectx, -1);
   rb_define_method(cSocket, "delete_shared_key", rsctp_delete_shared_key, -1);
   rb_define_method(cSocket, "disable_fragments=", rsctp_disable_fragments, 1);
