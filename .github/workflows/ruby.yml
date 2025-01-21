@@ -35,3 +35,25 @@ jobs:
         bundler-cache: true
     - name: Run Specs
       run: bundle exec rake
+  freebsd:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test in FreeBSD
+      id: test
+      uses: vmactions/freebsd-vm@v1
+      with:
+        usesh: true
+        prepare: |
+          pkg install -y llvm ruby devel/ruby-gems sctplib git-tiny
+
+        run: |
+          git config --global --add safe.directory /home/runner/work/sctp-socket/sctp-socket
+          kldload sctp
+          ifconfig lo1 create
+          ifconfig lo1 1.1.1.1/24 up
+          ifconfig lo2 create
+          ifconfig lo2 1.1.1.2/24 up
+          gem install bundler --no-document
+          bundle install --quiet
+          bundle exec rake
