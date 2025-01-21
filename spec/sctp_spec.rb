@@ -18,8 +18,8 @@ RSpec.describe SCTP::Socket do
     end
 
     after do
-      @socket.close(reuse_addr: true, linger: 0) if @socket
-      @server.close(reuse_addr: true, linger: 0) if @server
+      @socket.close(linger: 0) if @socket
+      @server.close(linger: 0) if @server
     end
 
     context "version" do
@@ -58,22 +58,25 @@ RSpec.describe SCTP::Socket do
       end
     end
 
+    # For the purposes of these specs we're setting reuse_addr to true just
+    # to avoid address-in-use errors, as we don't care about data loss.
+    #
     context "bindx" do
       example "bindx both sets and returns port value" do
-        port = @server.bindx
+        port = @server.bindx(:reuse_addr => true)
         expect(@server.port).to eq(port)
       end
 
       example "bindx with no arguments" do
-        expect{ @server.bindx }.not_to raise_error
+        expect{ @server.bindx(:reuse_addr => true) }.not_to raise_error
       end
 
       example "bindx with addresses" do
-        expect{ @server.bindx(:addresses => addresses) }.not_to raise_error
+        expect{ @server.bindx(:addresses => addresses, :reuse_addr => true) }.not_to raise_error
       end
 
       example "bindx with explicit port value" do
-        expect{ @server.bindx(:port => port) }.not_to raise_error
+        expect{ @server.bindx(:port => port, :reuse_addr => true) }.not_to raise_error
         expect(@server.port).to eq(port)
       end
 
@@ -81,18 +84,20 @@ RSpec.describe SCTP::Socket do
         expect{
           @server.bindx(
             :addresses => addresses,
-            :flags => SCTP::Socket::SCTP_BINDX_ADD_ADDR
+            :flags => SCTP::Socket::SCTP_BINDX_ADD_ADDR,
+            :reuse_addr => true
           )
         }.not_to raise_error
       end
 
       xexample "bindx using explicit flags to remove addresses" do
-        @server.bindx(:port => port, :addresses => addresses)
+        @server.bindx(:port => port, :addresses => addresses, :reuse_addr => true)
         expect{
           @server.bindx(
             :port => port,
             :addresses => [addresses.last],
-            :flags => SCTP::Socket::SCTP_BINDX_REM_ADDR
+            :flags => SCTP::Socket::SCTP_BINDX_REM_ADDR,
+            :reuse_addr => true
           )
         }.not_to raise_error
       end
@@ -100,7 +105,7 @@ RSpec.describe SCTP::Socket do
 
     context "connectx" do
       before do
-        @server.bindx(:port => port)
+        @server.bindx(:port => port, :reuse_addr => true)
         @server.listen
       end
 
@@ -122,7 +127,7 @@ RSpec.describe SCTP::Socket do
 
     context "getpeernames" do
       before do
-        @server.bindx(:addresses => addresses, :port => port)
+        @server.bindx(:addresses => addresses, :port => port, :reuse_addr => true)
         @server.listen
       end
 
@@ -134,7 +139,7 @@ RSpec.describe SCTP::Socket do
 
     context "getlocalnames" do
       before do
-        @server.bindx(:addresses => addresses, :port => port)
+        @server.bindx(:addresses => addresses, :port => port, :reuse_addr => true)
         @server.listen
       end
 
@@ -147,9 +152,9 @@ RSpec.describe SCTP::Socket do
 
     context "get_status" do
       before do
-        @server.bindx(:addresses => addresses, :port => port)
+        @server.bindx(:addresses => addresses, :port => port, :reuse_addr => true)
         @server.listen
-        @socket.connectx(:addresses => addresses, :port => port)
+        @socket.connectx(:addresses => addresses, :port => port, :reuse_addr => true)
       end
 
       example "get_status return the expected struct" do
@@ -175,7 +180,7 @@ RSpec.describe SCTP::Socket do
       let(:port){ 12345 }
 
       before do
-        @server.bindx(:addresses => addresses, :port => port)
+        @server.bindx(:addresses => addresses, :port => port, :reuse_addr => true)
         @server.listen
       end
 
@@ -191,7 +196,7 @@ RSpec.describe SCTP::Socket do
       let(:subscriptions){ {:data_io => true, :shutdown => true} }
 
       before do
-        @server.bindx(:addresses => addresses, :port => port)
+        @server.bindx(:addresses => addresses, :port => port, :reuse_addr => true)
         @server.subscribe(subscriptions)
       end
 
