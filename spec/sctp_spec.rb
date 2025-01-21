@@ -148,6 +148,7 @@ RSpec.describe SCTP::Socket do
     context "get_status" do
       before do
         @server.bindx(:addresses => addresses, :port => port)
+        @server.listen
         @socket.connectx(:addresses => addresses, :port => port)
       end
 
