@@ -340,6 +340,22 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
  * using the SCTP_BINDX_ADD_ADDR (default) or SCTP_BINDX_REM_ADDR constants,
  * respectively.
  *
+ * Possible options:
+ *
+ * * addresses - Array of IP addresses to bind to. If none are specified then
+ *     INADDR_ANY is used.
+ *
+ * * port - The port to bind to. If none is specified then 0 is used, i.e. the
+ *     OS will select one for you.
+ *
+ * * flags - Flags to pass to the underlying sctp_bindx function. In practice
+ *     there are only two options: BINDX_ADD_ADDR and BINDX_REM_ADDR. By
+ *     default a flag of BINDX_ADD_ADDR is assumed.
+ *
+ * * reuse_addr - If set to true, then the SO_REUSEADDR flag will be applied to
+ *     the socket before the bind call. This will allow other sockets to reuse
+ *     the addresses that are currently bound to the socket.
+ *
  * Example:
  *
  *   socket = SCTP::Socket.new
@@ -357,8 +373,8 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
  */
 static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   struct sockaddr_in addrs[8];
-  int i, fileno, num_ip, flags, domain, port;
-  VALUE v_addresses, v_port, v_flags, v_address, v_options;
+  int i, fileno, num_ip, flags, domain, port, on;
+  VALUE v_addresses, v_port, v_flags, v_address, v_reuse_addr, v_options;
 
   rb_scan_args(argc, argv, "01", &v_options);
 
@@ -370,6 +386,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   v_addresses = rb_hash_aref2(v_options, "addresses");
   v_flags = rb_hash_aref2(v_options, "flags");
   v_port = rb_hash_aref2(v_options, "port");
+  v_reuse_addr = rb_hash_aref2(v_options, "reuse_addr");
 
   if(NIL_P(v_port))
     port = 0;
@@ -407,6 +424,12 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
 #ifdef BSD
     addrs[0].sin_len = sizeof(struct sockaddr_in);
 #endif
+  }
+
+  if(v_reuse_addr == Qtrue){
+    on = 1;
+    if(setsockopt(fileno, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0)
+      rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
   }
 
   if(sctp_bindx(fileno, (struct sockaddr *) addrs, num_ip, flags) != 0)
@@ -499,11 +522,8 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
  *
  * By default the underlying close operation is non-blocking. This means that the
  * bound IP addresses may not be available right away after closing. You may
- * optionally control this behavior with two different options.
+ * optionally control this behavior with the +linger+ option.
  *
- * * reuse_addr - If set to true, then the SO_REUSEADDR flag will be applied to
- *     the socket. This will allow other sockets to reuse the addresses that
- *     are currently bound to the socket.
  *
  * * linger - If present, this should be set to a numeric value, in seconds.
  *     The value will cause the close operation to block for that number of
@@ -513,12 +533,11 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
  *
  *   socket = SCTP::Socket.new
  *   socket.close # or
- *   socket.close(reuse_addr: true) # or
  *   socket.close(linger: 5)
  */
 static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
-  VALUE v_options, v_reuse_addr, v_linger;
-  int fileno, on;
+  VALUE v_options, v_linger;
+  int fileno;
 
   rb_scan_args(argc, argv, "01", &v_options);
 
@@ -527,16 +546,9 @@ static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
 
   Check_Type(v_options, T_HASH);
 
-  v_reuse_addr = rb_hash_aref2(v_options, "reuse_addr");
   v_linger = rb_hash_aref2(v_options, "linger");
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
-
-  if(v_reuse_addr == Qtrue){
-    on = 1;
-    if(setsockopt(fileno, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0)
-      rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
-  }
 
   if(!NIL_P(v_linger)){
     struct linger lin;
