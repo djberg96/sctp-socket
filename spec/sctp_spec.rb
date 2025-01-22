@@ -90,8 +90,8 @@ RSpec.describe SCTP::Socket do
         }.not_to raise_error
       end
 
-      xexample "bindx using explicit flags to remove addresses" do
-        @server.bindx(:port => port, :addresses => addresses, :reuse_addr => true)
+      example "bindx using explicit flags to remove addresses" do
+        @server.bindx(:port => port, :addresses => addresses)
         expect{
           @server.bindx(
             :port => port,
