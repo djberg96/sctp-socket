@@ -67,7 +67,7 @@ Currently this has only been developed and tested on Linux and BSD. Other
 platforms will probably only be supported via community contributions.
 
 The sendv and recvv methods may not be available. Use the sendmsg and recvmsg
-methods instead.
+methods instead if that's the case.
 
 I am currently unable to subclass the Socket class from Ruby's standard library.
 For whatever reason the call to rb_call_super works, but the fileno is always

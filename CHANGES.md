@@ -1,3 +1,8 @@
+## 0.1.3 - 22-Jan-2025
+* The close method now accepts an optional `linger` argument.
+* The bindx method now accepts an optional `reuse_addr` argument.
+* Fixed a bug in the bindx method for address arrays with a single element.
+
 ## 0.1.2 - 10-Jan-2025
 * Added support for BSD.
 
