@@ -1604,6 +1604,58 @@ static VALUE rsctp_get_retransmission_info(VALUE self){
 
 /*
  * call-seq:
+ *    SCTP::Socket#set_retransmission_info(options)
+ *
+ * Sets the protocol parameters that are used to initialize and bind the
+ * retransmission timeout (RTO) tunable. The method accepts a hash with
+ * the following possible keys:
+ *
+ *  * association_id
+ *  * initial
+ *  * max
+ *  * min
+ *
+ *  The +initial+, +max+ and +min+ options default to zero (unchanged).
+ */
+static VALUE rsctp_set_retransmission_info(VALUE self, VALUE v_options){
+  VALUE v_assoc_id, v_initial, v_max, v_min;
+  int fileno;
+  sctp_assoc_t assoc_id;
+  struct sctp_rtoinfo rto;
+
+  bzero(&rto, sizeof(rto));
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+
+  v_assoc_id = rb_hash_aref2(v_options, "association_id");
+  v_initial = rb_hash_aref2(v_options, "initial");
+  v_max = rb_hash_aref2(v_options, "max");
+  v_min = rb_hash_aref2(v_options, "min");
+
+  if(NIL_P(v_assoc_id))
+    v_assoc_id = rb_iv_get(self, "@association_id");
+
+  assoc_id = NUM2INT(v_assoc_id);
+
+  rto.srto_assoc_id = assoc_id;
+  rto.srto_initial = NUM2INT(v_initial);
+  rto.srto_max = NUM2INT(v_max);
+  rto.srto_min = NUM2INT(v_min);
+
+  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_RTOINFO, &rto, sizeof(rto)) < 0)
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+
+  return rb_struct_new(
+    v_sctp_rtoinfo_struct,
+    v_assoc_id,
+    v_initial,
+    v_max,
+    v_min
+  );
+}
+
+/*
+ * call-seq:
  *    SCTP::Socket#get_status
  *
  * Get the status of a connected socket.
@@ -2392,10 +2444,13 @@ void Init_socket(void){
   rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, 1);
   rb_define_method(cSocket, "set_active_shared_key", rsctp_set_active_shared_key, -1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
-  //rb_define_method(cSocket, "set_retransmission_info", rsctp_set_retransmission_info, -1);
+  rb_define_method(cSocket, "set_retransmission_info", rsctp_set_retransmission_info, 1);
   rb_define_method(cSocket, "set_shared_key", rsctp_set_shared_key, -1);
   rb_define_method(cSocket, "shutdown", rsctp_shutdown, -1);
   rb_define_method(cSocket, "subscribe", rsctp_subscribe, 1);
+
+  rb_define_alias(cSocket, "get_rto_info", "get_retransmission_info");
+  rb_define_alias(cSocket, "set_rto_info", "set_retransmission_info");
 
   rb_define_attr(cSocket, "domain", 1, 1);
   rb_define_attr(cSocket, "type", 1, 1);
