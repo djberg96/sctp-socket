@@ -1530,6 +1530,75 @@ static VALUE rsctp_get_association_info(VALUE self){
 
 /*
  * call-seq:
+ *    SCTP::Socket#set_association_info(options)
+ *
+ * Sets the association specific parameters. The +options+ parameter
+ * is a hash that accepts the following keywords:
+ *
+ *  * association_id
+ *  * max_retransmission_count
+ *  * number_peer_destinations
+ *  * peer_receive_window
+ *  * local_receive_window
+ *  * cookie_life
+ *
+ *  All values that refer to time values are measured in milliseconds.
+ */
+static VALUE rsctp_set_association_info(VALUE self, VALUE v_options){
+  VALUE v_assoc_id, v_max_rxt, v_nbr_peer, v_peer_rw, v_local_rw, v_cookie;
+  int fileno;
+  sctp_assoc_t assoc_id;
+  struct sctp_assocparams assoc;
+
+  bzero(&assoc, sizeof(assoc));
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+
+  v_assoc_id = rb_hash_aref2(v_options, "association_id");
+  v_max_rxt  = rb_hash_aref2(v_options, "max_retransmission_count");
+  v_nbr_peer = rb_hash_aref2(v_options, "number_peer_destinations");
+  v_peer_rw  = rb_hash_aref2(v_options, "peer_receive_window");
+  v_local_rw = rb_hash_aref2(v_options, "local_receive_window");
+  v_cookie   = rb_hash_aref2(v_options, "cookie_life");
+
+  if(NIL_P(v_assoc_id))
+    assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  else
+    assoc_id = NUM2INT(v_assoc_id);
+
+  assoc.sasoc_assoc_id = assoc_id;
+
+  if(!NIL_P(v_max_rxt))
+    assoc.sasoc_asocmaxrxt = NUM2INT(v_max_rxt);
+
+  if(!NIL_P(v_nbr_peer))
+    assoc.sasoc_number_peer_destinations = NUM2INT(v_nbr_peer);
+
+  if(!NIL_P(v_peer_rw))
+    assoc.sasoc_peer_rwnd = NUM2INT(v_peer_rw);
+
+  if(!NIL_P(v_local_rw))
+    assoc.sasoc_local_rwnd = NUM2INT(v_local_rw);
+
+  if(!NIL_P(v_cookie))
+    assoc.sasoc_cookie_life = NUM2INT(v_cookie);
+
+  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_ASSOCINFO, &assoc, sizeof(assoc)) < 0)
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+
+  return rb_struct_new(
+    v_sctp_associnfo_struct,
+    INT2NUM(assoc.sasoc_assoc_id),
+    INT2NUM(assoc.sasoc_asocmaxrxt),
+    INT2NUM(assoc.sasoc_number_peer_destinations),
+    INT2NUM(assoc.sasoc_peer_rwnd),
+    INT2NUM(assoc.sasoc_local_rwnd),
+    INT2NUM(assoc.sasoc_cookie_life)
+  );
+}
+
+/*
+ * call-seq:
  *    SCTP::Socket#shutdown
  *
  * Shuts down socket send and receive operations.
@@ -1599,6 +1668,64 @@ static VALUE rsctp_get_retransmission_info(VALUE self){
     INT2NUM(rto.srto_initial),
     INT2NUM(rto.srto_max),
     INT2NUM(rto.srto_min)
+  );
+}
+
+/*
+ * call-seq:
+ *    SCTP::Socket#set_retransmission_info(options)
+ *
+ * Sets the protocol parameters that are used to initialize and bind the
+ * retransmission timeout (RTO) tunable. The method accepts a hash with
+ * the following possible keys:
+ *
+ *  * association_id
+ *  * initial
+ *  * max
+ *  * min
+ *
+ *  The +initial+, +max+ and +min+ options default to zero (unchanged).
+ */
+static VALUE rsctp_set_retransmission_info(VALUE self, VALUE v_options){
+  VALUE v_assoc_id, v_initial, v_max, v_min;
+  int fileno;
+  sctp_assoc_t assoc_id;
+  struct sctp_rtoinfo rto;
+
+  bzero(&rto, sizeof(rto));
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+
+  v_assoc_id = rb_hash_aref2(v_options, "association_id");
+  v_initial = rb_hash_aref2(v_options, "initial");
+  v_max = rb_hash_aref2(v_options, "max");
+  v_min = rb_hash_aref2(v_options, "min");
+
+  if(NIL_P(v_assoc_id))
+    v_assoc_id = rb_iv_get(self, "@association_id");
+
+  assoc_id = NUM2INT(v_assoc_id);
+
+  rto.srto_assoc_id = assoc_id;
+
+  if(!NIL_P(v_initial))
+    rto.srto_initial = NUM2INT(v_initial);
+
+  if(!NIL_P(v_max))
+    rto.srto_max = NUM2INT(v_max);
+
+  if(!NIL_P(v_min))
+    rto.srto_min = NUM2INT(v_min);
+
+  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_RTOINFO, &rto, sizeof(rto)) < 0)
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+
+  return rb_struct_new(
+    v_sctp_rtoinfo_struct,
+    v_assoc_id,
+    v_initial,
+    v_max,
+    v_min
   );
 }
 
@@ -2391,11 +2518,15 @@ void Init_socket(void){
 
   rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, 1);
   rb_define_method(cSocket, "set_active_shared_key", rsctp_set_active_shared_key, -1);
+  rb_define_method(cSocket, "set_association_info", rsctp_set_association_info, 1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
-  //rb_define_method(cSocket, "set_retransmission_info", rsctp_set_retransmission_info, -1);
+  rb_define_method(cSocket, "set_retransmission_info", rsctp_set_retransmission_info, 1);
   rb_define_method(cSocket, "set_shared_key", rsctp_set_shared_key, -1);
   rb_define_method(cSocket, "shutdown", rsctp_shutdown, -1);
   rb_define_method(cSocket, "subscribe", rsctp_subscribe, 1);
+
+  rb_define_alias(cSocket, "get_rto_info", "get_retransmission_info");
+  rb_define_alias(cSocket, "set_rto_info", "set_retransmission_info");
 
   rb_define_attr(cSocket, "domain", 1, 1);
   rb_define_attr(cSocket, "type", 1, 1);
