@@ -1,3 +1,9 @@
+## 0.1.4 - 1-Feb-2025
+* Added the set_retransmission_info method.
+* Added the get_rto_info and set_rto_info aliases.
+* Added the set_association_info method.
+* Some spec updates and refactoring.
+
 ## 0.1.3 - 22-Jan-2025
 * The close method now accepts an optional `linger` argument.
 * The bindx method now accepts an optional `reuse_addr` argument.
