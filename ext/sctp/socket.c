@@ -1957,6 +1957,86 @@ static VALUE rsctp_get_init_msg(VALUE self){
 
 /*
  * call-seq:
+ *    SCTP::Socket#get_max_burst(association_id = nil)
+ *
+ * Returns the maximum burst of packets than can be emitted by the
+ * association, or the implicit association if none is specified.
+ *
+ * You can also specifiy SCTP_FUTURE_ASSOC, SCTP_CURRENT_ASSOC or
+ * SCTP_ALL_ASSOC.
+ */
+static VALUE rsctp_get_max_burst(int argc, VALUE* argv, VALUE self){
+  VALUE v_assoc_id;
+  int fileno;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  struct sctp_assoc_value assoc_value;
+
+  rb_scan_args(argc, argv, "01", &v_assoc_id);
+
+  bzero(&assoc_value, sizeof(assoc_value));
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+
+  if(NIL_P(v_assoc_id))
+    assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  else
+    assoc_id = NUM2INT(v_assoc_id);
+
+  size = sizeof(struct sctp_assoc_value);
+  assoc_value.assoc_id = assoc_id;
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_MAX_BURST, (void*)&assoc_value, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return INT2NUM(assoc_value.assoc_value);
+}
+
+/*
+ * call-seq:
+ *    SCTP::Socket#set_max_burst(n, association_id = nil)
+ *
+ * Sets and returns the maximum burst of packets than can be emitted by
+ * the association, or the implicit association if none is specified.
+ * Setting the value to zero disables burst mitigation.
+ *
+ * You can also specifiy SCTP_FUTURE_ASSOC, SCTP_CURRENT_ASSOC or
+ * SCTP_ALL_ASSOC instead of an association ID.
+ */
+static VALUE rsctp_set_max_burst(int argc, VALUE* argv, VALUE self){
+  VALUE v_assoc_id, v_max;
+  int fileno;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  struct sctp_assoc_value assoc_value;
+
+  rb_scan_args(argc, argv, "02", &v_max, &v_assoc_id);
+
+  bzero(&assoc_value, sizeof(assoc_value));
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+
+  if(NIL_P(v_assoc_id))
+    assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  else
+    assoc_id = NUM2INT(v_assoc_id);
+
+  if(NIL_P(v_max))
+    assoc_value.assoc_value = 0;
+  else
+    assoc_value.assoc_value = NUM2INT(v_max);
+
+  size = sizeof(struct sctp_assoc_value);
+  assoc_value.assoc_id = assoc_id;
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_MAX_BURST, (void*)&assoc_value, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  return INT2NUM(assoc_value.assoc_value);
+}
+
+/*
+ * call-seq:
  *    SCTP::Socket#nodelay?
  *
  * Returns whether or not the nodelay option has been set.
@@ -2496,6 +2576,7 @@ void Init_socket(void){
   rb_define_method(cSocket, "get_autoclose", rsctp_get_autoclose, 0);
   rb_define_method(cSocket, "get_default_send_params", rsctp_get_default_send_params, 0);
   rb_define_method(cSocket, "get_initmsg", rsctp_get_init_msg, 0);
+  rb_define_method(cSocket, "get_max_burst", rsctp_get_max_burst, -1);
   rb_define_method(cSocket, "get_peer_address_params", rsctp_get_peer_address_params, 0);
   rb_define_method(cSocket, "get_retransmission_info", rsctp_get_retransmission_info, 0);
   rb_define_method(cSocket, "get_status", rsctp_get_status, 0);
@@ -2520,6 +2601,7 @@ void Init_socket(void){
   rb_define_method(cSocket, "set_active_shared_key", rsctp_set_active_shared_key, -1);
   rb_define_method(cSocket, "set_association_info", rsctp_set_association_info, 1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
+  rb_define_method(cSocket, "set_max_burst", rsctp_set_max_burst, -1);
   rb_define_method(cSocket, "set_retransmission_info", rsctp_set_retransmission_info, 1);
   rb_define_method(cSocket, "set_shared_key", rsctp_set_shared_key, -1);
   rb_define_method(cSocket, "shutdown", rsctp_shutdown, -1);
@@ -2569,6 +2651,10 @@ void Init_socket(void){
   rb_define_const(cSocket, "SCTP_SHUTDOWN_SENT", INT2NUM(SCTP_SHUTDOWN_SENT));
   rb_define_const(cSocket, "SCTP_SHUTDOWN_RECEIVED", INT2NUM(SCTP_SHUTDOWN_RECEIVED));
   rb_define_const(cSocket, "SCTP_SHUTDOWN_ACK_SENT", INT2NUM(SCTP_SHUTDOWN_ACK_SENT));
+
+  rb_define_const(cSocket, "SCTP_FUTURE_ASSOC", INT2NUM(SCTP_FUTURE_ASSOC));
+  rb_define_const(cSocket, "SCTP_CURRENT_ASSOC", INT2NUM(SCTP_FUTURE_ASSOC));
+  rb_define_const(cSocket, "SCTP_ALL_ASSOC", INT2NUM(SCTP_FUTURE_ASSOC));
 
   // BINDING //
 
