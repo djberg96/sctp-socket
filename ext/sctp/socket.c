@@ -707,14 +707,16 @@ static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
   num_addrs = sctp_getpaddrs(fileno, assoc_id, &addrs);
 
   if(num_addrs < 0){
-    sctp_freepaddrs(addrs);
+    if(addrs != NULL)
+      sctp_freepaddrs(addrs);
+
     rb_raise(rb_eSystemCallError, "sctp_getpaddrs: %s", strerror(errno));
   }
 
   for(i = 0; i < num_addrs; i++){
+    bzero(&str, sizeof(str));
     inet_ntop(AF_INET, &(((struct sockaddr_in *)&addrs[i])->sin_addr), str, sizeof(str));
     rb_ary_push(v_array, rb_str_new2(str));
-    bzero(&str, sizeof(str));
   }
 
   sctp_freepaddrs(addrs);
