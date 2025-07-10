@@ -102,6 +102,13 @@ VALUE rb_hash_aref2(VALUE v_hash, const char* key){
   return v_val;
 }
 
+/*
+* Parse and convert SCTP notification messages into Ruby structures.
+* This function handles various types of SCTP notifications.
+*
+* @param buffer Raw notification buffer from SCTP
+* @return Ruby struct representing the notification
+*/
 VALUE get_notification_info(char* buffer){
   uint32_t i;
   char str[16];
@@ -109,6 +116,9 @@ VALUE get_notification_info(char* buffer){
   VALUE v_notification = Qnil;
   VALUE v_str = Qnil;
   VALUE* v_temp;
+
+  if(buffer == NULL)
+    rb_raise(rb_eArgError, "notification buffer is null");
 
   snp = (union sctp_notification*)buffer;
 
@@ -344,11 +354,24 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
 
   rb_scan_args(argc, argv, "02", &v_domain, &v_type);
 
-  if(NIL_P(v_domain))
+  // Set defaults with validation
+  if(NIL_P(v_domain)){
     v_domain = INT2NUM(AF_INET);
+  }
+  else{
+    int domain = NUM2INT(v_domain);
+    if((domain != AF_INET) && (domain != AF_INET6))
+      rb_raise(rb_eArgError, "unsupported domain family: %d", domain);
+  }
   
-  if(NIL_P(v_type))
+  if(NIL_P(v_type)){
     v_type = INT2NUM(SOCK_SEQPACKET);
+  }
+  else{
+    int type = NUM2INT(v_type);
+    if (type != SOCK_SEQPACKET && type != SOCK_STREAM)
+      rb_raise(rb_eArgError, "unsupported socket type: %d", type);
+  }
 
   fileno = socket(NUM2INT(v_domain), NUM2INT(v_type), IPPROTO_SCTP);
 
