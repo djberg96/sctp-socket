@@ -574,7 +574,7 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
  *   socket.close(linger: 5)
  */
 static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
-  VALUE v_options, v_linger;
+  VALUE v_options, v_linger, v_fileno;
   int fileno;
 
   rb_scan_args(argc, argv, "01", &v_options);
@@ -585,8 +585,12 @@ static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
   Check_Type(v_options, T_HASH);
 
   v_linger = rb_hash_aref2(v_options, "linger");
+  v_fileno = rb_iv_get(self, "@fileno");
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  if(NIL_P(v_fileno)) // Already closed
+    return self;
+
+  fileno = NUM2INT(v_fileno);
 
   if(!NIL_P(v_linger)){
     struct linger lin;
@@ -597,7 +601,7 @@ static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
       rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
   }
 
-  if(close(fileno))
+  if(close(fileno) < 0)
     rb_raise(rb_eSystemCallError, "close: %s", strerror(errno));
 
   return self;
