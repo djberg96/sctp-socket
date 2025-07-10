@@ -39,14 +39,36 @@ VALUE v_sctp_initmsg_struct;
 #endif
 #endif
 
-// TODO: Yes, I know I need to update the signature.
+#define MAX_IP_ADDRESSES 8
+#define DEFAULT_BUFFER_SIZE 1024
+#define IP_BUFFER_SIZE INET6_ADDRSTRLEN
+
+/*
+ * Convert a sockaddr_in structure to a Ruby struct.
+ * Handles both IPv4 and IPv6 addresses properly.
+ *
+ * @param addr Pointer to sockaddr_in structure
+ * @return Ruby struct representing the socket address
+ */
 VALUE convert_sockaddr_in_to_struct(struct sockaddr_in* addr){
-  char ipbuf[INET6_ADDRSTRLEN];
+  char ipbuf[IP_BUFFER_SIZE];
+  const char* result;
+
+  if(addr == NULL)
+    rb_raise(rb_eArgError, "null address pointer");
+
+  if((addr->sin_family != AF_INET) && (addr->sin_family != AF_INET6))
+    rb_raise(rb_eArgError, "unsupported address family");
+
+  memset(ipbuf, 0, sizeof(ipbuf));
 
   if(addr->sin_family == AF_INET6)
-    inet_ntop(addr->sin_family, &(((struct sockaddr_in6 *)addr)->sin6_addr), ipbuf, sizeof(ipbuf));
+    result = inet_ntop(addr->sin_family, &(((struct sockaddr_in6 *)addr)->sin6_addr), ipbuf, sizeof(ipbuf));
   else
-    inet_ntop(addr->sin_family, &(((struct sockaddr_in *)addr)->sin_addr), ipbuf, sizeof(ipbuf));
+    result = inet_ntop(addr->sin_family, &(((struct sockaddr_in *)addr)->sin_addr), ipbuf, sizeof(ipbuf));
+
+  if(result == NULL)
+    rb_raise(rb_eSystemCallError, "inet_ntop: %s", strerror(errno));
 
   return rb_struct_new(v_sockaddr_in_struct,
     INT2NUM(addr->sin_family),
