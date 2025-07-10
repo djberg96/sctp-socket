@@ -617,8 +617,13 @@ static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
 
   if(!NIL_P(v_linger)){
     struct linger lin;
+    int linger_time = NUM2INT(v_linger);
+
+    if(linger_time < 0)
+      rb_raise(rb_eArgError, "linger time must be non-negative");
+
     lin.l_onoff = 1;
-    lin.l_linger = NUM2INT(v_linger);
+    lin.l_linger = linger_time;
 
     if(setsockopt(fileno, SOL_SOCKET, SO_LINGER, &lin, sizeof(struct linger)) < 0)
       rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
@@ -626,6 +631,9 @@ static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
 
   if(close(fileno) < 0)
     rb_raise(rb_eSystemCallError, "close: %s", strerror(errno));
+
+  // Mark socket as closed
+  rb_iv_set(self, "@fileno", Qnil);
 
   return self;
 }

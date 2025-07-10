@@ -342,8 +342,8 @@ RSpec.describe SCTP::Socket do
       expect{ @csocket.close(1) }.to raise_error(TypeError)
     end
 
-    example "calling close on a closed socket raises an error" do
-      expect{ 2.times{ @csocket.close } }.to raise_error(SystemCallError)
+    example "calling close on a closed socket does not raise error" do
+      expect{ 3.times{ @csocket.close } }.not_to raise_error
     end
 
     example "close accepts a reuse_addr argument" do
