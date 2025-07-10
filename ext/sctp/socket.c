@@ -39,14 +39,36 @@ VALUE v_sctp_initmsg_struct;
 #endif
 #endif
 
-// TODO: Yes, I know I need to update the signature.
+#define MAX_IP_ADDRESSES 8
+#define DEFAULT_BUFFER_SIZE 1024
+#define IP_BUFFER_SIZE INET6_ADDRSTRLEN
+
+/*
+ * Convert a sockaddr_in structure to a Ruby struct.
+ * Handles both IPv4 and IPv6 addresses properly.
+ *
+ * @param addr Pointer to sockaddr_in structure
+ * @return Ruby struct representing the socket address
+ */
 VALUE convert_sockaddr_in_to_struct(struct sockaddr_in* addr){
-  char ipbuf[INET6_ADDRSTRLEN];
+  char ipbuf[IP_BUFFER_SIZE];
+  const char* result;
+
+  if(addr == NULL)
+    rb_raise(rb_eArgError, "null address pointer");
+
+  if((addr->sin_family != AF_INET) && (addr->sin_family != AF_INET6))
+    rb_raise(rb_eArgError, "unsupported address family");
+
+  memset(ipbuf, 0, sizeof(ipbuf));
 
   if(addr->sin_family == AF_INET6)
-    inet_ntop(addr->sin_family, &(((struct sockaddr_in6 *)addr)->sin6_addr), ipbuf, sizeof(ipbuf));
+    result = inet_ntop(addr->sin_family, &(((struct sockaddr_in6 *)addr)->sin6_addr), ipbuf, sizeof(ipbuf));
   else
-    inet_ntop(addr->sin_family, &(((struct sockaddr_in *)addr)->sin_addr), ipbuf, sizeof(ipbuf));
+    result = inet_ntop(addr->sin_family, &(((struct sockaddr_in *)addr)->sin_addr), ipbuf, sizeof(ipbuf));
+
+  if(result == NULL)
+    rb_raise(rb_eSystemCallError, "inet_ntop: %s", strerror(errno));
 
   return rb_struct_new(v_sockaddr_in_struct,
     INT2NUM(addr->sin_family),
@@ -55,13 +77,25 @@ VALUE convert_sockaddr_in_to_struct(struct sockaddr_in* addr){
   );
 }
 
-// Helper function to get a hash value via string or symbol.
+/*
+* Helper function to get a hash value via string or symbol key.
+* This provides Ruby's flexible hash access pattern.
+*
+* @param v_hash Ruby hash object
+* @param key String key to look up
+* @return Ruby value or Qnil if not found
+*/
 VALUE rb_hash_aref2(VALUE v_hash, const char* key){
   VALUE v_key, v_val;
 
+  if(key == NULL)
+    return Qnil;
+
+  // Try a string key first
   v_key = rb_str_new2(key);
   v_val = rb_hash_aref(v_hash, v_key);
 
+  // If not found, try a symbol key
   if(NIL_P(v_val))
     v_val = rb_hash_aref(v_hash, ID2SYM(rb_intern(key)));
 
@@ -373,7 +407,7 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
  * Returns the port that it was bound to.
  */
 static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
-  struct sockaddr_in addrs[8];
+  struct sockaddr_in addrs[MAX_IP_ADDRESSES];
   int i, fileno, num_ip, flags, domain, port, on;
   VALUE v_addresses, v_port, v_flags, v_address, v_reuse_addr, v_options;
 
@@ -404,7 +438,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   else
     num_ip = (int)RARRAY_LEN(v_addresses);
 
-  if(num_ip > 8)
+  if(num_ip > MAX_IP_ADDRESSES)
     rb_raise(rb_eArgError, "too many IP addresses to bind, maximum is eight");
 
   domain = NUM2INT(rb_iv_get(self, "@domain"));
@@ -472,7 +506,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
  * methods will automatically establish associations.
  */
 static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
-  struct sockaddr_in addrs[8];
+  struct sockaddr_in addrs[MAX_IP_ADDRESSES];
   int i, num_ip, fileno;
   sctp_assoc_t assoc;
   VALUE v_address, v_domain, v_options, v_addresses, v_port;
@@ -540,7 +574,7 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
  *   socket.close(linger: 5)
  */
 static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
-  VALUE v_options, v_linger;
+  VALUE v_options, v_linger, v_fileno;
   int fileno;
 
   rb_scan_args(argc, argv, "01", &v_options);
@@ -551,8 +585,12 @@ static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
   Check_Type(v_options, T_HASH);
 
   v_linger = rb_hash_aref2(v_options, "linger");
+  v_fileno = rb_iv_get(self, "@fileno");
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  if(NIL_P(v_fileno)) // Already closed
+    return self;
+
+  fileno = NUM2INT(v_fileno);
 
   if(!NIL_P(v_linger)){
     struct linger lin;
@@ -563,7 +601,7 @@ static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
       rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
   }
 
-  if(close(fileno))
+  if(close(fileno) < 0)
     rb_raise(rb_eSystemCallError, "close: %s", strerror(errno));
 
   return self;
@@ -1008,7 +1046,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   uint16_t stream;
   uint32_t ppid, flags, ttl, context;
   ssize_t num_bytes;
-  struct sockaddr_in addrs[8];
+  struct sockaddr_in addrs[MAX_IP_ADDRESSES];
   int fileno, size, num_ip;
 
   Check_Type(v_options, T_HASH);
