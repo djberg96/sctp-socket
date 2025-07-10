@@ -111,7 +111,7 @@ VALUE rb_hash_aref2(VALUE v_hash, const char* key){
 */
 VALUE get_notification_info(char* buffer){
   uint32_t i;
-  char str[16];
+  char str[IP_BUFFER_SIZE];
   union sctp_notification* snp;
   VALUE v_notification = Qnil;
   VALUE v_str = Qnil;
@@ -663,7 +663,7 @@ static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
   sctp_assoc_t assoc_id;
   struct sockaddr* addrs;
   int i, fileno, num_addrs;
-  char str[16];
+  char str[IP_BUFFER_SIZE];
   VALUE v_fileno, v_association_id;
   VALUE v_array = rb_ary_new();
 
@@ -720,7 +720,7 @@ static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
   sctp_assoc_t assoc_id;
   struct sockaddr* addrs;
   int i, fileno, num_addrs;
-  char str[16];
+  char str[IP_BUFFER_SIZE];
   VALUE v_assoc_fileno, v_assoc_id;
   VALUE v_array = rb_ary_new();
 
@@ -1953,7 +1953,7 @@ static VALUE rsctp_get_subscriptions(VALUE self){
  */
 static VALUE rsctp_get_peer_address_params(VALUE self){
   int fileno;
-  char str[16];
+  char str[IP_BUFFER_SIZE];
   socklen_t size;
   sctp_assoc_t assoc_id;
   struct sctp_paddrparams paddr;
