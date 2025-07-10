@@ -743,20 +743,22 @@ static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
  */
 static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
   sctp_assoc_t assoc_id;
-  struct sockaddr* addrs;
+  struct sockaddr* addrs = NULL;
   int i, fileno, num_addrs;
   char str[IP_BUFFER_SIZE];
   VALUE v_assoc_fileno, v_assoc_id;
   VALUE v_array = rb_ary_new();
 
-  bzero(&addrs, sizeof(addrs));
-
   rb_scan_args(argc, argv, "02", &v_assoc_fileno, &v_assoc_id);
 
-  if(NIL_P(v_assoc_fileno))
+  if(NIL_P(v_assoc_fileno)){
+    CHECK_SOCKET_CLOSED(self);
     fileno = NUM2INT(rb_iv_get(self, "@fileno"));
-  else
+  }
+  else{
     fileno = NUM2INT(v_assoc_fileno);
+    CHECK_FILENO_VALID(fileno);
+  }
 
   if(NIL_P(v_assoc_id))
     assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
@@ -766,7 +768,9 @@ static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
   num_addrs = sctp_getladdrs(fileno, assoc_id, &addrs);
 
   if(num_addrs < 0){
-    sctp_freeladdrs(addrs);
+    if(addrs != NULL)
+      sctp_freeladdrs(addrs);
+
     rb_raise(rb_eSystemCallError, "sctp_getladdrs: %s", strerror(errno));
   }
 
