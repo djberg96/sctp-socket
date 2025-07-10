@@ -775,9 +775,9 @@ static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
   }
 
   for(i = 0; i < num_addrs; i++){
+    bzero(&str, sizeof(str));
     inet_ntop(AF_INET, &(((struct sockaddr_in *)&addrs[i])->sin_addr), str, sizeof(str));
     rb_ary_push(v_array, rb_str_new2(str));
-    bzero(&str, sizeof(str));
   }
 
   sctp_freeladdrs(addrs);
