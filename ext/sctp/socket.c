@@ -407,7 +407,7 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
  * Returns the port that it was bound to.
  */
 static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
-  struct sockaddr_in addrs[8];
+  struct sockaddr_in addrs[MAX_IP_ADDRESSES];
   int i, fileno, num_ip, flags, domain, port, on;
   VALUE v_addresses, v_port, v_flags, v_address, v_reuse_addr, v_options;
 
@@ -438,7 +438,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   else
     num_ip = (int)RARRAY_LEN(v_addresses);
 
-  if(num_ip > 8)
+  if(num_ip > MAX_IP_ADDRESSES)
     rb_raise(rb_eArgError, "too many IP addresses to bind, maximum is eight");
 
   domain = NUM2INT(rb_iv_get(self, "@domain"));
@@ -506,7 +506,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
  * methods will automatically establish associations.
  */
 static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
-  struct sockaddr_in addrs[8];
+  struct sockaddr_in addrs[MAX_IP_ADDRESSES];
   int i, num_ip, fileno;
   sctp_assoc_t assoc;
   VALUE v_address, v_domain, v_options, v_addresses, v_port;
@@ -1042,7 +1042,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   uint16_t stream;
   uint32_t ppid, flags, ttl, context;
   ssize_t num_bytes;
-  struct sockaddr_in addrs[8];
+  struct sockaddr_in addrs[MAX_IP_ADDRESSES];
   int fileno, size, num_ip;
 
   Check_Type(v_options, T_HASH);
