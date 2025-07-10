@@ -39,6 +39,27 @@ VALUE v_sctp_initmsg_struct;
 #endif
 #endif
 
+// Memory safety and error handling macros
+#define CHECK_FILENO_VALID(fileno) do { \
+  if ((fileno) < 0) { \
+    rb_raise(rb_eSystemCallError, "invalid file descriptor"); \
+  } \
+} while(0)
+
+#define SAFE_FREE(ptr) do { \
+  if ((ptr) != NULL) { \
+    free(ptr); \
+      (ptr) = NULL; \
+  } \
+} while(0)
+
+#define CHECK_SOCKET_CLOSED(self) do { \
+  VALUE v_fileno = rb_iv_get((self), "@fileno"); \
+  if (NIL_P(v_fileno) || NUM2INT(v_fileno) < 0) { \
+    rb_raise(rb_eIOError, "socket is closed"); \
+  } \
+} while(0)
+
 #define MAX_IP_ADDRESSES 8
 #define DEFAULT_BUFFER_SIZE 1024
 #define IP_BUFFER_SIZE INET6_ADDRSTRLEN
@@ -661,20 +682,22 @@ static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
  */
 static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
   sctp_assoc_t assoc_id;
-  struct sockaddr* addrs;
+  struct sockaddr* addrs = NULL;
   int i, fileno, num_addrs;
   char str[IP_BUFFER_SIZE];
   VALUE v_fileno, v_association_id;
   VALUE v_array = rb_ary_new();
 
-  bzero(&addrs, sizeof(addrs));
-
   rb_scan_args(argc, argv, "02", &v_fileno, &v_association_id);
 
-  if(NIL_P(v_fileno))
+  if(NIL_P(v_fileno)){
+    CHECK_SOCKET_CLOSED(self);
     fileno = NUM2INT(rb_iv_get(self, "@fileno"));
-  else
+  }
+  else{
     fileno = NUM2INT(v_fileno);
+    CHECK_FILENO_VALID(fileno);
+  }
 
   if(NIL_P(v_association_id))
     assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
