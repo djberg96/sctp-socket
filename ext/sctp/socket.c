@@ -77,13 +77,25 @@ VALUE convert_sockaddr_in_to_struct(struct sockaddr_in* addr){
   );
 }
 
-// Helper function to get a hash value via string or symbol.
+/*
+* Helper function to get a hash value via string or symbol key.
+* This provides Ruby's flexible hash access pattern.
+*
+* @param v_hash Ruby hash object
+* @param key String key to look up
+* @return Ruby value or Qnil if not found
+*/
 VALUE rb_hash_aref2(VALUE v_hash, const char* key){
   VALUE v_key, v_val;
 
+  if(key == NULL)
+    return Qnil;
+
+  // Try a string key first
   v_key = rb_str_new2(key);
   v_val = rb_hash_aref(v_hash, v_key);
 
+  // If not found, try a symbol key
   if(NIL_P(v_val))
     v_val = rb_hash_aref(v_hash, ID2SYM(rb_intern(key)));
 
