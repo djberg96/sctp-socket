@@ -39,6 +39,27 @@ VALUE v_sctp_initmsg_struct;
 #endif
 #endif
 
+// Memory safety and error handling macros
+#define CHECK_FILENO_VALID(fileno) do { \
+  if ((fileno) < 0) { \
+    rb_raise(rb_eSystemCallError, "invalid file descriptor"); \
+  } \
+} while(0)
+
+#define SAFE_FREE(ptr) do { \
+  if ((ptr) != NULL) { \
+    free(ptr); \
+      (ptr) = NULL; \
+  } \
+} while(0)
+
+#define CHECK_SOCKET_CLOSED(self) do { \
+  VALUE v_fileno = rb_iv_get((self), "@fileno"); \
+  if (NIL_P(v_fileno) || NUM2INT(v_fileno) < 0) { \
+    rb_raise(rb_eIOError, "socket is closed"); \
+  } \
+} while(0)
+
 #define MAX_IP_ADDRESSES 8
 #define DEFAULT_BUFFER_SIZE 1024
 #define IP_BUFFER_SIZE INET6_ADDRSTRLEN
@@ -102,13 +123,23 @@ VALUE rb_hash_aref2(VALUE v_hash, const char* key){
   return v_val;
 }
 
+/*
+* Parse and convert SCTP notification messages into Ruby structures.
+* This function handles various types of SCTP notifications.
+*
+* @param buffer Raw notification buffer from SCTP
+* @return Ruby struct representing the notification
+*/
 VALUE get_notification_info(char* buffer){
   uint32_t i;
-  char str[16];
+  char str[IP_BUFFER_SIZE];
   union sctp_notification* snp;
   VALUE v_notification = Qnil;
   VALUE v_str = Qnil;
   VALUE* v_temp;
+
+  if(buffer == NULL)
+    rb_raise(rb_eArgError, "notification buffer is null");
 
   snp = (union sctp_notification*)buffer;
 
@@ -344,11 +375,24 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
 
   rb_scan_args(argc, argv, "02", &v_domain, &v_type);
 
-  if(NIL_P(v_domain))
+  // Set defaults with validation
+  if(NIL_P(v_domain)){
     v_domain = INT2NUM(AF_INET);
+  }
+  else{
+    int domain = NUM2INT(v_domain);
+    if((domain != AF_INET) && (domain != AF_INET6))
+      rb_raise(rb_eArgError, "unsupported domain family: %d", domain);
+  }
   
-  if(NIL_P(v_type))
+  if(NIL_P(v_type)){
     v_type = INT2NUM(SOCK_SEQPACKET);
+  }
+  else{
+    int type = NUM2INT(v_type);
+    if (type != SOCK_SEQPACKET && type != SOCK_STREAM)
+      rb_raise(rb_eArgError, "unsupported socket type: %d", type);
+  }
 
   fileno = socket(NUM2INT(v_domain), NUM2INT(v_type), IPPROTO_SCTP);
 
@@ -594,8 +638,13 @@ static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
 
   if(!NIL_P(v_linger)){
     struct linger lin;
+    int linger_time = NUM2INT(v_linger);
+
+    if(linger_time < 0)
+      rb_raise(rb_eArgError, "linger time must be non-negative");
+
     lin.l_onoff = 1;
-    lin.l_linger = NUM2INT(v_linger);
+    lin.l_linger = linger_time;
 
     if(setsockopt(fileno, SOL_SOCKET, SO_LINGER, &lin, sizeof(struct linger)) < 0)
       rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
@@ -603,6 +652,9 @@ static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
 
   if(close(fileno) < 0)
     rb_raise(rb_eSystemCallError, "close: %s", strerror(errno));
+
+  // Mark socket as closed
+  rb_iv_set(self, "@fileno", Qnil);
 
   return self;
 }
@@ -630,20 +682,22 @@ static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
  */
 static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
   sctp_assoc_t assoc_id;
-  struct sockaddr* addrs;
+  struct sockaddr* addrs = NULL;
   int i, fileno, num_addrs;
-  char str[16];
+  char str[IP_BUFFER_SIZE];
   VALUE v_fileno, v_association_id;
   VALUE v_array = rb_ary_new();
 
-  bzero(&addrs, sizeof(addrs));
-
   rb_scan_args(argc, argv, "02", &v_fileno, &v_association_id);
 
-  if(NIL_P(v_fileno))
+  if(NIL_P(v_fileno)){
+    CHECK_SOCKET_CLOSED(self);
     fileno = NUM2INT(rb_iv_get(self, "@fileno"));
-  else
+  }
+  else{
     fileno = NUM2INT(v_fileno);
+    CHECK_FILENO_VALID(fileno);
+  }
 
   if(NIL_P(v_association_id))
     assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
@@ -653,14 +707,16 @@ static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
   num_addrs = sctp_getpaddrs(fileno, assoc_id, &addrs);
 
   if(num_addrs < 0){
-    sctp_freepaddrs(addrs);
+    if(addrs != NULL)
+      sctp_freepaddrs(addrs);
+
     rb_raise(rb_eSystemCallError, "sctp_getpaddrs: %s", strerror(errno));
   }
 
   for(i = 0; i < num_addrs; i++){
+    bzero(&str, sizeof(str));
     inet_ntop(AF_INET, &(((struct sockaddr_in *)&addrs[i])->sin_addr), str, sizeof(str));
     rb_ary_push(v_array, rb_str_new2(str));
-    bzero(&str, sizeof(str));
   }
 
   sctp_freepaddrs(addrs);
@@ -687,20 +743,22 @@ static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
  */
 static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
   sctp_assoc_t assoc_id;
-  struct sockaddr* addrs;
+  struct sockaddr* addrs = NULL;
   int i, fileno, num_addrs;
-  char str[16];
+  char str[IP_BUFFER_SIZE];
   VALUE v_assoc_fileno, v_assoc_id;
   VALUE v_array = rb_ary_new();
 
-  bzero(&addrs, sizeof(addrs));
-
   rb_scan_args(argc, argv, "02", &v_assoc_fileno, &v_assoc_id);
 
-  if(NIL_P(v_assoc_fileno))
+  if(NIL_P(v_assoc_fileno)){
+    CHECK_SOCKET_CLOSED(self);
     fileno = NUM2INT(rb_iv_get(self, "@fileno"));
-  else
+  }
+  else{
     fileno = NUM2INT(v_assoc_fileno);
+    CHECK_FILENO_VALID(fileno);
+  }
 
   if(NIL_P(v_assoc_id))
     assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
@@ -710,14 +768,16 @@ static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
   num_addrs = sctp_getladdrs(fileno, assoc_id, &addrs);
 
   if(num_addrs < 0){
-    sctp_freeladdrs(addrs);
+    if(addrs != NULL)
+      sctp_freeladdrs(addrs);
+
     rb_raise(rb_eSystemCallError, "sctp_getladdrs: %s", strerror(errno));
   }
 
   for(i = 0; i < num_addrs; i++){
+    bzero(&str, sizeof(str));
     inet_ntop(AF_INET, &(((struct sockaddr_in *)&addrs[i])->sin_addr), str, sizeof(str));
     rb_ary_push(v_array, rb_str_new2(str));
-    bzero(&str, sizeof(str));
   }
 
   sctp_freeladdrs(addrs);
@@ -1922,7 +1982,7 @@ static VALUE rsctp_get_subscriptions(VALUE self){
  */
 static VALUE rsctp_get_peer_address_params(VALUE self){
   int fileno;
-  char str[16];
+  char str[IP_BUFFER_SIZE];
   socklen_t size;
   sctp_assoc_t assoc_id;
   struct sctp_paddrparams paddr;
