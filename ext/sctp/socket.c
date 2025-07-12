@@ -457,7 +457,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
 
   rb_scan_args(argc, argv, "01", &v_options);
 
-  bzero(&addrs, sizeof(addrs));
+  memset(&addrs, 0, sizeof(addrs));
 
   if(NIL_P(v_options))
     v_options = rb_hash_new();
@@ -520,7 +520,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   if(port == 0){
     struct sockaddr_in sin;
     socklen_t len = sizeof(sin);
-    bzero(&sin, len);
+    memset(&sin, 0, len);
 
     if(getsockname(fileno, (struct sockaddr *)&sin, &len) == -1)
       rb_raise(rb_eSystemCallError, "getsockname: %s", strerror(errno));
@@ -574,7 +574,7 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
   v_domain = rb_iv_get(self, "@domain");
 
   num_ip = (int)RARRAY_LEN(v_addresses);
-  bzero(&addrs, sizeof(addrs));
+  memset(&addrs, 0, sizeof(addrs));
 
   for(i = 0; i < num_ip; i++){
     v_address = RARRAY_PTR(v_addresses)[i];
@@ -714,7 +714,7 @@ static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
   }
 
   for(i = 0; i < num_addrs; i++){
-    bzero(&str, sizeof(str));
+    memset(&str, 0, sizeof(str));
     inet_ntop(AF_INET, &(((struct sockaddr_in *)&addrs[i])->sin_addr), str, sizeof(str));
     rb_ary_push(v_array, rb_str_new2(str));
   }
@@ -775,7 +775,7 @@ static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
   }
 
   for(i = 0; i < num_addrs; i++){
-    bzero(&str, sizeof(str));
+    memset(&str, 0, sizeof(str));
     inet_ntop(AF_INET, &(((struct sockaddr_in *)&addrs[i])->sin_addr), str, sizeof(str));
     rb_ary_push(v_array, rb_str_new2(str));
   }
@@ -822,8 +822,8 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
 
   Check_Type(v_options, T_HASH);
 
-  bzero(&iov, sizeof(iov));
-  bzero(&spa, sizeof(spa));
+  memset(&iov, 0, sizeof(iov));
+  memset(&spa, 0, sizeof(spa));
 
   v_message   = rb_hash_aref2(v_options, "message");
   v_addresses = rb_hash_aref2(v_options, "addresses");
@@ -915,9 +915,9 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
   struct sctp_rcvinfo info;
   char buffer[1024];
 
-  bzero(&iov, sizeof(iov));
-  bzero(&info, sizeof(info));
-  bzero(&buffer, sizeof(buffer));
+  memset(&iov, 0, sizeof(iov));
+  memset(&info, 0, sizeof(info));
+  memset(&buffer, 0, sizeof(buffer));
 
 	iov->iov_base = buffer;
 	iov->iov_len = sizeof(buffer);
@@ -1111,7 +1111,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
 
   Check_Type(v_options, T_HASH);
 
-  bzero(&addrs, sizeof(addrs));
+  memset(&addrs, 0, sizeof(addrs));
 
   v_msg       = rb_hash_aref2(v_options, "message");
   v_stream    = rb_hash_aref2(v_options, "stream");
@@ -1279,9 +1279,9 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   length = sizeof(struct sockaddr_in);
 
-  bzero(buffer, sizeof(buffer));
-  bzero(&clientaddr, sizeof(clientaddr));
-  bzero(&sndrcvinfo, sizeof(sndrcvinfo));
+  memset(buffer, 0, sizeof(buffer));
+  memset(&clientaddr, 0, sizeof(clientaddr));
+  memset(&sndrcvinfo, 0, sizeof(sndrcvinfo));
 
   bytes = (ssize_t)sctp_recvmsg(
     fileno,
@@ -1344,7 +1344,7 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
   struct sctp_initmsg initmsg;
   VALUE v_output, v_input, v_attempts, v_timeout;
 
-  bzero(&initmsg, sizeof(initmsg));
+  memset(&initmsg, 0, sizeof(initmsg));
 
   v_output   = rb_hash_aref2(v_options, "output_streams");
   v_input    = rb_hash_aref2(v_options, "input_streams");
@@ -1413,7 +1413,7 @@ static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
   int fileno;
   struct sctp_event_subscribe events;
 
-  bzero(&events, sizeof(events));
+  memset(&events, 0, sizeof(events));
   Check_Type(v_options, T_HASH);
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
@@ -1561,7 +1561,7 @@ static VALUE rsctp_get_default_send_params(VALUE self){
   sctp_assoc_t assoc_id;
   struct sctp_sndrcvinfo sndrcv;
 
-  bzero(&sndrcv, sizeof(sndrcv));
+  memset(&sndrcv, 0, sizeof(sndrcv));
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
@@ -1606,7 +1606,7 @@ static VALUE rsctp_get_association_info(VALUE self){
   sctp_assoc_t assoc_id;
   struct sctp_assocparams assoc;
 
-  bzero(&assoc, sizeof(assoc));
+  memset(&assoc, 0, sizeof(assoc));
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
@@ -1648,7 +1648,7 @@ static VALUE rsctp_set_association_info(VALUE self, VALUE v_options){
   sctp_assoc_t assoc_id;
   struct sctp_assocparams assoc;
 
-  bzero(&assoc, sizeof(assoc));
+  memset(&assoc, 0, sizeof(assoc));
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
@@ -1751,7 +1751,7 @@ static VALUE rsctp_get_retransmission_info(VALUE self){
   sctp_assoc_t assoc_id;
   struct sctp_rtoinfo rto;
 
-  bzero(&rto, sizeof(rto));
+  memset(&rto, 0, sizeof(rto));
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
@@ -1790,7 +1790,7 @@ static VALUE rsctp_set_retransmission_info(VALUE self, VALUE v_options){
   sctp_assoc_t assoc_id;
   struct sctp_rtoinfo rto;
 
-  bzero(&rto, sizeof(rto));
+  memset(&rto, 0, sizeof(rto));
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
@@ -1859,7 +1859,7 @@ static VALUE rsctp_get_status(VALUE self){
   struct sctp_paddrinfo* spinfo;
   char tmpname[INET_ADDRSTRLEN];
 
-  bzero(&status, sizeof(status));
+  memset(&status, 0, sizeof(status));
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
@@ -1923,7 +1923,7 @@ static VALUE rsctp_get_subscriptions(VALUE self){
   sctp_assoc_t assoc_id;
   struct sctp_event_subscribe events;
 
-  bzero(&events, sizeof(events));
+  memset(&events, 0, sizeof(events));
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
@@ -1987,8 +1987,8 @@ static VALUE rsctp_get_peer_address_params(VALUE self){
   sctp_assoc_t assoc_id;
   struct sctp_paddrparams paddr;
 
-  bzero(&paddr, sizeof(paddr));
-  bzero(&str, sizeof(str));
+  memset(&paddr, 0, sizeof(paddr));
+  memset(&str, 0, sizeof(str));
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
@@ -2035,7 +2035,7 @@ static VALUE rsctp_get_init_msg(VALUE self){
   sctp_assoc_t assoc_id;
   struct sctp_initmsg initmsg;
 
-  bzero(&initmsg, sizeof(initmsg));
+  memset(&initmsg, 0, sizeof(initmsg));
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
@@ -2326,7 +2326,7 @@ static VALUE rsctp_get_active_shared_key(int argc, VALUE* argv, VALUE self){
 
   rb_scan_args(argc, argv, "11", &v_keynum, &v_assoc_id);
 
-  bzero(&authkey, sizeof(authkey));
+  memset(&authkey, 0, sizeof(authkey));
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   keynum = NUM2UINT(v_keynum);
@@ -2432,7 +2432,7 @@ static VALUE rsctp_delete_shared_key(int argc, VALUE* argv, VALUE self){
 
   rb_scan_args(argc, argv, "11", &v_keynum, &v_assoc_id);
 
-  bzero(&authkey, sizeof(authkey));
+  memset(&authkey, 0, sizeof(authkey));
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   keynum = NUM2UINT(v_keynum);
