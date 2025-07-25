@@ -844,11 +844,13 @@ RSpec.describe SCTP::Socket do
       expect{ @listen_socket.listen(5) }.not_to raise_error
     end
 
+    let(:max_backlog) { Socket::SOMAXCONN }
+
     example "listen with different backlog values" do
       @listen_socket.bindx(reuse_addr: true)
 
-      # Test various backlog values
-      [1, 5, 10, 128].each do |backlog|
+      # Test various backlog values up to system maximum
+      [1, 5, 10, max_backlog].each do |backlog|
         expect{ @listen_socket.listen(backlog) }.not_to raise_error
       end
     end
@@ -923,12 +925,11 @@ RSpec.describe SCTP::Socket do
     example "listen with large backlog value" do
       @listen_socket.bindx(reuse_addr: true)
 
-      # System has maximum backlog limit (4096 based on error)
-      expect{ @listen_socket.listen(1000) }.not_to raise_error
-      expect{ @listen_socket.listen(4096) }.not_to raise_error
+      # System has maximum backlog limit (Socket::SOMAXCONN)
+      expect{ @listen_socket.listen(max_backlog) }.not_to raise_error
 
       # Values above system limit should be rejected
-      expect{ @listen_socket.listen(65535) }.to raise_error(ArgumentError, /backlog value exceeds maximum/)
+      expect{ @listen_socket.listen(max_backlog + 1) }.to raise_error(ArgumentError, /backlog value exceeds maximum/)
     end
 
     example "listen state after binding" do
@@ -969,11 +970,11 @@ RSpec.describe SCTP::Socket do
     example "listen with system maximum backlog" do
       @listen_socket.bindx(reuse_addr: true)
 
-      # Test with system maximum (4096 based on previous error)
-      expect{ @listen_socket.listen(4096) }.not_to raise_error
+      # Test with system maximum
+      expect{ @listen_socket.listen(max_backlog) }.not_to raise_error
 
       # Test that values above maximum are rejected
-      expect{ @listen_socket.listen(2147483647) }.to raise_error(ArgumentError, /backlog value exceeds maximum/)
+      expect{ @listen_socket.listen(max_backlog * 10) }.to raise_error(ArgumentError, /backlog value exceeds maximum/)
     end
 
     example "listen behavior on different socket types" do
