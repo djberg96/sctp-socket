@@ -661,6 +661,23 @@ static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
 
 /*
  * call-seq:
+ *    SCTP::Socket#closed?
+ *
+ * Returns true if the socket is closed, false otherwise.
+ *
+ * Example:
+ *   socket = SCTP::Socket.new
+ *   socket.closed? # => false
+ *   socket.close
+ *   socket.closed? # => true
+ */
+static VALUE rsctp_closed_p(VALUE self){
+  VALUE v_fileno = rb_iv_get(self, "@fileno");
+  return NIL_P(v_fileno) ? Qtrue : Qfalse;
+}
+
+/*
+ * call-seq:
  *    SCTP::Socket#getpeernames
  *
  * Return an array of all addresses of a peer of the current socket
@@ -2583,6 +2600,7 @@ void Init_socket(void){
   rb_define_method(cSocket, "autoclose=", rsctp_set_autoclose, 1);
   rb_define_method(cSocket, "bindx", rsctp_bindx, -1);
   rb_define_method(cSocket, "close", rsctp_close, -1);
+  rb_define_method(cSocket, "closed?", rsctp_closed_p, 0);
   rb_define_method(cSocket, "connectx", rsctp_connectx, -1);
   rb_define_method(cSocket, "delete_shared_key", rsctp_delete_shared_key, -1);
   rb_define_method(cSocket, "disable_fragments=", rsctp_disable_fragments, 1);
