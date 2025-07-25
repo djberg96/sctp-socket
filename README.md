@@ -55,6 +55,81 @@ ensure
 end
 ```
 
+## Using SCTP::Server
+
+The `SCTP::Server` class provides a TCPServer-like interface for SCTP sockets,
+making it easier to create SCTP server applications.
+
+### One-to-Many Mode (Default)
+
+In one-to-many mode, a single server socket handles multiple client associations:
+
+```ruby
+require 'sctp/socket'
+
+# Create server listening on multiple addresses
+server = SCTP::Server.new(['127.0.0.1', '192.168.1.100'], 9999)
+
+puts "Server listening on #{server.addr.join(', ')}:#{server.local_port}"
+
+loop do
+  # Receive data from any client association
+  data, info = server.recvmsg
+  puts "Received from association #{info.association_id}: #{data}"
+
+  # Echo back to the same association
+  server.sendmsg("Echo: #{data}", association_id: info.association_id)
+end
+```
+
+### One-to-One Mode
+
+In one-to-one mode, the server creates individual sockets for each association:
+
+```ruby
+require 'sctp/socket'
+
+# Create server in one-to-one mode
+server = SCTP::Server.new(['127.0.0.1'], 9999, one_to_one: true)
+
+loop do
+  # Accept a new client connection
+  client = server.accept
+
+  # Handle client in a thread
+  Thread.new(client) do |c|
+    # Get the initial message that established the connection
+    data, info = c.initial_message
+    puts "New client: #{data}"
+
+    # Continue receiving from this specific client
+    loop do
+      data, info = c.recvmsg
+      c.sendmsg("Echo: #{data}")
+    end
+  rescue => e
+    puts "Client error: #{e.message}"
+  ensure
+    c.close
+  end
+end
+```
+
+### Server Options
+
+```ruby
+# Create server with additional options
+server = SCTP::Server.new(
+  ['127.0.0.1'],
+  9999,
+  one_to_one: false,
+  backlog: 256,
+  autoclose: 30,
+  init_msg: { output_streams: 10, input_streams: 10 },
+  subscriptions: { data_io: true, association: true }
+)
+```
+
 ## Future Plans
 
 * Add more specs.
