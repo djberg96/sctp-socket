@@ -1022,7 +1022,6 @@ RSpec.describe SCTP::Socket do
       expect{ @autoclose_socket.get_autoclose(5) }.to raise_error(ArgumentError)
     end
 
-=begin
     example "get_autoclose returns an integer" do
       result = @autoclose_socket.get_autoclose
       expect(result).to be_a(Integer)
@@ -1143,6 +1142,5 @@ RSpec.describe SCTP::Socket do
       expect(@autoclose_socket.type).to be_a(Integer)
       expect(@autoclose_socket.closed?).to eq(false)
     end
-=end
   end
 end

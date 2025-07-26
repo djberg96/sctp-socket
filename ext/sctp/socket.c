@@ -2208,19 +2208,15 @@ static VALUE rsctp_get_autoclose(VALUE self){
  */
 static VALUE rsctp_set_autoclose(VALUE self, VALUE v_seconds){
   int fileno;
-  socklen_t size;
-  sctp_assoc_t assoc_id;
   int value;
 
   value = NUM2INT(v_seconds);
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
-  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
-  size = sizeof(int);
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTOCLOSE, (void*)&value, &size) < 0)
-    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_AUTOCLOSE, &value, sizeof(value)) < 0)
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
-  return v_seconds;
+  return INT2NUM(value);
 }
 
 /*
