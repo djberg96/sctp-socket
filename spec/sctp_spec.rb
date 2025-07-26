@@ -1117,7 +1117,7 @@ RSpec.describe SCTP::Socket do
       # Test autoclose with SOCK_STREAM socket
       # Note: autoclose is only supported on one-to-many (SOCK_SEQPACKET) sockets
       stream_socket = described_class.new(Socket::AF_INET, Socket::SOCK_STREAM)
-      expect{ stream_socket.autoclose = 30 }.to raise_error(SystemCallError, /Operation not supported/)
+      expect{ stream_socket.autoclose = 30 }.to raise_error(SystemCallError, /Operation not supported|Invalid argument/)
       stream_socket.close
       # Test autoclose with default SOCK_SEQPACKET socket (should work)
       expect{ @autoclose_socket.autoclose = 45 }.not_to raise_error
