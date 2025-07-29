@@ -4,6 +4,87 @@ require_relative 'functions'
 require 'socket'
 
 class SCTPSocket
+  # Set SCTP_INITMSG option (number of streams, etc)
+  def set_initmsg(num_ostreams: 10, max_instreams: 10, max_attempts: 5, max_timeo: 600)
+    initmsg = SCTP::Structs::SctpInitMsg.new
+    initmsg[:num_ostreams] = num_ostreams
+    initmsg[:max_instreams] = max_instreams
+    initmsg[:max_attempts] = max_attempts
+    initmsg[:max_init_timeo] = max_timeo
+    set_sockopt(IPPROTO_SCTP, SCTP_INITMSG, initmsg)
+  end
+
+  # Get SCTP association status/info
+  def get_assoc_status
+    status = SCTP::Structs::SctpStatus.new
+    raw = get_sockopt(IPPROTO_SCTP, SCTP_STATUS, status.size)
+    status.pointer.write_bytes(raw)
+    status
+  end
+
+  # Add a peer address to the association
+  def add_peer_address(ip, port)
+    inaddr = SCTPSocket::InAddr.new
+    inaddr[:s_addr] = IPAddr.new(ip).to_i
+    addr = SCTPSocket::SockAddrIn.new
+    addr[:sin_len]    = addr.size
+    addr[:sin_family] = Socket::AF_INET
+    addr[:sin_addr]   = inaddr
+    addr[:sin_port]   = SCTPSocket.c_htons(port)
+    if usrsctp_set_peer_addresses(@socket, addr, addr.size) < 0
+      raise SystemCallError.new('usrsctp_set_peer_addresses', FFI.errno)
+    end
+    true
+  end
+
+  # Remove a peer address from the association
+  def remove_peer_address(ip, port)
+    inaddr = SCTPSocket::InAddr.new
+    inaddr[:s_addr] = IPAddr.new(ip).to_i
+    addr = SCTPSocket::SockAddrIn.new
+    addr[:sin_len]    = addr.size
+    addr[:sin_family] = Socket::AF_INET
+    addr[:sin_addr]   = inaddr
+    addr[:sin_port]   = SCTPSocket.c_htons(port)
+    if usrsctp_remove_peer_addresses(@socket, addr, addr.size) < 0
+      raise SystemCallError.new('usrsctp_remove_peer_addresses', FFI.errno)
+    end
+    true
+  end
+
+  # Graceful shutdown of SCTP association
+  def shutdown(how = 2) # 2 = SHUT_RDWR
+    if usrsctp_shutdown(@socket, how) < 0
+      raise SystemCallError.new('usrsctp_shutdown', FFI.errno)
+    end
+    true
+  end
+
+  # Set receive buffer size
+  def set_recvbuf_size(size)
+    set_sockopt(Socket::SOL_SOCKET, Socket::SO_RCVBUF, size)
+  end
+
+  # Get receive buffer size
+  def get_recvbuf_size
+    raw = get_sockopt(Socket::SOL_SOCKET, Socket::SO_RCVBUF, 4)
+    raw.unpack1('l')
+  end
+
+  # Advanced send with SCTP_SNDINFO
+  def sendv(data, stream: 0, ppid: 0, flags: 0, context: 0, assoc_id: 0)
+    buf = FFI::MemoryPointer.from_string(data)
+    sndinfo = SCTP::Structs::SctpSndInfo.new
+    sndinfo[:sid] = stream
+    sndinfo[:ppid] = ppid
+    sndinfo[:flags] = flags
+    sndinfo[:context] = context
+    sndinfo[:assoc_id] = assoc_id
+    if usrsctp_sendv(@socket, buf, buf.size, nil, 0, sndinfo, sndinfo.size, SCTP_SENDV_SNDINFO, ppid, flags) < 0
+      raise SystemCallError.new('usrsctp_sendv', FFI.errno)
+    end
+    true
+  end
   include SCTP::Constants
   include SCTP::Functions
   extend SCTP::Structs
