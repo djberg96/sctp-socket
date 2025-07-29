@@ -3,6 +3,7 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <stdio.h>
+#include <arpa/inet.h>
 
 static VALUE cSCTPSocket;
 
