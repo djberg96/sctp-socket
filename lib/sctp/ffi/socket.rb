@@ -26,16 +26,24 @@ module SCTP
       raise SystemCallError.new('usrsctp_socket', FFI.errno) if @socket.nil? || @socket.null?
     end
 
+    def htons(val)
+      SCTP::Util.htons(val)
+    end
+
+    def htonl(val)
+      SCTP::Util.htonl(val)
+    end
+
     def bind
       addr = SCTP::Structs::SockAddrIn.new
       if RUBY_PLATFORM =~ /darwin/
         addr[:sin_len] = SCTP::Structs::SockAddrIn.size
       end
       addr[:sin_family] = ::Socket::AF_INET
-      addr[:sin_port] = [@port].pack('n').unpack1('S>')
-      addr[:sin_addr][:s_addr] = [::Socket::INADDR_ANY].pack('N').unpack1('L>')
+      addr[:sin_port] = htons(@port)
+      addr[:sin_addr][:s_addr] = htonl(::Socket::INADDR_ANY)
       8.times { |i| addr[:sin_zero][i] = 0 }
-      if SCTP::Functions.usrsctp_bind(@socket, addr.to_ptr, SCTP::Structs::SockAddrIn.size) < 0
+      if SCTP::Functions.usrsctp_bind(@socket, addr.to_ptr, addr.size) < 0
         raise SystemCallError.new('usrsctp_bind', FFI.errno)
       end
     end
@@ -46,10 +54,10 @@ module SCTP
         addr[:sin_len] = SCTP::Structs::SockAddrIn.size
       end
       addr[:sin_family] = ::Socket::AF_INET
-      addr[:sin_port] = [remote_port].pack('n').unpack1('S>')
-      addr[:sin_addr][:s_addr] = [IPAddr.new(remote_addr).to_i].pack('N').unpack1('L>')
+      addr[:sin_port] = htons(remote_port)
+      addr[:sin_addr][:s_addr] = htonl(IPAddr.new(remote_addr).to_i)
       8.times { |i| addr[:sin_zero][i] = 0 }
-      if SCTP::Functions.usrsctp_connect(@socket, addr.to_ptr, SCTP::Structs::SockAddrIn.size) < 0
+      if SCTP::Functions.usrsctp_connect(@socket, addr.to_ptr, addr.size) < 0
         raise SystemCallError.new('usrsctp_connect', FFI.errno)
       end
       true

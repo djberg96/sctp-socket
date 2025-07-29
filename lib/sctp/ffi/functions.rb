@@ -3,6 +3,13 @@ require_relative 'constants'
 require_relative 'structs'
 
 module SCTP
+  module Util
+    extend FFI::Library
+    ffi_lib FFI::Library::LIBC
+    attach_function :htons, [:uint16], :uint16
+    attach_function :htonl, [:uint32], :uint32
+  end
+
   module Functions
     extend FFI::Library
     ffi_lib 'usrsctp'

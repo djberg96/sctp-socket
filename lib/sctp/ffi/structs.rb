@@ -58,7 +58,7 @@ module SCTP
         layout :sin_family, :uint16,
                :sin_port, :uint16,
                :sin_addr, InAddr,
-               :sin_zero, [:uint8, 8]
+               :sin_zero, [:char, 8]
       end
     end
   end
