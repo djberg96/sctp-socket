@@ -2,6 +2,7 @@
 #include <usrsctp.h>
 #include <netinet/in.h>
 #include <string.h>
+#include <stdio.h>
 
 static VALUE cSCTPSocket;
 
@@ -75,6 +76,35 @@ static VALUE sctp_socket_connect(VALUE self, VALUE host, VALUE port) {
     return Qtrue;
 }
 
+static VALUE sctp_socket_send(VALUE self, VALUE data) {
+    sctp_socket_wrapper *wrapper;
+    Data_Get_Struct(self, sctp_socket_wrapper, wrapper);
+
+    Check_Type(data, T_STRING);
+    const char *buf = StringValueCStr(data);
+    size_t len = RSTRING_LEN(data);
+    int flags = 0;
+    ssize_t sent = usrsctp_sendv(wrapper->sock, buf, len, NULL, 0, NULL, 0, SCTP_SENDV_NOINFO, 0, flags);
+    if (sent < 0) rb_sys_fail("usrsctp_sendv");
+    return INT2NUM(sent);
+}
+
+static VALUE sctp_socket_recv(VALUE self, VALUE maxlen) {
+    sctp_socket_wrapper *wrapper;
+    Data_Get_Struct(self, sctp_socket_wrapper, wrapper);
+
+    long len = NUM2LONG(maxlen);
+    char *buf = ALLOC_N(char, len);
+    ssize_t recvd = usrsctp_recvv(wrapper->sock, buf, len, NULL, NULL, NULL, NULL, SCTP_RECVV_NOINFO, 0);
+    if (recvd < 0) {
+        xfree(buf);
+        rb_sys_fail("usrsctp_recvv");
+    }
+    VALUE str = rb_str_new(buf, recvd);
+    xfree(buf);
+    return str;
+}
+
 static VALUE sctp_socket_close(VALUE self) {
     sctp_socket_wrapper *wrapper;
     Data_Get_Struct(self, sctp_socket_wrapper, wrapper);
@@ -94,5 +124,7 @@ void Init_socket(void) {
     rb_define_method(cSCTPSocket, "initialize", sctp_socket_initialize, 1);
     rb_define_method(cSCTPSocket, "bind", sctp_socket_bind, 1);
     rb_define_method(cSCTPSocket, "connect", sctp_socket_connect, 2);
+    rb_define_method(cSCTPSocket, "send", sctp_socket_send, 1);
+    rb_define_method(cSCTPSocket, "recv", sctp_socket_recv, 1);
     rb_define_method(cSCTPSocket, "close", sctp_socket_close, 0);
 }
