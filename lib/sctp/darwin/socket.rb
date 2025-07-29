@@ -69,6 +69,62 @@ class SCTPSocket
     usrsctp_close(@socket) if @socket
     usrsctp_finish
   end
+
+  # Connect to a remote SCTP address
+  def connect(remote_addr, remote_port)
+    inaddr = SCTPSocket::InAddr.new
+    inaddr[:s_addr] = IPAddr.new(remote_addr).to_i
+
+    addr = SCTPSocket::SockAddrIn.new
+    addr[:sin_len]    = addr.size
+    addr[:sin_family] = Socket::AF_INET
+    addr[:sin_addr]   = inaddr
+    addr[:sin_port]   = SCTPSocket.c_htons(remote_port)
+
+    if usrsctp_connect(@socket, addr, addr.size) < 0
+      raise SystemCallError.new('usrsctp_connect', FFI.errno)
+    end
+    true
+  end
+
+  # Send data over SCTP
+  def send(data, stream: 0, ppid: 0)
+    buf = FFI::MemoryPointer.from_string(data)
+    flags = 0
+    if usrsctp_sendv(@socket, buf, buf.size, nil, 0, nil, 0, SCTP_SENDV_NOINFO, ppid, flags) < 0
+      raise SystemCallError.new('usrsctp_sendv', FFI.errno)
+    end
+    true
+  end
+
+  # Set SCTP socket option
+  def set_sockopt(level, optname, optval)
+    optval_ptr = FFI::MemoryPointer.new(optval.class, 1)
+    optval_ptr.write(optval)
+    if usrsctp_setsockopt(@socket, level, optname, optval_ptr, optval_ptr.size) < 0
+      raise SystemCallError.new('usrsctp_setsockopt', FFI.errno)
+    end
+    true
+  end
+
+  # Get SCTP socket option
+  def get_sockopt(level, optname, optlen)
+    optval_ptr = FFI::MemoryPointer.new(:char, optlen)
+    if usrsctp_getsockopt(@socket, level, optname, optval_ptr, FFI::MemoryPointer.new(:int, 1).write_int(optlen)) < 0
+      raise SystemCallError.new('usrsctp_getsockopt', FFI.errno)
+    end
+    optval_ptr.read_bytes(optlen)
+  end
+
+  # Subscribe to SCTP events
+  def subscribe_events(event_mask)
+    # event_mask should be a hash of event => true/false
+    events = SCTP::Structs::SctpEventSubscribe.new
+    event_mask.each do |event, enabled|
+      events[event] = enabled ? 1 : 0
+    end
+    set_sockopt(IPPROTO_SCTP, SCTP_EVENT, events)
+  end
 end
 
 if $0 == __FILE__
