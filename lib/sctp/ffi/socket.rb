@@ -27,27 +27,29 @@ module SCTP
     end
 
     def bind
-      inaddr = SCTP::Structs::InAddr.new
-      inaddr[:s_addr] = ::Socket::INADDR_ANY
       addr = SCTP::Structs::SockAddrIn.new
-      addr[:sin_len] = addr.size
+      if RUBY_PLATFORM =~ /darwin/
+        addr[:sin_len] = SCTP::Structs::SockAddrIn.size
+      end
       addr[:sin_family] = ::Socket::AF_INET
-      addr[:sin_addr] = inaddr
       addr[:sin_port] = [@port].pack('n').unpack1('S>')
-      if SCTP::Functions.usrsctp_bind(@socket, addr, addr.size) < 0
+      addr[:sin_addr][:s_addr] = [::Socket::INADDR_ANY].pack('N').unpack1('L>')
+      8.times { |i| addr[:sin_zero][i] = 0 }
+      if SCTP::Functions.usrsctp_bind(@socket, addr.to_ptr, SCTP::Structs::SockAddrIn.size) < 0
         raise SystemCallError.new('usrsctp_bind', FFI.errno)
       end
     end
 
     def connect(remote_addr, remote_port)
-      inaddr = SCTP::Structs::InAddr.new
-      inaddr[:s_addr] = IPAddr.new(remote_addr).to_i
       addr = SCTP::Structs::SockAddrIn.new
-      addr[:sin_len] = addr.size
+      if RUBY_PLATFORM =~ /darwin/
+        addr[:sin_len] = SCTP::Structs::SockAddrIn.size
+      end
       addr[:sin_family] = ::Socket::AF_INET
-      addr[:sin_addr] = inaddr
       addr[:sin_port] = [remote_port].pack('n').unpack1('S>')
-      if SCTP::Functions.usrsctp_connect(@socket, addr, addr.size) < 0
+      addr[:sin_addr][:s_addr] = [IPAddr.new(remote_addr).to_i].pack('N').unpack1('L>')
+      8.times { |i| addr[:sin_zero][i] = 0 }
+      if SCTP::Functions.usrsctp_connect(@socket, addr.to_ptr, SCTP::Structs::SockAddrIn.size) < 0
         raise SystemCallError.new('usrsctp_connect', FFI.errno)
       end
       true
