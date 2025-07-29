@@ -85,7 +85,7 @@ static VALUE sctp_socket_send(VALUE self, VALUE data) {
     const char *buf = StringValueCStr(data);
     size_t len = RSTRING_LEN(data);
     int flags = 0;
-    ssize_t sent = usrsctp_sendv(wrapper->sock, buf, len, NULL, 0, NULL, 0, SCTP_SENDV_NOINFO, 0, flags);
+    ssize_t sent = usrsctp_sendv(wrapper->sock, buf, len, NULL, 0, NULL, 0, SCTP_SENDV_NOINFO, 0);
     if (sent < 0) rb_sys_fail("usrsctp_sendv");
     return INT2NUM(sent);
 }
