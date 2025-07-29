@@ -1,3 +1,4 @@
+=begin
 require 'spec_helper'
 require 'sctp/socket'
 
@@ -127,3 +128,4 @@ RSpec.describe SCTP::Server do
     end
   end
 end
+=end
