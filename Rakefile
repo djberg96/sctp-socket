@@ -2,7 +2,6 @@ require 'rake'
 require 'rake/clean'
 require 'rbconfig'
 require 'rspec/core/rake_task'
-require 'rake/extensiontask'
 include RbConfig
 
 CLEAN.include(
@@ -32,11 +31,6 @@ namespace :gem do
   end
 end
 
-Rake::ExtensionTask.new('socket') do |t|
-  t.ext_dir = 'ext/sctp'
-  t.lib_dir = 'lib/sctp'
-end
-
 desc "Create dummy IP addresses to use for testing"
 task :create_dummy_links do
   if RbConfig::CONFIG['host_os'] =~ /linux/i
@@ -56,7 +50,9 @@ task :create_dummy_links do
   end
 end
 
-RSpec::Core::RakeTask.new
+RSpec::Core::RakeTask.new(:spec) do |t|
+  t.verbose = false
+  t.rspec_opts = '-f documentation'
+end
 
-task :spec => :compile
-task :default => [:clean, :spec]
+task :default => :spec
