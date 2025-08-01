@@ -1,2 +1,2 @@
-require 'sctp/socket.so'
+require 'sctp/socket'
 require 'sctp/server'
