@@ -2106,11 +2106,9 @@ static VALUE rsctp_get_nodelay(VALUE self){
 static VALUE rsctp_set_nodelay(VALUE self, VALUE v_bool){
   int fileno;
   socklen_t size;
-  sctp_assoc_t assoc_id;
   int value;
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
-  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
   size = sizeof(int);
 
   if(NIL_P(v_bool) || v_bool == Qfalse)
@@ -2118,8 +2116,8 @@ static VALUE rsctp_set_nodelay(VALUE self, VALUE v_bool){
   else
     value = 1;
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_NODELAY, (void*)&value, &size) < 0)
-    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_NODELAY, &value, size) < 0)
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   if(value)
     return Qtrue;
