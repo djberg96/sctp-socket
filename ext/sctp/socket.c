@@ -2500,6 +2500,94 @@ static VALUE rsctp_set_default_send_params(VALUE self, VALUE v_options){
   );
 }
 
+/*
+ * call-seq:
+ *    SCTP::Socket#set_peer_address_params(options)
+ *
+ * Sets the peer address parameters. This allows applications to enable or
+ * disable heartbeats for any peer address of an association, set the maximum
+ * number of retransmissions to a destination address, and set the path MTU.
+ *
+ * The +options+ hash may contain the following keys:
+ *
+ * * association_id: The association identification
+ * * address: The address of the remote peer
+ * * hbinterval: The heartbeat interval (in milliseconds)
+ * * pathmaxrxt: The maximum number of retransmissions
+ * * pathmtu: The path MTU
+ * * flags: Flags to control heartbeats, etc.
+ * * ipv6_flowlabel: IPv6 flow label (only for IPv6 addresses)
+ *
+ * Example:
+ *
+ *   socket.set_peer_address_params(:hbinterval => 5000, :pathmaxrxt => 5)
+ */
+static VALUE rsctp_set_peer_address_params(VALUE self, VALUE v_options){
+  VALUE v_assoc_id, v_address, v_hbinterval, v_pathmaxrxt, v_pathmtu, v_flags, v_ipv6_flowlabel;
+  int fileno;
+  sctp_assoc_t assoc_id;
+  struct sctp_paddrparams paddr;
+  struct sockaddr_in* sin;
+
+  if(!RB_TYPE_P(v_options, T_HASH))
+    rb_raise(rb_eTypeError, "options must be a hash");
+
+  bzero(&paddr, sizeof(paddr));
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+
+  v_assoc_id = rb_hash_aref2(v_options, "association_id");
+  v_address = rb_hash_aref2(v_options, "address");
+  v_hbinterval = rb_hash_aref2(v_options, "hbinterval");
+  v_pathmaxrxt = rb_hash_aref2(v_options, "pathmaxrxt");
+  v_pathmtu = rb_hash_aref2(v_options, "pathmtu");
+  v_flags = rb_hash_aref2(v_options, "flags");
+  v_ipv6_flowlabel = rb_hash_aref2(v_options, "ipv6_flowlabel");
+
+  if(NIL_P(v_assoc_id))
+    v_assoc_id = rb_iv_get(self, "@association_id");
+
+  assoc_id = NUM2INT(v_assoc_id);
+  paddr.spp_assoc_id = assoc_id;
+
+  // If address is provided, set up the sockaddr structure
+  if(!NIL_P(v_address)){
+    sin = (struct sockaddr_in*)&paddr.spp_address;
+    sin->sin_family = AF_INET;
+    if(inet_pton(AF_INET, StringValueCStr(v_address), &sin->sin_addr) <= 0)
+      rb_raise(rb_eArgError, "invalid IP address");
+  }
+
+  if(!NIL_P(v_hbinterval))
+    paddr.spp_hbinterval = NUM2INT(v_hbinterval);
+
+  if(!NIL_P(v_pathmaxrxt))
+    paddr.spp_pathmaxrxt = NUM2INT(v_pathmaxrxt);
+
+  if(!NIL_P(v_pathmtu))
+    paddr.spp_pathmtu = NUM2INT(v_pathmtu);
+
+  if(!NIL_P(v_flags))
+    paddr.spp_flags = NUM2INT(v_flags);
+
+  if(!NIL_P(v_ipv6_flowlabel))
+    paddr.spp_ipv6_flowlabel = NUM2INT(v_ipv6_flowlabel);
+
+  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &paddr, sizeof(paddr)) < 0)
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+
+  return rb_struct_new(
+    v_sctp_peer_addr_params_struct,
+    v_assoc_id,
+    v_address,
+    v_hbinterval,
+    v_pathmaxrxt,
+    v_pathmtu,
+    v_flags,
+    v_ipv6_flowlabel
+  );
+}
+
 void Init_socket(void){
   mSCTP   = rb_define_module("SCTP");
   cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
@@ -2640,6 +2728,7 @@ void Init_socket(void){
   rb_define_method(cSocket, "set_association_info", rsctp_set_association_info, 1);
   rb_define_method(cSocket, "set_default_send_params", rsctp_set_default_send_params, 1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
+  rb_define_method(cSocket, "set_peer_address_params", rsctp_set_peer_address_params, 1);
   rb_define_method(cSocket, "set_retransmission_info", rsctp_set_retransmission_info, 1);
   rb_define_method(cSocket, "set_shared_key", rsctp_set_shared_key, -1);
   rb_define_method(cSocket, "shutdown", rsctp_shutdown, -1);
