@@ -2,6 +2,9 @@
 #include <string.h>
 #include <errno.h>
 #include <arpa/inet.h>
+
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <netinet/sctp.h>
 
 #ifdef HAVE_SYS_PARAM_H
@@ -312,13 +315,27 @@ VALUE get_notification_info(char* buffer){
     case SCTP_PARTIAL_DELIVERY_EVENT:
       v_notification = rb_struct_new(v_partial_delivery_event_struct,
         UINT2NUM(snp->sn_pdapi_event.pdapi_type),
+#ifdef HAVE_STRUCT_SCTP_PDAPI_EVENT_PDAPI_FLAGS
+        UINT2NUM(snp->sn_pdapi_event.pdapi_flags),
+#else
+        INT2FIX(0),
+#endif
         UINT2NUM(snp->sn_pdapi_event.pdapi_length),
         UINT2NUM(snp->sn_pdapi_event.pdapi_indication),
+#ifdef HAVE_STRUCT_SCTP_PDAPI_EVENT_PDAPI_STREAM
         UINT2NUM(snp->sn_pdapi_event.pdapi_stream),
+#else
+        Qnil,
+#endif
+#ifdef HAVE_STRUCT_SCTP_PDAPI_EVENT_PDAPI_SEQ
         UINT2NUM(snp->sn_pdapi_event.pdapi_seq),
+#else
+        Qnil,
+#endif
         UINT2NUM(snp->sn_pdapi_event.pdapi_assoc_id)
       );
       break;
+#ifdef HAVE_SCTP_AUTHENTICATION_EVENT
     case SCTP_AUTHENTICATION_EVENT:
       v_notification = rb_struct_new(v_auth_event_struct,
 #ifdef HAVE_UNION_SCTP_NOTIFICATION_SN_AUTH_EVENT
@@ -336,6 +353,7 @@ VALUE get_notification_info(char* buffer){
 #endif
       );
       break;
+#endif
     case SCTP_SENDER_DRY_EVENT:
       v_notification = rb_struct_new(v_sender_dry_event_struct,
         UINT2NUM(snp->sn_sender_dry_event.sender_dry_type),
@@ -1045,7 +1063,9 @@ static VALUE rsctp_send(VALUE self, VALUE v_options){
   }
   else{
     ttl = NUM2INT(v_ttl);
+#ifdef SCTP_PR_SCTP_TTL
     send_flags |= SCTP_PR_SCTP_TTL;
+#endif
   }
 
   if(NIL_P(v_ppid))
@@ -1153,7 +1173,9 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   }
   else{
     ttl = NUM2INT(v_ttl);
+#ifdef SCTP_PR_SCTP_TTL
     flags |= SCTP_PR_SCTP_TTL;
+#endif
   }
 
   if(NIL_P(v_ppid))
@@ -2024,7 +2046,11 @@ static VALUE rsctp_get_peer_address_params(VALUE self){
     INT2NUM(paddr.spp_pathmaxrxt),
     INT2NUM(paddr.spp_pathmtu),
     INT2NUM(paddr.spp_flags),
+#ifdef HAVE_STRUCT_SCTP_PADDRPARAMS_SPP_IPV6_FLOWLABEL
     INT2NUM(paddr.spp_ipv6_flowlabel)
+#else
+    Qnil
+#endif
   );
 }
 
@@ -2712,7 +2738,7 @@ void Init_socket(void){
   );
 
   v_partial_delivery_event_struct = rb_struct_define(
-    "PartialDeliveryEvent", "type", "length", "indication", "stream",
+    "PartialDeliveryEvent", "type", "flags", "length", "indication", "stream",
     "sequence_number", "association_id", NULL
   );
 
