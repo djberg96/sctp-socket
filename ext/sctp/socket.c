@@ -2407,6 +2407,99 @@ static VALUE rsctp_map_ipv4(VALUE self, VALUE v_bool){
   return v_bool;
 }
 
+/*
+ * call-seq:
+ *    SCTP::Socket#set_default_send_params(options)
+ *
+ * Sets the default parameters that will be used by the sendmsg() call
+ * when it is invoked with a null parameter.
+ *
+ * The +options+ hash may contain the following keys:
+ *
+ * * stream: A number indicating the stream number within the association
+ * * ssn: Not used by applications. Ignored for one-to-many style sockets.
+ * * flags: Indicates various options for sending. See SCTP_* constants.
+ * * ppid: The payload protocol identifier
+ * * context: User-specified context information
+ * * ttl: The time to live (in milliseconds)
+ * * tsn: Not used by applications
+ * * cumtsn: Not used by applications
+ * * association_id: The association identification (ignored for one-to-one sockets)
+ *
+ * Example:
+ *
+ *   socket.set_default_send_params(:stream => 1, :flags => SCTP::Socket::SCTP_UNORDERED)
+ */
+static VALUE rsctp_set_default_send_params(VALUE self, VALUE v_options){
+  VALUE v_stream, v_ssn, v_flags, v_ppid, v_context, v_ttl, v_tsn, v_cumtsn, v_assoc_id;
+  int fileno;
+  sctp_assoc_t assoc_id;
+  struct sctp_sndrcvinfo sndrcv;
+
+  if(!RB_TYPE_P(v_options, T_HASH))
+    rb_raise(rb_eTypeError, "options must be a hash");
+
+  bzero(&sndrcv, sizeof(sndrcv));
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+
+  v_stream = rb_hash_aref2(v_options, "stream");
+  v_ssn = rb_hash_aref2(v_options, "ssn");
+  v_flags = rb_hash_aref2(v_options, "flags");
+  v_ppid = rb_hash_aref2(v_options, "ppid");
+  v_context = rb_hash_aref2(v_options, "context");
+  v_ttl = rb_hash_aref2(v_options, "ttl");
+  v_tsn = rb_hash_aref2(v_options, "tsn");
+  v_cumtsn = rb_hash_aref2(v_options, "cumtsn");
+  v_assoc_id = rb_hash_aref2(v_options, "association_id");
+
+  if(NIL_P(v_assoc_id))
+    v_assoc_id = rb_iv_get(self, "@association_id");
+
+  assoc_id = NUM2INT(v_assoc_id);
+  sndrcv.sinfo_assoc_id = assoc_id;
+
+  if(!NIL_P(v_stream))
+    sndrcv.sinfo_stream = NUM2INT(v_stream);
+
+  if(!NIL_P(v_ssn))
+    sndrcv.sinfo_ssn = NUM2INT(v_ssn);
+
+  if(!NIL_P(v_flags))
+    sndrcv.sinfo_flags = NUM2INT(v_flags);
+
+  if(!NIL_P(v_ppid))
+    sndrcv.sinfo_ppid = NUM2INT(v_ppid);
+
+  if(!NIL_P(v_context))
+    sndrcv.sinfo_context = NUM2INT(v_context);
+
+  if(!NIL_P(v_ttl))
+    sndrcv.sinfo_timetolive = NUM2INT(v_ttl);
+
+  if(!NIL_P(v_tsn))
+    sndrcv.sinfo_tsn = NUM2INT(v_tsn);
+
+  if(!NIL_P(v_cumtsn))
+    sndrcv.sinfo_cumtsn = NUM2INT(v_cumtsn);
+
+  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_DEFAULT_SEND_PARAM, &sndrcv, sizeof(sndrcv)) < 0)
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+
+  return rb_struct_new(
+    v_sctp_default_send_params_struct,
+    v_stream,
+    v_ssn,
+    v_flags,
+    v_ppid,
+    v_context,
+    v_ttl,
+    v_tsn,
+    v_cumtsn,
+    v_assoc_id
+  );
+}
+
 void Init_socket(void){
   mSCTP   = rb_define_module("SCTP");
   cSocket = rb_define_class_under(mSCTP, "Socket", rb_cObject);
@@ -2545,6 +2638,7 @@ void Init_socket(void){
   rb_define_method(cSocket, "sendmsg", rsctp_sendmsg, 1);
   rb_define_method(cSocket, "set_active_shared_key", rsctp_set_active_shared_key, -1);
   rb_define_method(cSocket, "set_association_info", rsctp_set_association_info, 1);
+  rb_define_method(cSocket, "set_default_send_params", rsctp_set_default_send_params, 1);
   rb_define_method(cSocket, "set_initmsg", rsctp_set_initmsg, 1);
   rb_define_method(cSocket, "set_retransmission_info", rsctp_set_retransmission_info, 1);
   rb_define_method(cSocket, "set_shared_key", rsctp_set_shared_key, -1);
