@@ -540,7 +540,7 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
  *   socket.close(linger: 5)
  */
 static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
-  VALUE v_options, v_linger;
+  VALUE v_options, v_linger, v_fileno;
   int fileno;
 
   rb_scan_args(argc, argv, "01", &v_options);
@@ -551,20 +551,32 @@ static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
   Check_Type(v_options, T_HASH);
 
   v_linger = rb_hash_aref2(v_options, "linger");
+  v_fileno = rb_iv_get(self, "@fileno");
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  if(NIL_P(v_fileno)) // Already closed
+    return self;
+
+  fileno = NUM2INT(v_fileno);
 
   if(!NIL_P(v_linger)){
     struct linger lin;
+    int linger_time = NUM2INT(v_linger);
+
+    if(linger_time < 0)
+      rb_raise(rb_eArgError, "linger time must be non-negative");
+
     lin.l_onoff = 1;
-    lin.l_linger = NUM2INT(v_linger);
+    lin.l_linger = linger_time;
 
     if(setsockopt(fileno, SOL_SOCKET, SO_LINGER, &lin, sizeof(struct linger)) < 0)
       rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
   }
 
-  if(close(fileno))
+  if(close(fileno) < 0)
     rb_raise(rb_eSystemCallError, "close: %s", strerror(errno));
+
+  // Mark socket as closed
+  rb_iv_set(self, "@fileno", Qnil);
 
   return self;
 }
@@ -2110,19 +2122,15 @@ static VALUE rsctp_get_autoclose(VALUE self){
  */
 static VALUE rsctp_set_autoclose(VALUE self, VALUE v_seconds){
   int fileno;
-  socklen_t size;
-  sctp_assoc_t assoc_id;
   int value;
 
   value = NUM2INT(v_seconds);
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
-  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
-  size = sizeof(int);
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTOCLOSE, (void*)&value, &size) < 0)
-    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_AUTOCLOSE, &value, sizeof(value)) < 0)
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
-  return v_seconds;
+  return INT2NUM(value);
 }
 
 /*
