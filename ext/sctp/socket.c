@@ -2788,7 +2788,7 @@ void Init_socket(void){
   rb_define_method(cSocket, "get_association_info", rsctp_get_association_info, 0);
   rb_define_method(cSocket, "get_autoclose", rsctp_get_autoclose, 0);
   rb_define_method(cSocket, "get_default_send_params", rsctp_get_default_send_params, 0);
-  rb_define_method(cSocket, "get_initmsg", rsctp_get_init_msg, 0);
+  rb_define_method(cSocket, "get_init_msg", rsctp_get_init_msg, 0);
   rb_define_method(cSocket, "get_peer_address_params", rsctp_get_peer_address_params, 0);
   rb_define_method(cSocket, "get_retransmission_info", rsctp_get_retransmission_info, 0);
   rb_define_method(cSocket, "get_status", rsctp_get_status, 0);
@@ -2822,6 +2822,7 @@ void Init_socket(void){
 
   rb_define_alias(cSocket, "get_rto_info", "get_retransmission_info");
   rb_define_alias(cSocket, "set_rto_info", "set_retransmission_info");
+  rb_define_alias(cSocket, "get_initmsg", "get_init_msg");
 
   rb_define_attr(cSocket, "domain", 1, 1);
   rb_define_attr(cSocket, "type", 1, 1);
