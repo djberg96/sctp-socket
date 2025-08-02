@@ -1,5 +1,5 @@
 require 'spec_helper'
-require 'sctp/socket'
+require 'sctp/server'
 
 RSpec.describe SCTP::Server do
   describe '#initialize' do
