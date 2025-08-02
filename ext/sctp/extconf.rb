@@ -41,8 +41,16 @@ have_struct_member('struct sctp_event_subscribe', 'sctp_send_failure_event_event
 
 have_struct_member('struct sctp_send_failed_event', 'ssfe_length', header)
 
+have_struct_member('struct sctp_pdapi_event', 'pdapi_stream', header)
+have_struct_member('struct sctp_pdapi_event', 'pdapi_seq', header)
+have_struct_member('struct sctp_pdapi_event', 'pdapi_flags', header)
+
+have_struct_member('struct sctp_paddrparams', 'spp_ipv6_flowlabel', header)
+
 have_struct_member('union sctp_notification', 'sn_auth_event', header)
 
 have_const('SCTP_EMPTY', header)
+have_const('SCTP_AUTHENTICATION_EVENT', header)
+have_const('SCTP_PR_SCTP_TTL', header)
 
 create_makefile('sctp/socket')
