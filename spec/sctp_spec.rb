@@ -454,6 +454,41 @@ RSpec.describe SCTP::Socket do
       end
     end
 
+    context "map_ipv4=" do
+      example "map_ipv4= basic functionality" do
+        expect(@socket).to respond_to(:map_ipv4=)
+      end
+
+      example "map_ipv4= accepts boolean values" do
+        expect{ @socket.map_ipv4 = true }.not_to raise_error
+        expect{ @socket.map_ipv4 = false }.not_to raise_error
+      end
+
+      example "map_ipv4= accepts truthy values" do
+        expect{ @socket.map_ipv4 = 1 }.not_to raise_error
+        expect{ @socket.map_ipv4 = "true" }.not_to raise_error
+      end
+
+      example "map_ipv4= accepts falsey values" do
+        expect{ @socket.map_ipv4 = 0 }.not_to raise_error
+        expect{ @socket.map_ipv4 = nil }.not_to raise_error
+        expect{ @socket.map_ipv4 = false }.not_to raise_error
+      end
+
+      example "map_ipv4= can be called multiple times" do
+        expect{ @socket.map_ipv4 = true }.not_to raise_error
+        expect{ @socket.map_ipv4 = false }.not_to raise_error
+        expect{ @socket.map_ipv4 = true }.not_to raise_error
+      end
+
+      example "map_ipv4= works with different socket types" do
+        socket_inet6 = described_class.new(Socket::AF_INET6)
+        expect{ socket_inet6.map_ipv4 = true }.not_to raise_error
+        expect{ socket_inet6.map_ipv4 = false }.not_to raise_error
+        socket_inet6.close(linger: 0)
+      end
+    end
+
     context "get_default_send_params" do
       before do
         @server.bindx(:addresses => addresses, :port => port, :reuse_addr => true)
