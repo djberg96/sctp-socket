@@ -2475,20 +2475,43 @@ static VALUE rsctp_delete_shared_key(int argc, VALUE* argv, VALUE self){
  */
 static VALUE rsctp_map_ipv4(VALUE self, VALUE v_bool){
   int fileno, boolean;
-  sctp_assoc_t assoc_id;
-  socklen_t size;
 
   boolean = 0;
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
-  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
 
   if(v_bool == Qtrue)
     boolean = 1;
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_I_WANT_MAPPED_V4_ADDR, (void*)&boolean, &size) < 0)
-    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_I_WANT_MAPPED_V4_ADDR, (void*)&boolean, sizeof(boolean)) < 0)
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   return v_bool;
+}
+
+/*
+ * call-seq:
+ *    SCTP::Socket#map_ipv4?
+ *
+ * Returns whether or not IPv4 addresses will be mapped to V6 representation
+ * for PF_INET6 sockets. Returns true if mapping is enabled, false otherwise.
+ */
+static VALUE rsctp_get_map_ipv4(VALUE self){
+  int fileno;
+  socklen_t size;
+  int value;
+
+  CHECK_SOCKET_CLOSED(self);
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  size = sizeof(int);
+
+  if(getsockopt(fileno, IPPROTO_SCTP, SCTP_I_WANT_MAPPED_V4_ADDR, (void*)&value, &size) < 0)
+    rb_raise(rb_eSystemCallError, "getsockopt: %s", strerror(errno));
+
+  if(value)
+    return Qtrue;
+  else
+    return Qfalse;
 }
 
 /*
@@ -2793,6 +2816,7 @@ void Init_socket(void){
   rb_define_method(cSocket, "get_subscriptions", rsctp_get_subscriptions, 0);
   rb_define_method(cSocket, "listen", rsctp_listen, -1);
   rb_define_method(cSocket, "map_ipv4=", rsctp_map_ipv4, 1);
+  rb_define_method(cSocket, "map_ipv4?", rsctp_get_map_ipv4, 0);
   rb_define_method(cSocket, "nodelay?", rsctp_get_nodelay, 0);
   rb_define_method(cSocket, "nodelay=", rsctp_set_nodelay, 1);
   rb_define_method(cSocket, "peeloff", rsctp_peeloff, 1);
