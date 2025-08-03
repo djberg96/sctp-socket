@@ -2498,15 +2498,17 @@ static VALUE rsctp_map_ipv4(VALUE self, VALUE v_bool){
 static VALUE rsctp_get_map_ipv4(VALUE self){
   int fileno;
   socklen_t size;
+  sctp_assoc_t assoc_id;
   int value;
 
   CHECK_SOCKET_CLOSED(self);
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
   size = sizeof(int);
 
-  if(getsockopt(fileno, IPPROTO_SCTP, SCTP_I_WANT_MAPPED_V4_ADDR, (void*)&value, &size) < 0)
-    rb_raise(rb_eSystemCallError, "getsockopt: %s", strerror(errno));
+  if(sctp_opt_info(fileno, assoc_id, SCTP_I_WANT_MAPPED_V4_ADDR, (void*)&value, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
   if(value)
     return Qtrue;
