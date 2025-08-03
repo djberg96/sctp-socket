@@ -639,6 +639,118 @@ RSpec.describe SCTP::Socket do
         expect(params.flags).to be < (1 << 32) # Should fit in 32-bit unsigned
       end
     end
+
+    context "enable_auth_support and auth_support?" do
+      example "enable_auth_support basic functionality" do
+        expect(@socket).to respond_to(:enable_auth_support)
+      end
+
+      example "auth_support? basic functionality" do
+        expect(@socket).to respond_to(:auth_support?)
+      end
+
+      example "auth_support? returns boolean value" do
+        result = @socket.auth_support?
+        expect(result).to be_a(TrueClass).or be_a(FalseClass)
+      end
+
+      example "auth_support? with no arguments" do
+        expect{ @socket.auth_support? }.not_to raise_error
+      end
+
+      example "auth_support? with nil association_id" do
+        expect{ @socket.auth_support?(nil) }.not_to raise_error
+      end
+
+      example "auth_support? with numeric association_id" do
+        expect{ @socket.auth_support?(0) }.not_to raise_error
+        expect{ @socket.auth_support?(1) }.not_to raise_error
+      end
+
+      example "auth_support? accepts only 0 or 1 arguments" do
+        expect{ @socket.auth_support? }.not_to raise_error
+        expect{ @socket.auth_support?(0) }.not_to raise_error
+        expect{ @socket.auth_support?(0, 1) }.to raise_error(ArgumentError)
+        expect{ @socket.auth_support?(0, 1, 2) }.to raise_error(ArgumentError)
+      end
+
+      example "auth_support? with invalid association_id type" do
+        expect{ @socket.auth_support?("invalid") }.to raise_error(TypeError)
+        expect{ @socket.auth_support?([]) }.to raise_error(TypeError)
+        expect{ @socket.auth_support?({}) }.to raise_error(TypeError)
+      end
+
+      example "enable_auth_support with no arguments" do
+        expect{ @socket.enable_auth_support }.not_to raise_error
+      end
+
+      example "enable_auth_support with nil association_id" do
+        expect{ @socket.enable_auth_support(nil) }.not_to raise_error
+      end
+
+      example "enable_auth_support with numeric association_id" do
+        expect{ @socket.enable_auth_support(0) }.not_to raise_error
+        expect{ @socket.enable_auth_support(1) }.not_to raise_error
+      end
+
+      example "enable_auth_support returns self" do
+        result = @socket.enable_auth_support
+        expect(result).to eq(@socket)
+      end
+
+      example "enable_auth_support accepts only 0 or 1 arguments" do
+        expect{ @socket.enable_auth_support }.not_to raise_error
+        expect{ @socket.enable_auth_support(0) }.not_to raise_error
+        expect{ @socket.enable_auth_support(0, 1) }.to raise_error(ArgumentError)
+        expect{ @socket.enable_auth_support(0, 1, 2) }.to raise_error(ArgumentError)
+      end
+
+      example "enable_auth_support with invalid association_id type" do
+        expect{ @socket.enable_auth_support("invalid") }.to raise_error(TypeError)
+        expect{ @socket.enable_auth_support([]) }.to raise_error(TypeError)
+        expect{ @socket.enable_auth_support({}) }.to raise_error(TypeError)
+      end
+
+      example "enable_auth_support can be called multiple times" do
+        expect{ @socket.enable_auth_support }.not_to raise_error
+        expect{ @socket.enable_auth_support }.not_to raise_error
+        expect{ @socket.enable_auth_support(0) }.not_to raise_error
+      end
+
+      example "enable_auth_support works after socket operations" do
+        # Test that it works even after other socket operations
+        @socket.bindx(:addresses => addresses, :port => port)
+        expect{ @socket.enable_auth_support }.not_to raise_error
+      end
+
+      example "auth_support? and enable_auth_support work together" do
+        # Test that the getter and setter work together
+        initial_state = @socket.auth_support?
+        expect(initial_state).to be_a(TrueClass).or be_a(FalseClass)
+
+        # Enable auth support
+        @socket.enable_auth_support
+
+        # Check that it can still be queried
+        current_state = @socket.auth_support?
+        expect(current_state).to be_a(TrueClass).or be_a(FalseClass)
+      end
+
+      example "auth_support? returns consistent values on multiple calls" do
+        # Get the state multiple times to ensure consistency
+        state1 = @socket.auth_support?
+        state2 = @socket.auth_support?
+        expect(state1).to eq(state2)
+      end
+
+      example "auth_support? works after socket operations" do
+        # Test that it works even after other socket operations
+        @socket.bindx(:addresses => addresses, :port => port)
+        expect{ @socket.auth_support? }.not_to raise_error
+        result = @socket.auth_support?
+        expect(result).to be_a(TrueClass).or be_a(FalseClass)
+      end
+    end
   end
 
   context "constants" do

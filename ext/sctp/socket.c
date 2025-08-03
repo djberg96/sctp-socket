@@ -2251,6 +2251,43 @@ static VALUE rsctp_enable_auth_support(int argc, VALUE* argv, VALUE self){
 
 /*
  * call-seq:
+ *    SCTP::Socket#auth_support?(association_id=nil)
+ *
+ * Returns whether or not authentication support is enabled for the association.
+ * Returns true if auth support is enabled, false otherwise.
+ */
+static VALUE rsctp_get_auth_support(int argc, VALUE* argv, VALUE self){
+  int fileno;
+  socklen_t size;
+  sctp_assoc_t assoc_id;
+  struct sctp_assoc_value assoc_value;
+  VALUE v_assoc_id;
+
+  rb_scan_args(argc, argv, "01", &v_assoc_id);
+
+  CHECK_SOCKET_CLOSED(self);
+
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  size = sizeof(struct sctp_assoc_value);
+
+  if(NIL_P(v_assoc_id))
+    assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
+  else
+    assoc_id = NUM2INT(v_assoc_id);
+
+  assoc_value.assoc_id = assoc_id;
+
+  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTH_SUPPORTED, (void*)&assoc_value, &size) < 0)
+    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+  if(assoc_value.assoc_value)
+    return Qtrue;
+  else
+    return Qfalse;
+}
+
+/*
+ * call-seq:
  *    SCTP::Socket#set_shared_key(key, keynum, association_id=nil)
  *
  *  This option will set a shared secret key which is used to build an
@@ -2805,6 +2842,7 @@ void Init_socket(void){
   rb_define_method(cSocket, "delete_shared_key", rsctp_delete_shared_key, -1);
   rb_define_method(cSocket, "disable_fragments=", rsctp_disable_fragments, 1);
   rb_define_method(cSocket, "enable_auth_support", rsctp_enable_auth_support, -1);
+  rb_define_method(cSocket, "auth_support?", rsctp_get_auth_support, -1);
   rb_define_method(cSocket, "getpeernames", rsctp_getpeernames, -1);
   rb_define_method(cSocket, "getlocalnames", rsctp_getlocalnames, -1);
   rb_define_method(cSocket, "get_active_shared_key", rsctp_get_active_shared_key, -1);
