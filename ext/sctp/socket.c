@@ -1138,6 +1138,9 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   v_ttl       = rb_hash_aref2(v_options, "ttl");
   v_addresses = rb_hash_aref2(v_options, "addresses");
 
+  if(NIL_P(v_msg))
+    rb_raise(rb_eArgError, "message parameter is required");
+
   if(NIL_P(v_stream))
     stream = 0;
   else
@@ -1170,6 +1173,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
     int i, port;
     VALUE v_address, v_port;
 
+    Check_Type(v_addresses, T_ARRAY);
     num_ip = (int)RARRAY_LEN(v_addresses);
     v_port = rb_hash_aref2(v_options, "port");
 
