@@ -819,11 +819,11 @@ static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
  *    socket = SCTP::Socket.new
  *
  *    # You can specify addresses here or in an earlier connectx call.
- *    socket.sendv
+ *    socket.sendv({
  *      :message   => ['Hello ', 'World.'],
  *      :addresses => ['10.0.5.4', '10.0.6.4'],
  *      :info_type => SCTP::Socket:::SCTP_SENDV_SNDINFO
- *    )
+ *    })
  *
  *  CAVEAT: Currently info_type is not yet supported.
  *
@@ -845,8 +845,11 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   v_message   = rb_hash_aref2(v_options, "message");
   v_addresses = rb_hash_aref2(v_options, "addresses");
 
-  if(!NIL_P(v_message))
-    Check_Type(v_message, T_ARRAY);
+  // Validate required message parameter
+  if(NIL_P(v_message))
+    rb_raise(rb_eArgError, "message parameter is required");
+
+  Check_Type(v_message, T_ARRAY);
 
   if(!NIL_P(v_addresses)){
     Check_Type(v_addresses, T_ARRAY);

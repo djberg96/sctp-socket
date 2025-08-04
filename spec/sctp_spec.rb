@@ -1003,6 +1003,69 @@ RSpec.describe SCTP::Socket do
     end
   end
 
+  context "sendv" do
+    before do
+      @socket = described_class.new
+    end
+
+    after do
+      @socket.close(linger: 0) if @socket rescue nil
+    end
+
+    example "sendv basic functionality" do
+      expect(@socket).to respond_to(:sendv)
+    end
+
+    example "sendv requires a hash argument" do
+      expect { @socket.sendv("not a hash") }.to raise_error(TypeError)
+      expect { @socket.sendv(123) }.to raise_error(TypeError)
+      expect { @socket.sendv(nil) }.to raise_error(TypeError)
+    end
+
+    example "sendv requires message parameter" do
+      expect { @socket.sendv({}) }.to raise_error(ArgumentError, "message parameter is required")
+    end
+
+    example "sendv validates message parameter type" do
+      expect { @socket.sendv({ message: "not an array" }) }.to raise_error(TypeError)
+      expect { @socket.sendv({ message: 123 }) }.to raise_error(TypeError)
+      expect { @socket.sendv({ message: nil }) }.to raise_error(ArgumentError, "message parameter is required")
+    end
+
+    example "sendv validates addresses parameter type" do
+      options = { message: ["test"] }
+
+      expect { @socket.sendv(options.merge(addresses: "not an array")) }.to raise_error(TypeError)
+      expect { @socket.sendv(options.merge(addresses: 123)) }.to raise_error(TypeError)
+
+      # Valid addresses parameter (array) should not raise TypeError
+      expect { @socket.sendv(options.merge(addresses: ["1.1.1.1", "1.1.1.2"])) }.not_to raise_error
+    end
+
+    example "sendv validates message array contents" do
+      expect { @socket.sendv({ message: [] }) }.to raise_error(ArgumentError, "Must contain at least one message")
+    end
+
+    example "sendv ignores unknown hash keys" do
+      options = {
+        message: ["test"],
+        unknown_key: "ignored",
+        another_unknown: 123
+      }
+      expect { @socket.sendv(options) }.to raise_error(SystemCallError)
+    end
+
+    example "sendv without connection raises SystemCallError" do
+      options = { message: ["Hello", "World"] }
+      expect { @socket.sendv(options) }.to raise_error(SystemCallError)
+    end
+
+    example "sendv accepts multiple message parts" do
+      options = { message: ["Hello ", "World", "!"] }
+      expect { @socket.sendv(options) }.to raise_error(SystemCallError)
+    end
+  end
+
   context "set_peer_address_params" do
     before do
       @socket = described_class.new
