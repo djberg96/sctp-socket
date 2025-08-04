@@ -1,3 +1,15 @@
+## 0.2.0 - 3-Aug-2025
+* Added an SCTP::Server class, generally modelled on the TCPServer class.
+* Added the map_ipv4? method to query IPv4 mapping status.
+* Added the auth_support? method to query authentication support status.
+* Fixed critical segmentation fault in sendmsg method with improved parameter validation.
+* Fixed potential segmentation fault in sendv method with better error handling.
+* Added comprehensive test coverage for many more methods.
+* Enhanced parameter validation across multiple methods to prevent crashes.
+* Improved documentation and fixed syntax errors in method examples.
+* Internally several methods were switched from sctp_opt_info to setsockopt
+  because the former doesn't always seem to work.
+
 ## 0.1.4 - 1-Feb-2025
 * Added the set_retransmission_info method.
 * Added the get_rto_info and set_rto_info aliases.

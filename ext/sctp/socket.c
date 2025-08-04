@@ -2900,7 +2900,7 @@ void Init_socket(void){
   rb_define_attr(cSocket, "port", 1, 1);
 
   /* 0.1.4: The version of this library */
-  rb_define_const(cSocket, "VERSION", rb_str_new2("0.1.4"));
+  rb_define_const(cSocket, "VERSION", rb_str_new2("0.2.0"));
 
   /* send flags */
 

@@ -26,7 +26,7 @@ RSpec.describe SCTP::Socket do
 
     context "version" do
       example "version is set to the expected value" do
-        expect(SCTP::Socket::VERSION).to eq('0.1.4')
+        expect(SCTP::Socket::VERSION).to eq('0.2.0')
       end
     end
 
