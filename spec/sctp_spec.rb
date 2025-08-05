@@ -1005,11 +1005,17 @@ RSpec.describe SCTP::Socket do
 
   context "sendv" do
     before do
+      @server = described_class.new
+      @server.bindx(:addresses => addresses, :port => port, :reuse_addr => true)
+      @server.listen
+
       @socket = described_class.new
+      @socket.connectx(:addresses => addresses, :port => port)
     end
 
     after do
       @socket.close(linger: 0) if @socket rescue nil
+      @server.close(linger: 0) if @server rescue nil
     end
 
     example "sendv basic functionality" do
@@ -1052,17 +1058,18 @@ RSpec.describe SCTP::Socket do
         unknown_key: "ignored",
         another_unknown: 123
       }
-      expect { @socket.sendv(options) }.to raise_error(SystemCallError)
+      expect(@socket.sendv(options)).to eq(options[:message].first.length)
     end
 
-    example "sendv without connection raises SystemCallError" do
+    example "sendv with connection emCallError" do
+      @server.close(linger: 0) if @server rescue nil
       options = { message: ["Hello", "World"] }
-      expect { @socket.sendv(options) }.to raise_error(SystemCallError)
+      expect{ @socket.sendv(options) }.to raise_error(SystemCallError)
     end
 
     example "sendv accepts multiple message parts" do
       options = { message: ["Hello ", "World", "!"] }
-      expect { @socket.sendv(options) }.to raise_error(SystemCallError)
+      expect(@socket.sendv(options)).to eq(options[:message].sum(&:size))
     end
 
     example "sendv with nil optional parameters" do
@@ -1076,8 +1083,7 @@ RSpec.describe SCTP::Socket do
         addresses: nil,
         port: nil
       }
-      # Will fail due to no connection, but validates nil handling
-      expect{ @socket.sendv(options) }.to raise_error(SystemCallError)
+      expect(@socket.sendv(options)).to eq(options[:message].first.size)
     end
   end
 
