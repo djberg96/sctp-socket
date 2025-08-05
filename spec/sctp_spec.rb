@@ -1064,6 +1064,51 @@ RSpec.describe SCTP::Socket do
       options = { message: ["Hello ", "World", "!"] }
       expect { @socket.sendv(options) }.to raise_error(SystemCallError)
     end
+
+    example "sendv with nil optional parameters" do
+      options = {
+        message: ["test"],
+        stream: nil,
+        ppid: nil,
+        context: nil,
+        flags: nil,
+        ttl: nil,
+        addresses: nil,
+        port: nil
+      }
+      # Will fail due to no connection, but validates nil handling
+      expect{ @socket.sendv(options) }.to raise_error(SystemCallError)
+    end
+  end
+
+  context "recvv" do
+    before do
+      @socket = described_class.new
+    end
+
+    after do
+      @socket.close(linger: 0) if @socket rescue nil
+    end
+
+    example "recvv basic functionality" do
+      expect(@socket).to respond_to(:recvv)
+    end
+
+    example "recvv with no arguments" do
+      # Will fail due to no connection, but validates method signature
+      expect{ @socket.recvv }.to raise_error(SystemCallError)
+    end
+
+    example "recvv with flags argument" do
+      # Will fail due to no connection, but validates parameter handling
+      expect{ @socket.recvv(0) }.to raise_error(SystemCallError)
+    end
+
+    example "recvv validates flags parameter type" do
+      expect { @socket.recvv("not an integer") }.to raise_error(TypeError)
+      expect { @socket.recvv([]) }.to raise_error(TypeError)
+      expect { @socket.recvv({}) }.to raise_error(TypeError)
+    end
   end
 
   context "set_peer_address_params" do
