@@ -2413,7 +2413,7 @@ static VALUE rsctp_get_active_shared_key(int argc, VALUE* argv, VALUE self){
  * authenticated chunks. The key identifier MUST correspond to an existing
  * shared key. Note that shared key identifier '0' defaults to a null key.
  *
- * The association_idparameter, if non-zero, indicates what association that
+ * The association_id parameter, if non-zero, indicates what association that
  * the shared key identifier is being set active upon. If this element contains
  * zero, then the activation applies to the endpoint and all future
  * associations will use the specified shared key identifier.
