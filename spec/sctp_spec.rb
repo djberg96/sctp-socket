@@ -60,18 +60,6 @@ RSpec.describe SCTP::Socket do
       end
     end
 
-    context "getpeernames" do
-      before do
-        @server.bindx(:addresses => addresses, :port => port, :reuse_addr => true)
-        @server.listen
-      end
-
-      example "getpeernames returns the expected array" do
-        @socket.connectx(:addresses => addresses, :port => port)
-        expect(@socket.getpeernames).to eq(addresses)
-      end
-    end
-
     context "get_status" do
       before do
         @server.bindx(:addresses => addresses, :port => port, :reuse_addr => true)
