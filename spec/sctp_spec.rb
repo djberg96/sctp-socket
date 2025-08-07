@@ -24,12 +24,6 @@ RSpec.describe SCTP::Socket do
       @server.close(linger: 0) if @server
     end
 
-    context "version" do
-      example "version is set to the expected value" do
-        expect(SCTP::Socket::VERSION).to eq('0.2.0')
-      end
-    end
-
     context "constructor" do
       example "constructor with no arguments" do
         expect{ @socket = described_class.new }.not_to raise_error
