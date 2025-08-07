@@ -4,19 +4,23 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
   include_context 'sctp_socket_helpers'
 
   context "constructor" do
-    example "new with default arguments" do
-      expect{ described_class.new }.not_to raise_error
+    example "constructor with no arguments" do
+      expect{ @socket = described_class.new }.not_to raise_error
+      expect(@socket.domain).to eq(Socket::AF_INET)
+      expect(@socket.type).to eq(Socket::SOCK_SEQPACKET)
     end
 
-    example "new with explicit domain" do
-      expect{ described_class.new(Socket::AF_INET) }.not_to raise_error
+    example "constructor with domain argument" do
+      expect{ @socket = described_class.new(Socket::AF_INET6) }.not_to raise_error
+      expect(@socket.domain).to eq(Socket::AF_INET6)
     end
 
-    example "new with explicit socket type" do
-      expect{ described_class.new(Socket::AF_INET, Socket::SOCK_SEQPACKET) }.not_to raise_error
+    example "constructor with type argument" do
+      expect{ @socket = described_class.new(Socket::AF_INET, Socket::SOCK_STREAM) }.not_to raise_error
+      expect(@socket.type).to eq(Socket::SOCK_STREAM)
     end
 
-    example "new with third argument raises an error" do
+    example "constructor only accepts two arguments" do
       expect{ described_class.new(Socket::AF_INET, Socket::SOCK_STREAM, 0) }.to raise_error(ArgumentError)
     end
 
