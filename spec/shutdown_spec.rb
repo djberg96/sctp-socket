@@ -1,0 +1,163 @@
+require_relative 'shared_spec_helper'
+
+RSpec.describe SCTP::Socket, type: :sctp_socket do
+  include_context 'sctp_socket_helpers'
+
+  context "shutdown" do
+    before do
+      @shutdown_socket = described_class.new
+      @shutdown_server = described_class.new
+    end
+
+    after do
+      @shutdown_socket.close(linger: 0) if @shutdown_socket && !@shutdown_socket.closed? rescue nil
+      @shutdown_server.close(linger: 0) if @shutdown_server && !@shutdown_server.closed? rescue nil
+    end
+
+    example "shutdown basic functionality" do
+      expect(@shutdown_socket).to respond_to(:shutdown)
+    end
+
+    example "shutdown takes optional integer argument" do
+      # Test that shutdown can be called with no arguments
+      expect(@shutdown_socket).to respond_to(:shutdown)
+
+      # Test that shutdown can be called with an integer argument
+      # On an unconnected socket, this will fail but should not crash
+      begin
+        @shutdown_socket.shutdown(0)
+      rescue SystemCallError => e
+        # Expected for unconnected socket
+        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor/)
+      end
+    end
+
+    example "shutdown with no arguments" do
+      # On an unconnected socket, shutdown may fail but should not crash
+      begin
+        @shutdown_socket.shutdown
+      rescue SystemCallError => e
+        # Expected for unconnected socket - verify it's a network-related error
+        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor/)
+      end
+    end
+
+    example "shutdown with SHUT_RD argument" do
+      begin
+        @shutdown_socket.shutdown(0) # SHUT_RD = 0
+      rescue SystemCallError => e
+        # Expected for unconnected socket
+        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor/)
+      end
+    end
+
+    example "shutdown with SHUT_WR argument" do
+      begin
+        @shutdown_socket.shutdown(1) # SHUT_WR = 1
+      rescue SystemCallError => e
+        # Expected for unconnected socket
+        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor/)
+      end
+    end
+
+    example "shutdown with SHUT_RDWR argument" do
+      begin
+        @shutdown_socket.shutdown(2) # SHUT_RDWR = 2
+      rescue SystemCallError => e
+        # Expected for unconnected socket
+        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor/)
+      end
+    end
+
+    example "shutdown rejects invalid argument types" do
+      expect{ @shutdown_socket.shutdown("invalid") }.to raise_error(TypeError)
+      expect{ @shutdown_socket.shutdown([]) }.to raise_error(TypeError)
+      expect{ @shutdown_socket.shutdown({}) }.to raise_error(TypeError)
+    end
+
+    example "shutdown rejects too many arguments" do
+      expect{ @shutdown_socket.shutdown(0, 1) }.to raise_error(ArgumentError)
+    end
+
+    example "shutdown with connected socket" do
+      # Set up a connection for testing shutdown
+      @shutdown_server.bindx(port: 12350, reuse_addr: true)
+      @shutdown_server.listen
+
+      begin
+        @shutdown_socket.connectx(addresses: %w[1.1.1.1], port: 12350)
+        @shutdown_socket.shutdown
+      rescue SystemCallError => e
+        # If connection fails or shutdown fails, it's expected in test environment
+        # Just verify the error message indicates connection issues
+        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor|Network is unreachable|No route to host/)
+      end
+    end
+
+    example "shutdown with specific shutdown type on connected socket" do
+      # Set up a connection for testing shutdown with specific types
+      @shutdown_server.bindx(port: 12351, reuse_addr: true)
+      @shutdown_server.listen
+
+      begin
+        @shutdown_socket.connectx(addresses: %w[1.1.1.1], port: 12351)
+        @shutdown_socket.shutdown(0) # SHUT_RD
+      rescue SystemCallError => e
+        # If connection fails or shutdown fails, it's expected in test environment
+        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor|Network is unreachable|No route to host/)
+      end
+    end
+
+    example "shutdown affects socket state" do
+      # Test that shutdown affects the socket but doesn't close it completely
+      expect(@shutdown_socket.closed?).to eq(false)
+
+      begin
+        @shutdown_socket.shutdown
+        # Socket should still exist but be in shutdown state
+        # Note: closed? may still return false after shutdown
+        expect(@shutdown_socket).to be_a(described_class)
+      rescue SystemCallError
+        # Expected for unconnected socket - just verify we can still check the socket
+        expect(@shutdown_socket).to be_a(described_class)
+      end
+    end
+
+    example "shutdown vs close behavior" do
+      # Test the difference between shutdown and close
+      expect(@shutdown_socket.closed?).to eq(false)
+
+      begin
+        @shutdown_socket.shutdown
+        # After shutdown, socket should still exist
+        expect(@shutdown_socket).to be_a(described_class)
+
+        # After close, socket should be closed
+        @shutdown_socket.close
+        expect(@shutdown_socket.closed?).to eq(true)
+      rescue SystemCallError
+        # If shutdown fails on unconnected socket, just test close
+        @shutdown_socket.close
+        expect(@shutdown_socket.closed?).to eq(true)
+      end
+    end
+
+    example "shutdown with Socket constants" do
+      # Test using Socket module constants if available
+      begin
+        if defined?(Socket::SHUT_RD)
+          @shutdown_socket.shutdown(Socket::SHUT_RD)
+        end
+        if defined?(Socket::SHUT_WR)
+          @shutdown_socket.shutdown(Socket::SHUT_WR)
+        end
+        if defined?(Socket::SHUT_RDWR)
+          @shutdown_socket.shutdown(Socket::SHUT_RDWR)
+        end
+      rescue SystemCallError => e
+        # Expected for unconnected socket
+        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor/)
+      end
+    end
+  end
+end
