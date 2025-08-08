@@ -56,7 +56,9 @@ task :create_dummy_links do
   end
 end
 
-RSpec::Core::RakeTask.new
+RSpec::Core::RakeTask.new do |t|
+  t.rspec_opts = '-f documentation'
+end
 
 task :spec => :compile
 task :default => [:clean, :spec]
