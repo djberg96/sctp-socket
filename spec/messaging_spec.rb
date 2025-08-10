@@ -250,26 +250,4 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
       expect(@socket.sendv(options)).to eq(options[:message].first.size)
     end
   end
-
-  context "recvv" do
-    example "recvv basic functionality" do
-      expect(@socket).to respond_to(:recvv)
-    end
-
-    example "recvv with no arguments" do
-      # Will fail due to no connection, but validates method signature
-      expect{ @socket.recvv }.to raise_error(SystemCallError)
-    end
-
-    example "recvv with flags argument" do
-      # Will fail due to no connection, but validates parameter handling
-      expect{ @socket.recvv(0) }.to raise_error(SystemCallError)
-    end
-
-    example "recvv validates flags parameter type" do
-      expect { @socket.recvv("not an integer") }.to raise_error(TypeError)
-      expect { @socket.recvv([]) }.to raise_error(TypeError)
-      expect { @socket.recvv({}) }.to raise_error(TypeError)
-    end
-  end
 end

@@ -925,24 +925,48 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
 #endif
 
 #ifdef HAVE_SCTP_RECVV
+/*
+ * call-seq:
+ *    SCTP::Socket#recvv(flags=0, buffer_size=1024)
+ *
+ * Receive a message using sctp_recvv from another SCTP endpoint.
+ *
+ * The optional buffer_size parameter specifies the size of the receive buffer
+ * in bytes. Defaults to 1024 bytes if not specified.
+ *
+ * Example:
+ *
+ *   begin
+ *     socket = SCTP::Socket.new
+ *     socket.bind(:port => 62534, :addresses => ['10.0.4.5', '10.0.5.5'])
+ *     socket.listen
+ *
+ *     while true
+ *       info = socket.recvv
+ *       puts "Received message: #{info.message}"
+ *
+ *       # Or with custom buffer size
+ *       info = socket.recvv(0, 4096)
+ *       puts "Received message: #{info.message}"
+ *     end
+ *   ensure
+ *     socket.close
+ *   end
+ */
 static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
-  VALUE v_flags;
-  int fileno, flags, on;
+  VALUE v_flags, v_buffer_size;
+  int fileno, flags, on, buffer_size;
   ssize_t bytes;
   uint infotype;
   socklen_t infolen;
   struct iovec iov[1];
   struct sctp_rcvinfo info;
-  char buffer[1024];
+  char *buffer;
 
   bzero(&iov, sizeof(iov));
   bzero(&info, sizeof(info));
-  bzero(&buffer, sizeof(buffer));
 
-	iov->iov_base = buffer;
-	iov->iov_len = sizeof(buffer);
-
-  rb_scan_args(argc, argv, "01", &v_flags);
+  rb_scan_args(argc, argv, "02", &v_flags, &v_buffer_size);
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
@@ -951,9 +975,28 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
   else
     flags = NUM2INT(v_flags);
 
+  if(NIL_P(v_buffer_size))
+    buffer_size = 1024;
+  else
+    buffer_size = NUM2INT(v_buffer_size);
+
+  if(buffer_size <= 0)
+    rb_raise(rb_eArgError, "buffer size must be positive");
+
+  buffer = (char*)malloc(buffer_size);
+  if(buffer == NULL)
+    rb_raise(rb_eNoMemError, "failed to allocate buffer");
+
+  bzero(buffer, buffer_size);
+
+	iov->iov_base = buffer;
+	iov->iov_len = buffer_size;
+
   on = 1;
-  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_RECVRCVINFO, &on, sizeof(on)) < 0)
+  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_RECVRCVINFO, &on, sizeof(on)) < 0){
+    free(buffer);
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+  }
 
   infolen = sizeof(struct sctp_rcvinfo);
   infotype = 0;
@@ -970,16 +1013,19 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
     &flags
   );
 
-  if(bytes < 0)
+  if(bytes < 0){
+    free(buffer);
     rb_raise(rb_eSystemCallError, "sctp_recvv: %s", strerror(errno));
+  }
 
   if(infotype != SCTP_RECVV_RCVINFO){
+    free(buffer);
     return Qnil;
   }
   else{
-    return rb_struct_new(
+    VALUE result = rb_struct_new(
       v_sctp_receive_info_struct,
-      rb_str_new2(iov->iov_base),
+      rb_str_new(iov->iov_base, bytes),
       UINT2NUM(info.rcv_sid),
       UINT2NUM(info.rcv_ssn),
       UINT2NUM(info.rcv_flags),
@@ -989,6 +1035,8 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
       UINT2NUM(info.rcv_context),
       UINT2NUM(info.rcv_assoc_id)
     );
+    free(buffer);
+    return result;
   }
 }
 #endif
