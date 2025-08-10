@@ -1264,9 +1264,12 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
 
 /*
  * call-seq:
- *    SCTP::Socket#recvmsg(flags=0)
+ *    SCTP::Socket#recvmsg(flags=0, buffer_size=1024)
  *
  * Receive a message from another SCTP endpoint.
+ *
+ * The optional buffer_size parameter specifies the size of the receive buffer
+ * in bytes. Defaults to 1024 bytes if not specified.
  *
  * Example:
  *
@@ -1279,46 +1282,64 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
  *     while true
  *       info = socket.recvmsg
  *       puts "Received message: #{info.message}"
+ *
+ *       # Or with custom buffer size
+ *       info = socket.recvmsg(0, 4096)
+ *       puts "Received message: #{info.message}"
  *     end
  *   ensure
  *     socket.close
  *   end
  */
 static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
-  VALUE v_flags, v_notification, v_message;
+  VALUE v_flags, v_buffer_size, v_notification, v_message;
   struct sctp_sndrcvinfo sndrcvinfo;
   struct sockaddr_in clientaddr;
-  int flags, fileno;
+  int flags, fileno, buffer_size;
   ssize_t bytes;
-  char buffer[1024]; // TODO: Let this be configurable?
+  char *buffer;
   socklen_t length;
 
-  rb_scan_args(argc, argv, "01", &v_flags);
+  rb_scan_args(argc, argv, "02", &v_flags, &v_buffer_size);
 
   if(NIL_P(v_flags))
     flags = 0;
   else
     flags = NUM2INT(v_flags);
 
+  if(NIL_P(v_buffer_size))
+    buffer_size = 1024;
+  else
+    buffer_size = NUM2INT(v_buffer_size);
+
+  if(buffer_size <= 0)
+    rb_raise(rb_eArgError, "buffer size must be positive");
+
+  buffer = (char*)malloc(buffer_size);
+  if(buffer == NULL)
+    rb_raise(rb_eNoMemError, "failed to allocate buffer");
+
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   length = sizeof(struct sockaddr_in);
 
-  bzero(buffer, sizeof(buffer));
+  bzero(buffer, buffer_size);
   bzero(&clientaddr, sizeof(clientaddr));
   bzero(&sndrcvinfo, sizeof(sndrcvinfo));
 
   bytes = (ssize_t)sctp_recvmsg(
     fileno,
     buffer,
-    sizeof(buffer),
+    buffer_size,
     (struct sockaddr*)&clientaddr,
     &length,
     &sndrcvinfo,
     &flags
   );
 
-  if(bytes < 0)
+  if(bytes < 0){
+    free(buffer);
     rb_raise(rb_eSystemCallError, "sctp_recvmsg: %s", strerror(errno));
+  }
 
   v_notification = Qnil;
 
@@ -1329,6 +1350,8 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
     v_message = rb_str_new(buffer, bytes);
   else
     v_message = Qnil;
+
+  free(buffer);
 
   return rb_struct_new(v_sndrcv_struct,
     v_message,
