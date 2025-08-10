@@ -2448,14 +2448,19 @@ static VALUE rsctp_get_active_shared_key(int argc, VALUE* argv, VALUE self){
   struct sctp_authkeyid authkey;
   sctp_assoc_t assoc_id;
   VALUE v_assoc_id, v_keynum;
-  uint keynum;
+  int keynum;
 
   rb_scan_args(argc, argv, "11", &v_keynum, &v_assoc_id);
 
   bzero(&authkey, sizeof(authkey));
 
+  // Cast it later, we want to force a validity check.
+  keynum = FIX2INT(v_keynum);
+
+  if(keynum < 0)
+    rb_raise(rb_eArgError, "invalid keynum value");
+
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
-  keynum = NUM2UINT(v_keynum);
 
   if(NIL_P(v_assoc_id))
     assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
@@ -2463,7 +2468,7 @@ static VALUE rsctp_get_active_shared_key(int argc, VALUE* argv, VALUE self){
     assoc_id = NUM2INT(v_assoc_id);
 
   authkey.scact_assoc_id = assoc_id;
-  authkey.scact_keynumber = keynum;
+  authkey.scact_keynumber = (uint)keynum;
 
   size = sizeof(struct sctp_authkeyid);
 
@@ -2501,11 +2506,15 @@ static VALUE rsctp_set_active_shared_key(int argc, VALUE* argv, VALUE self){
   struct sctp_authkeyid authkey;
   sctp_assoc_t assoc_id;
   VALUE v_assoc_id, v_keynum;
-  uint keynum;
+  int keynum;
 
   rb_scan_args(argc, argv, "11", &v_keynum, &v_assoc_id);
 
-  keynum = NUM2UINT(v_keynum);
+  keynum = FIX2INT(v_keynum);
+
+  if(keynum < 0)
+    rb_raise(rb_eArgError, "invalid keynum value");
+
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
   if(NIL_P(v_assoc_id))
@@ -2514,7 +2523,7 @@ static VALUE rsctp_set_active_shared_key(int argc, VALUE* argv, VALUE self){
     assoc_id = NUM2INT(v_assoc_id);
 
   authkey.scact_assoc_id = assoc_id;
-  authkey.scact_keynumber = keynum;
+  authkey.scact_keynumber = (uint)keynum;
   size = sizeof(struct sctp_authkeyid);
 
   if(sctp_opt_info(fileno, assoc_id, SCTP_AUTH_ACTIVE_KEY, (void*)&authkey, &size) < 0)

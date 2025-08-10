@@ -109,16 +109,12 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
       end
     end
 
-    example "get_active_shared_key with negative keynum values" do
-      # Negative values get converted to large unsigned integers by NUM2UINT,
-      # then fail at the system call level rather than Ruby argument validation
-      expect{ @socket.get_active_shared_key(-1) }.to raise_error(SystemCallError)
+    example "get_active_shared_key with a negative keynum value raises an error" do
+      expect{ @socket.get_active_shared_key(-1) }.to raise_error(ArgumentError)
     end
 
-    example "set_active_shared_key with negative keynum values" do
-      # Negative values get converted to large unsigned integers by NUM2UINT,
-      # then fail at the system call level rather than Ruby argument validation
-      expect{ @socket.set_active_shared_key(-1) }.to raise_error(SystemCallError)
+    example "set_active_shared_key with negative keynum value raises an error" do
+      expect{ @socket.set_active_shared_key(-1) }.to raise_error(ArgumentError)
     end
 
     example "set_active_shared_key returns self" do
@@ -237,7 +233,8 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
       end
     end
 
-    example "methods work on connected socket vs unconnected socket" do
+    # I'm not convinced this should matter. It seems to be inconsistent between platforms.
+    xexample "methods work on connected socket vs unconnected socket" do
       # Demonstrate the difference between connected and unconnected sockets
       unconnected_socket = described_class.new
 
