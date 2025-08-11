@@ -3,6 +3,10 @@ require_relative 'shared_spec_helper'
 RSpec.describe SCTP::Socket, type: :sctp_socket do
   include_context 'sctp_socket_helpers'
 
+  before do
+    @socket = described_class.new(Socket::AF_INET6)
+  end
+
   context "map_ipv4= and map_ipv4?" do
     example "map_ipv4= basic functionality" do
       expect(@socket).to respond_to(:map_ipv4=)

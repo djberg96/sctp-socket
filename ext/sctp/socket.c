@@ -2592,10 +2592,14 @@ static VALUE rsctp_delete_shared_key(int argc, VALUE* argv, VALUE self){
  * call-seq:
  *    SCTP::Socket#map_ipv4=(bool)
  *
- * If set to true and the socket is type PF_INET6, then IPv4 addresses will be
+ * If set to true and the socket is type xF_INET6, then IPv4 addresses will be
  * mapped to V6 representation. If set to false (the default), then no mapping
- * will be done of V4 addresses and a user will receive both PF_INET6 and
- * PF_INET type addresses on the socket.
+ * will be done of V4 addresses and a user will receive both xF_INET6 and
+ * xF_INET type addresses on the socket.
+ *
+ * Note that setting this to true on a socket that is not type xF_INET6 is
+ * undefined behavior, and may raise an error on your platform. Otherwise it's
+ * a no-op.
  */
 static VALUE rsctp_map_ipv4(VALUE self, VALUE v_bool){
   int fileno, boolean;
