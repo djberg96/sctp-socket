@@ -19,6 +19,17 @@ RSpec.shared_context "sctp_socket_helpers" do
     @server = described_class.new
   end
 
+  def create_connection
+    @server.bindx(:addresses => addresses, :port => port, :reuse_addr => true)
+    @server.set_initmsg(:output_streams => 5, :input_streams => 5, :max_attempts => 4)
+    @server.subscribe(:data_io => true, :shutdown => true, :association => true)
+    @server.listen
+
+    @socket.connectx(:addresses => addresses, :port => port)
+
+    sleep(0.1) # Allow some time for connection to establish
+  end
+
   after do
     @socket.close(linger: 0) if @socket
     @server.close(linger: 0) if @server
