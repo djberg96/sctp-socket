@@ -1,4 +1,4 @@
-require_relative 'shared_spec_helper'
+require_relative 'spec_helper'
 
 RSpec.describe SCTP::Socket, type: :sctp_socket do
   include_context 'sctp_socket_helpers'
@@ -25,7 +25,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
       expect{ @socket.enable_auth_support(@socket.association_id) }.not_to raise_error
     end
 
-    example "enable_auth_support with invalid association_id" do
+    example "enable_auth_support with invalid association_id", :bsd do
       expect{ @socket.enable_auth_support(99) }.to raise_error(SystemCallError)
     end
 
@@ -92,7 +92,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
       expect{ @socket.auth_support?(@socket.association_id) }.not_to raise_error
     end
 
-    example "auth_support? with an invalid association_id" do
+    example "auth_support? with an invalid association_id", :bsd do
       expect{ @socket.auth_support?(99) }.to raise_error(SystemCallError)
     end
 

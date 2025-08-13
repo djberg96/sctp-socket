@@ -35,8 +35,3 @@ RSpec.shared_context "sctp_socket_helpers" do
     @server.close(linger: 0) if @server
   end
 end
-
-# Include the shared context in all SCTP spec files
-RSpec.configure do |config|
-  config.include_context "sctp_socket_helpers", type: :sctp_socket
-end
