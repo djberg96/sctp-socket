@@ -2310,6 +2310,8 @@ static VALUE rsctp_enable_auth_support(int argc, VALUE* argv, VALUE self){
 
   rb_scan_args(argc, argv, "01", &v_assoc_id);
 
+  CHECK_SOCKET_CLOSED(self);
+
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   size = sizeof(struct sctp_assoc_value);
 
