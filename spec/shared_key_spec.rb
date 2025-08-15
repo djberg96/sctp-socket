@@ -1,4 +1,4 @@
-require_relative 'shared_spec_helper'
+require_relative 'spec_helper'
 
 RSpec.describe SCTP::Socket, type: :sctp_socket do
   include_context 'sctp_socket_helpers'
@@ -27,6 +27,23 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
     example "set_shared_key requires key argument" do
       expect { @socket.set_shared_key }.to raise_error(ArgumentError)
     end
+
+    example "set_shared_key validates key parameter type" do
+      expect { @socket.set_shared_key(123, 1) }.to raise_error(TypeError)
+      expect { @socket.set_shared_key(nil, 1) }.to raise_error(TypeError)
+    end
+
+    example "set_shared_key validates keynum parameter type" do
+      expect { @socket.set_shared_key("key", "invalid") }.to raise_error(TypeError)
+    end
+
+    example "set_shared_key validates association_id parameter type" do
+      expect { @socket.set_shared_key("key", 1, "invalid") }.to raise_error(TypeError)
+    end
+
+    example "set_shared_key rejects too many arguments" do
+      expect { @socket.set_shared_key("key", 1, 0, "extra") }.to raise_error(ArgumentError)
+    end
   end
 
   context "delete_shared_key" do
@@ -42,43 +59,15 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
     example "delete_shared_key requires keynum argument" do
       expect { @socket.delete_shared_key }.to raise_error(ArgumentError)
     end
-  end
 
-=begin
-
-    example "delete_shared_key accepts keynum and optional association_id" do
-      begin
-        # Test with association_id
+    example "delete_shared_key accepts optional association_id" do
         result = @socket.delete_shared_key(1, @socket.association_id)
         expect(result).to be_a(Integer)
-
-        # Test without association_id (should use socket's association_id)
-        result = @socket.delete_shared_key(2)
-        expect(result).to be_a(Integer)
-
-        # Test with nil association_id (should use socket's association_id)
-        result = @socket.delete_shared_key(3, nil)
-        expect(result).to be_a(Integer)
-      rescue SystemCallError => e
-        # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
-      end
     end
 
-    example "set_shared_key validates key parameter type" do
-      expect { @socket.set_shared_key(123, 1) }.to raise_error(TypeError)
-      expect { @socket.set_shared_key(nil, 1) }.to raise_error(TypeError)
-    end
-
-    example "set_shared_key validates keynum parameter type" do
-      expect { @socket.set_shared_key("key", "invalid") }.to raise_error(TypeError)
-      # nil is valid as keynum defaults to 1
-      begin
-        @socket.set_shared_key("key", nil)
-      rescue SystemCallError => e
-        # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
-      end
+    example "Explicit nil for association_id will use socket's association", :linux do
+      result = @socket.delete_shared_key(3, nil)
+      expect(result).to be_a(Integer)
     end
 
     example "delete_shared_key validates keynum parameter type" do
@@ -86,19 +75,15 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
       expect { @socket.delete_shared_key(nil) }.to raise_error(TypeError)
     end
 
-    example "set_shared_key validates association_id parameter type" do
-      expect { @socket.set_shared_key("key", 1, "invalid") }.to raise_error(TypeError)
-    end
-
     example "delete_shared_key validates association_id parameter type" do
       expect { @socket.delete_shared_key(1, "invalid") }.to raise_error(TypeError)
     end
 
-    example "methods reject too many arguments" do
-      expect { @socket.set_shared_key("key", 1, 0, "extra") }.to raise_error(ArgumentError)
+    example "delete_shared_key rejects too many arguments" do
       expect { @socket.delete_shared_key(1, 0, "extra") }.to raise_error(ArgumentError)
     end
-
+  end
+=begin
     example "set_shared_key with different key values" do
       begin
         # Test with regular string key
