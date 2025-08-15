@@ -2323,8 +2323,8 @@ static VALUE rsctp_enable_auth_support(int argc, VALUE* argv, VALUE self){
   assoc_value.assoc_id = assoc_id;
   assoc_value.assoc_value = 1;
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTH_SUPPORTED, (void*)&assoc_value, &size) < 0)
-    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_AUTH_SUPPORTED, (void*)&assoc_value, size) < 0)
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   return self;
 }
@@ -2368,7 +2368,7 @@ static VALUE rsctp_get_auth_support(int argc, VALUE* argv, VALUE self){
 
 /*
  * call-seq:
- *    SCTP::Socket#set_shared_key(key, keynum, association_id=nil)
+ *    SCTP::Socket#set_shared_key(key, keynum=1, association_id=nil)
  *
  *  This option will set a shared secret key which is used to build an
  *  association shared key.
