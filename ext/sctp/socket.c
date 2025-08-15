@@ -2406,16 +2406,7 @@ static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   key = StringValuePtr(v_key);
-  len = strlen(key);
-  unsigned char byte_array[len+1];
-
-  for(size_t i = 0; i < len; i++)
-    byte_array[i] = key[i];
-
-  byte_array[len] = '\0';
-
-  auth_key = malloc(sizeof(auth_key) + sizeof(char[strlen(key)+1]));
-  size = sizeof(auth_key);
+  len = RSTRING_LEN(v_key); // Use Ruby's string length, not strlen
 
   if(NIL_P(v_assoc_id))
     assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
@@ -2427,14 +2418,25 @@ static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
   else
     keynum = NUM2INT(v_keynumber);
 
+  // Allocate the structure with space for the key
+  size = sizeof(struct sctp_authkey) + len;
+  auth_key = malloc(size);
+
+  if (auth_key == NULL)
+    rb_raise(rb_eNoMemError, "Failed to allocate memory for auth key");
+
   auth_key->sca_assoc_id = assoc_id;
   auth_key->sca_keynumber = keynum;
-  auth_key->sca_keylength = strlen(key);
-  memcpy(auth_key->sca_key, byte_array, sizeof(byte_array));
+  auth_key->sca_keylength = len;
+  memcpy(auth_key->sca_key, key, len);
 
-  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_AUTH_KEY, (void*)auth_key, size) < 0)
-    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_AUTH_KEY, (void*)auth_key, size) < 0) {
+    int err = errno;
+    free(auth_key);
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(err));
+  }
 
+  free(auth_key);
   return self;
 }
 
