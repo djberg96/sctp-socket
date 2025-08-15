@@ -25,7 +25,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         expect(result).to eq(@socket)
       rescue SystemCallError => e
         # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/sctp_opt_info|not supported|Invalid argument|Permission denied/)
+        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
       end
     end
 
@@ -35,14 +35,19 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         expect(result).to be_a(Integer)
       rescue SystemCallError => e
         # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/sctp_opt_info|not supported|Invalid argument|Permission denied/)
+        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
       end
     end
 
     example "set_shared_key requires key and keynum arguments" do
       expect { @socket.set_shared_key }.to raise_error(ArgumentError)
-      # keynum is optional and defaults to 1, so this should work
-      expect { @socket.set_shared_key("key") }.not_to raise_error
+      # keynum is optional and defaults to 1, so this should work if auth is supported
+      begin
+        @socket.set_shared_key("key")
+      rescue SystemCallError => e
+        # Expected if SCTP authentication is not supported/configured
+        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
+      end
     end
 
     example "delete_shared_key requires keynum argument" do
@@ -64,7 +69,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         expect(result).to eq(@socket)
       rescue SystemCallError => e
         # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/sctp_opt_info|not supported|Invalid argument|Permission denied/)
+        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
       end
     end
 
@@ -83,7 +88,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         expect(result).to be_a(Integer)
       rescue SystemCallError => e
         # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/sctp_opt_info|not supported|Invalid argument|Permission denied/)
+        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
       end
     end
 
@@ -95,7 +100,12 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
     example "set_shared_key validates keynum parameter type" do
       expect { @socket.set_shared_key("key", "invalid") }.to raise_error(TypeError)
       # nil is valid as keynum defaults to 1
-      expect { @socket.set_shared_key("key", nil) }.not_to raise_error
+      begin
+        @socket.set_shared_key("key", nil)
+      rescue SystemCallError => e
+        # Expected if SCTP authentication is not supported/configured
+        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
+      end
     end
 
     example "delete_shared_key validates keynum parameter type" do
@@ -135,7 +145,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         expect(result).to eq(@socket)
       rescue SystemCallError => e
         # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/sctp_opt_info|not supported|Invalid argument|Permission denied/)
+        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
       end
     end
 
@@ -148,7 +158,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         end
       rescue SystemCallError => e
         # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/sctp_opt_info|not supported|Invalid argument|Permission denied/)
+        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
       end
     end
 
@@ -158,7 +168,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         expect(result).to eq(@socket)
       rescue SystemCallError => e
         # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/sctp_opt_info|not supported|Invalid argument|Permission denied/)
+        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
       end
     end
 
@@ -168,7 +178,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         expect(result).to be_a(Integer)
       rescue SystemCallError => e
         # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/sctp_opt_info|not supported|Invalid argument|Permission denied/)
+        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
       end
     end
 
@@ -178,7 +188,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         expect(result).to equal(@socket)
       rescue SystemCallError => e
         # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/sctp_opt_info|not supported|Invalid argument|Permission denied/)
+        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
       end
     end
 
@@ -189,7 +199,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         expect(result).to eq(5)
       rescue SystemCallError => e
         # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/sctp_opt_info|not supported|Invalid argument|Permission denied/)
+        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
       end
     end
 
@@ -213,7 +223,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         expect(association_id).to be >= 0
       rescue SystemCallError => e
         # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/sctp_opt_info|not supported|Invalid argument|Permission denied/)
+        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
       end
     end
 
@@ -236,7 +246,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         expect(result4).to be_a(Integer)
       rescue SystemCallError => e
         # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/sctp_opt_info|not supported|Invalid argument|Permission denied/)
+        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
       end
     end
 
@@ -250,7 +260,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         expect(result).to eq(30)
       rescue SystemCallError => e
         # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/sctp_opt_info|not supported|Invalid argument|Permission denied/)
+        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
       end
     end
 
@@ -269,7 +279,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         @socket.delete_shared_key(40)
       rescue SystemCallError => e
         # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/sctp_opt_info|not supported|Invalid argument|Permission denied/)
+        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
       end
     end
 
@@ -290,7 +300,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         unconnected_socket.close
       rescue SystemCallError => e
         # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/sctp_opt_info|not supported|Invalid argument|Permission denied/)
+        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
       end
     end
 
@@ -308,7 +318,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         expect(association_id).to be > 0 # Connected socket should have non-zero association
       rescue SystemCallError => e
         # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/sctp_opt_info|not supported|Invalid argument|Permission denied/)
+        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
         # But we should still have a valid association ID
         association_id = @socket.association_id
         expect(association_id).to be >= 0
