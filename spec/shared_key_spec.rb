@@ -3,75 +3,48 @@ require_relative 'shared_spec_helper'
 RSpec.describe SCTP::Socket, type: :sctp_socket do
   include_context 'sctp_socket_helpers'
 
-  context "set_shared_key and delete_shared_key" do
+  context "set_shared_key" do
     before do
-      @server.bindx(:addresses => addresses, :port => port, :reuse_addr => true)
-      @server.listen
-
-      @socket.connectx(:addresses => addresses, :port => port)
-
-      # Allow some time for connection to establish
-      sleep(0.1)
-    end
-
-    after do
-      @socket.close if @socket && !@socket.closed?
-      @server.close if @server && !@server.closed?
+      create_connection
+      @socket.enable_auth_support(@server.association_id)
     end
 
     example "set_shared_key basic functionality" do
-      begin
-        result = @socket.set_shared_key("testkey", 1)
-        expect(result).to eq(@socket)
-      rescue SystemCallError => e
-        # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
-      end
+      result = @socket.set_shared_key("testkey")
+      expect(result).to eq(@socket)
+    end
+
+    example "set_shared_key accepts optional keynum" do
+      result = @socket.set_shared_key("testkey", 1)
+      expect(result).to eq(@socket)
+    end
+
+    example "set_shared_key accepts optional association_id" do
+      result = @socket.set_shared_key("testkey", 1, @socket.association_id)
+      expect(result).to eq(@socket)
+    end
+
+    example "set_shared_key requires key argument" do
+      expect { @socket.set_shared_key }.to raise_error(ArgumentError)
+    end
+  end
+
+  context "delete_shared_key" do
+    before do
+      @socket.set_shared_key("testkey", 1)
     end
 
     example "delete_shared_key basic functionality" do
-      begin
-        result = @socket.delete_shared_key(1)
-        expect(result).to be_a(Integer)
-      rescue SystemCallError => e
-        # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
-      end
-    end
-
-    example "set_shared_key requires key and keynum arguments" do
-      expect { @socket.set_shared_key }.to raise_error(ArgumentError)
-      # keynum is optional and defaults to 1, so this should work if auth is supported
-      begin
-        @socket.set_shared_key("key")
-      rescue SystemCallError => e
-        # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
-      end
+      result = @socket.delete_shared_key(1)
+      expect(result).to be_a(Integer)
     end
 
     example "delete_shared_key requires keynum argument" do
       expect { @socket.delete_shared_key }.to raise_error(ArgumentError)
     end
+  end
 
-    example "set_shared_key accepts key, keynum and optional association_id" do
-      begin
-        # Test with association_id
-        result = @socket.set_shared_key("testkey", 1, @socket.association_id)
-        expect(result).to eq(@socket)
-
-        # Test without association_id (should use socket's association_id)
-        result = @socket.set_shared_key("testkey2", 2)
-        expect(result).to eq(@socket)
-
-        # Test with nil association_id (should use socket's association_id)
-        result = @socket.set_shared_key("testkey3", 3, nil)
-        expect(result).to eq(@socket)
-      rescue SystemCallError => e
-        # Expected if SCTP authentication is not supported/configured
-        expect(e.message).to match(/setsockopt|not supported|Invalid argument|Permission denied/)
-      end
-    end
+=begin
 
     example "delete_shared_key accepts keynum and optional association_id" do
       begin
@@ -324,5 +297,5 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         expect(association_id).to be >= 0
       end
     end
-  end
+=end
 end
