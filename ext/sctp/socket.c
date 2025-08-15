@@ -2584,8 +2584,8 @@ static VALUE rsctp_delete_shared_key(int argc, VALUE* argv, VALUE self){
 
   size = sizeof(struct sctp_authkeyid);
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTH_DELETE_KEY, (void*)&authkey, &size) < 0)
-    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_AUTH_DELETE_KEY, (void*)&authkey, size) < 0)
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   return INT2NUM(authkey.scact_keynumber);
 }
