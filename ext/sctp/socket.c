@@ -2432,8 +2432,8 @@ static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
   auth_key->sca_keylength = strlen(key);
   memcpy(auth_key->sca_key, byte_array, sizeof(byte_array));
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTH_KEY, (void*)auth_key, &size) < 0)
-    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_AUTH_KEY, (void*)auth_key, size) < 0)
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   return self;
 }
@@ -2528,8 +2528,8 @@ static VALUE rsctp_set_active_shared_key(int argc, VALUE* argv, VALUE self){
   authkey.scact_keynumber = (uint)keynum;
   size = sizeof(struct sctp_authkeyid);
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTH_ACTIVE_KEY, (void*)&authkey, &size) < 0)
-    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_AUTH_ACTIVE_KEY, (void*)&authkey, size) < 0)
+    rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   return self;
 }
