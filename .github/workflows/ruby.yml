@@ -28,6 +28,7 @@ jobs:
           sudo ip addr add 1.1.1.2/24 dev dummy2
           sudo ip link set dummy1 up
           sudo ip link set dummy2 up
+          sudo sysctl -w net.sctp.auth_enable=1
     - name: Setup Ruby
       uses: ruby/setup-ruby@v1
       with:
