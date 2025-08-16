@@ -2404,6 +2404,8 @@ static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
 
   rb_scan_args(argc, argv, "12", &v_key, &v_keynumber, &v_assoc_id);
 
+  CHECK_SOCKET_CLOSED(self);
+
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   key = StringValuePtr(v_key);
   len = RSTRING_LEN(v_key); // Use Ruby's string length, not strlen
@@ -2570,6 +2572,8 @@ static VALUE rsctp_delete_shared_key(int argc, VALUE* argv, VALUE self){
   uint keynum;
 
   rb_scan_args(argc, argv, "11", &v_keynum, &v_assoc_id);
+
+  CHECK_SOCKET_CLOSED(self);
 
   bzero(&authkey, sizeof(authkey));
 

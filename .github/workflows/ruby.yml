@@ -19,15 +19,17 @@ jobs:
         ruby-version: ['3.2', '3.3', '3.4']
     steps:
     - uses: actions/checkout@v4
-    - name: Install SCTP headers
+    - name: Setup SCTP
       run: |
           sudo apt-get install libsctp-dev lksctp-tools
+          sudo modprobe sctp
           sudo ip link add dummy1 type dummy
           sudo ip link add dummy2 type dummy
           sudo ip addr add 1.1.1.1/24 dev dummy1
           sudo ip addr add 1.1.1.2/24 dev dummy2
           sudo ip link set dummy1 up
           sudo ip link set dummy2 up
+          sudo sysctl -w net.sctp.auth_enable=1
     - name: Setup Ruby
       uses: ruby/setup-ruby@v1
       with:
