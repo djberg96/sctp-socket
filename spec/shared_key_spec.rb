@@ -6,6 +6,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
   context "set_shared_key" do
     before do
       create_connection
+      @socket.enable_auth_support(@server.association_id)
     end
 
     example "set_shared_key basic functionality" do
