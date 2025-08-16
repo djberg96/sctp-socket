@@ -44,26 +44,22 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
       expect { @socket.set_shared_key("key", 1, 0, "extra") }.to raise_error(ArgumentError)
     end
 
-    example "set_shared_key with different key values" do
-      # Test with regular string key
-      result = @socket.set_shared_key("regularkey", 1)
-      expect(result).to eq(@socket)
+    example "set_shared_key with empty key", :linux do
+      expect { @socket.set_shared_key("", 2) }.to raise_error(SystemCallError, /Invalid argument/)
+    end
 
-      # Test with empty string (null key)
-      result = @socket.set_shared_key("", 2)
-      expect(result).to eq(@socket)
-
-      # Test with binary data
+    example "set_shared_key with binary data" do
       result = @socket.set_shared_key("\x00\x01\x02\x03", 3)
       expect(result).to eq(@socket)
+    end
 
-      # Test with longer key
+    example "set_shared_key with long key" do
       result = @socket.set_shared_key("a" * 100, 4)
       expect(result).to eq(@socket)
     end
 
-    example "set_shared_key with special key number 0 (null key)" do
-      result = @socket.set_shared_key("", 0)
+    example "set_shared_key with special key number 0" do
+      result = @socket.set_shared_key("key", 0)
       expect(result).to eq(@socket)
     end
 
@@ -104,11 +100,12 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
     end
 
     example "delete_shared_key accepts optional association_id" do
-        result = @socket.delete_shared_key(1, @socket.association_id)
-        expect(result).to be_a(Integer)
+      result = @socket.delete_shared_key(1, @socket.association_id)
+      expect(result).to be_a(Integer)
     end
 
     example "Explicit nil for association_id will use socket's association", :linux do
+      @socket.set_shared_key("testkey3", 3)
       result = @socket.delete_shared_key(3, nil)
       expect(result).to be_a(Integer)
     end
@@ -126,18 +123,13 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
       expect { @socket.delete_shared_key(1, 0, "extra") }.to raise_error(ArgumentError)
     end
 
-    # TODO: Verify behavior
-    example "delete_shared_key with different keynum values", :linux do
-      [1, 2, 10, 100].each do |keynum|
-        result = @socket.delete_shared_key(keynum)
-        expect(result).to be_a(Integer)
-      end
+    example "delete_shared_key with invalid keynum raises error" do
+      expect{ @socket.delete_shared_key(999) }.to raise_error(SystemCallError)
     end
 
-    # TODO: Verify behavior
-    example "delete_shared_key with special key number 0 (disables null key)", :linux do
-      result = @socket.delete_shared_key(0)
-      expect(result).to be_a(Integer)
+    example "delete_shared_key with special key number 0" do
+      @socket.set_shared_key("nullkey", 0)
+      expect { @socket.delete_shared_key(0) }.to raise_error(SystemCallError, /Invalid argument/)
     end
 
     example "delete_shared_key handles closed socket gracefully" do
