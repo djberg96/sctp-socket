@@ -1,3 +1,12 @@
+## 0.2.1 - 17-Aug-2025
+* Several auth related methods were fixed.
+* The recvv and recvmsg methods now allow for an optional buffer size argument.
+* Several methods now explictly check for closed sockets internally.
+* The specs that were previously all lumped together have been split out
+  for individual methods (or related methods) for ease of maintenance and
+  generally easier debugging.
+* In the process of splitting out the specs, many were heavily refactored.
+
 ## 0.2.0 - 3-Aug-2025
 * Added an SCTP::Server class, generally modelled on the TCPServer class.
 * Added the map_ipv4? method to query IPv4 mapping status.
