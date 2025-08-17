@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.cert_chain  = ['certs/djberg96_pub.pem']
 
   spec.files = `git ls-files -z`.split("\x0").reject do |f|
-    f.match(%r{^(test|spec|features)/})
+    f.match(%r{^(test|spec|features|.github)/})
   end
 
   spec.extensions = ['ext/sctp/extconf.rb']
