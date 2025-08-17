@@ -54,10 +54,10 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
       expect(@socket.sendv(options)).to eq(options[:message].first.length)
     end
 
-    example "sendv with connection emCallError" do
+    example "sendv without connection raises an error" do
       @server.close(linger: 0) if @server rescue nil
       options = { message: ["Hello", "World"] }
-      expect{ @socket.sendv(options) }.to raise_error(SystemCallError)
+      expect{ @server.sendv(options) }.to raise_error(IOError, "socket is closed")
     end
 
     example "sendv accepts multiple message parts" do

@@ -851,6 +851,8 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
 
   Check_Type(v_message, T_ARRAY);
 
+  CHECK_SOCKET_CLOSED(self);
+
   if(!NIL_P(v_addresses)){
     Check_Type(v_addresses, T_ARRAY);
     num_ip = (int)RARRAY_LEN(v_addresses);
