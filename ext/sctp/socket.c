@@ -3194,7 +3194,7 @@ void Init_socket(void){
 
   v_sctp_receive_info_struct = rb_struct_define(
     "ReceiveInfo", "message", "sid", "ssn", "flags", "ppid", "tsn",
-    "cumtsn", "context", "assocation_id", NULL
+    "cumtsn", "context", "association_id", NULL
   );
 
   v_sctp_peer_addr_params_struct = rb_struct_define(
