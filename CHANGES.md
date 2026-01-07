@@ -1,3 +1,8 @@
+## 0.2.2 - 7-Jan-2026
+* Added IPv6 support.
+* Some internal refactoring and updates, potential memory leak fixes, etc.
+* Some specs skipped unless root.
+
 ## 0.2.1 - 17-Aug-2025
 * Several auth related methods were fixed.
 * The recvv and recvmsg methods now allow for an optional buffer size argument.

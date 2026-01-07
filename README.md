@@ -167,7 +167,7 @@ Apache-2.0
 
 ## Copyright
 
-(C) 2020-2025, Daniel J. Berger
+(C) 2020-2026, Daniel J. Berger
 Al Rights Reserved
 
 ## Author
