@@ -3,6 +3,13 @@ require_relative 'spec_helper'
 RSpec.describe SCTP::Socket, type: :sctp_socket do
   include_context 'sctp_socket_helpers'
 
+  # Setting shared keys requires elevated privileges (root) on Linux
+  before(:all) do
+    unless Process.uid == 0
+      skip "Shared key tests require elevated privileges (run as root)"
+    end
+  end
+
   context "set_shared_key" do
     before do
       create_connection
