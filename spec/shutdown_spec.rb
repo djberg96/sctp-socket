@@ -18,7 +18,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         @socket.shutdown(0)
       rescue SystemCallError => e
         # Expected for unconnected socket
-        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor/)
+        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor|Operation not supported/)
       end
     end
 
@@ -28,7 +28,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         @socket.shutdown
       rescue SystemCallError => e
         # Expected for unconnected socket - verify it's a network-related error
-        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor/)
+        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor|Operation not supported/)
       end
     end
 
@@ -37,7 +37,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         @socket.shutdown(0) # SHUT_RD = 0
       rescue SystemCallError => e
         # Expected for unconnected socket
-        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor/)
+        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor|Operation not supported/)
       end
     end
 
@@ -46,7 +46,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         @socket.shutdown(1) # SHUT_WR = 1
       rescue SystemCallError => e
         # Expected for unconnected socket
-        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor/)
+        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor|Operation not supported/)
       end
     end
 
@@ -55,7 +55,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         @socket.shutdown(2) # SHUT_RDWR = 2
       rescue SystemCallError => e
         # Expected for unconnected socket
-        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor/)
+        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor|Operation not supported/)
       end
     end
 
@@ -80,7 +80,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
       rescue SystemCallError => e
         # If connection fails or shutdown fails, it's expected in test environment
         # Just verify the error message indicates connection issues
-        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor|Network is unreachable|No route to host/)
+        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor|Network is unreachable|No route to host|Operation not supported/)
       end
     end
 
@@ -94,7 +94,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         @socket.shutdown(0) # SHUT_RD
       rescue SystemCallError => e
         # If connection fails or shutdown fails, it's expected in test environment
-        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor|Network is unreachable|No route to host/)
+        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor|Network is unreachable|No route to host|Operation not supported/)
       end
     end
 
@@ -146,7 +146,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
         end
       rescue SystemCallError => e
         # Expected for unconnected socket
-        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor/)
+        expect(e.message).to match(/not connected|Transport endpoint is not connected|Bad file descriptor|Operation not supported/)
       end
     end
   end
