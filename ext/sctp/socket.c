@@ -65,6 +65,76 @@ VALUE v_sctp_initmsg_struct;
 #define IP_BUFFER_SIZE INET6_ADDRSTRLEN
 
 /*
+ * Helper function to parse an IP address string and fill a sockaddr_storage structure.
+ * Supports both IPv4 and IPv6 addresses.
+ *
+ * @param addr_str The IP address string to parse
+ * @param port The port number (in host byte order)
+ * @param domain The address family (AF_INET or AF_INET6)
+ * @param storage Pointer to sockaddr_storage to fill
+ * @return The size of the filled address structure
+ */
+static socklen_t parse_ip_address(const char* addr_str, int port, int domain, struct sockaddr_storage* storage){
+  bzero(storage, sizeof(*storage));
+
+  if(domain == AF_INET6){
+    struct sockaddr_in6* sin6 = (struct sockaddr_in6*)storage;
+    sin6->sin6_family = AF_INET6;
+    sin6->sin6_port = htons(port);
+    if(inet_pton(AF_INET6, addr_str, &sin6->sin6_addr) != 1)
+      rb_raise(rb_eArgError, "invalid IPv6 address: %s", addr_str);
+#ifdef BSD
+    sin6->sin6_len = sizeof(struct sockaddr_in6);
+#endif
+    return sizeof(struct sockaddr_in6);
+  }
+  else{
+    struct sockaddr_in* sin = (struct sockaddr_in*)storage;
+    sin->sin_family = AF_INET;
+    sin->sin_port = htons(port);
+    if(inet_pton(AF_INET, addr_str, &sin->sin_addr) != 1)
+      rb_raise(rb_eArgError, "invalid IPv4 address: %s", addr_str);
+#ifdef BSD
+    sin->sin_len = sizeof(struct sockaddr_in);
+#endif
+    return sizeof(struct sockaddr_in);
+  }
+}
+
+/*
+ * Helper function to set INADDR_ANY or IN6ADDR_ANY based on domain.
+ *
+ * @param port The port number (in host byte order)
+ * @param domain The address family (AF_INET or AF_INET6)
+ * @param storage Pointer to sockaddr_storage to fill
+ * @return The size of the filled address structure
+ */
+static socklen_t set_any_address(int port, int domain, struct sockaddr_storage* storage){
+  bzero(storage, sizeof(*storage));
+
+  if(domain == AF_INET6){
+    struct sockaddr_in6* sin6 = (struct sockaddr_in6*)storage;
+    sin6->sin6_family = AF_INET6;
+    sin6->sin6_port = htons(port);
+    sin6->sin6_addr = in6addr_any;
+#ifdef BSD
+    sin6->sin6_len = sizeof(struct sockaddr_in6);
+#endif
+    return sizeof(struct sockaddr_in6);
+  }
+  else{
+    struct sockaddr_in* sin = (struct sockaddr_in*)storage;
+    sin->sin_family = AF_INET;
+    sin->sin_port = htons(port);
+    sin->sin_addr.s_addr = htonl(INADDR_ANY);
+#ifdef BSD
+    sin->sin_len = sizeof(struct sockaddr_in);
+#endif
+    return sizeof(struct sockaddr_in);
+  }
+}
+
+/*
  * Convert a sockaddr_in structure to a Ruby struct.
  * Handles both IPv4 and IPv6 addresses properly.
  *
