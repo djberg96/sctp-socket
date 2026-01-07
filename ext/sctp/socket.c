@@ -65,6 +65,64 @@ VALUE v_sctp_initmsg_struct;
 #define IP_BUFFER_SIZE INET6_ADDRSTRLEN
 
 /*
+ * Helper function to parse an IP address string and fill a sockaddr_in or sockaddr_in6 structure.
+ * Supports both IPv4 and IPv6 addresses.
+ *
+ * @param addr_str The IP address string to parse
+ * @param port The port number (in host byte order)
+ * @param sin Pointer to sockaddr_in to fill (for IPv4)
+ * @param sin6 Pointer to sockaddr_in6 to fill (for IPv6)
+ * @param domain The address family (AF_INET or AF_INET6)
+ */
+static void parse_ip_address_v4(const char* addr_str, int port, struct sockaddr_in* sin){
+  bzero(sin, sizeof(*sin));
+  sin->sin_family = AF_INET;
+  sin->sin_port = htons(port);
+  if(inet_pton(AF_INET, addr_str, &sin->sin_addr) != 1)
+    rb_raise(rb_eArgError, "invalid IPv4 address: %s", addr_str);
+#ifdef BSD
+  sin->sin_len = sizeof(struct sockaddr_in);
+#endif
+}
+
+static void parse_ip_address_v6(const char* addr_str, int port, struct sockaddr_in6* sin6){
+  bzero(sin6, sizeof(*sin6));
+  sin6->sin6_family = AF_INET6;
+  sin6->sin6_port = htons(port);
+  if(inet_pton(AF_INET6, addr_str, &sin6->sin6_addr) != 1)
+    rb_raise(rb_eArgError, "invalid IPv6 address: %s", addr_str);
+#ifdef BSD
+  sin6->sin6_len = sizeof(struct sockaddr_in6);
+#endif
+}
+
+/*
+ * Helper function to set INADDR_ANY for IPv4.
+ */
+static void set_any_address_v4(int port, struct sockaddr_in* sin){
+  bzero(sin, sizeof(*sin));
+  sin->sin_family = AF_INET;
+  sin->sin_port = htons(port);
+  sin->sin_addr.s_addr = htonl(INADDR_ANY);
+#ifdef BSD
+  sin->sin_len = sizeof(struct sockaddr_in);
+#endif
+}
+
+/*
+ * Helper function to set IN6ADDR_ANY for IPv6.
+ */
+static void set_any_address_v6(int port, struct sockaddr_in6* sin6){
+  bzero(sin6, sizeof(*sin6));
+  sin6->sin6_family = AF_INET6;
+  sin6->sin6_port = htons(port);
+  sin6->sin6_addr = in6addr_any;
+#ifdef BSD
+  sin6->sin6_len = sizeof(struct sockaddr_in6);
+#endif
+}
+
+/*
  * Convert a sockaddr_in structure to a Ruby struct.
  * Handles both IPv4 and IPv6 addresses properly.
  *
@@ -451,13 +509,10 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
  * Returns the port that it was bound to.
  */
 static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
-  struct sockaddr_in addrs[MAX_IP_ADDRESSES];
   int i, fileno, num_ip, flags, domain, port, on;
   VALUE v_addresses, v_port, v_flags, v_address, v_reuse_addr, v_options;
 
   rb_scan_args(argc, argv, "01", &v_options);
-
-  bzero(&addrs, sizeof(addrs));
 
   if(NIL_P(v_options))
     v_options = rb_hash_new();
@@ -485,28 +540,10 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   if(num_ip > MAX_IP_ADDRESSES)
     rb_raise(rb_eArgError, "too many IP addresses to bind, maximum is eight");
 
+  CHECK_SOCKET_CLOSED(self);
+
   domain = NUM2INT(rb_iv_get(self, "@domain"));
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
-
-  if(!NIL_P(v_addresses)){
-    for(i = 0; i < num_ip; i++){
-      v_address = RARRAY_AREF(v_addresses, i);
-      addrs[i].sin_family = domain;
-      addrs[i].sin_port = htons(port);
-      addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
-#ifdef BSD
-      addrs[i].sin_len = sizeof(struct sockaddr_in);
-#endif
-    }
-  }
-  else{
-    addrs[0].sin_family = domain;
-    addrs[0].sin_port = htons(port);
-    addrs[0].sin_addr.s_addr = htonl(INADDR_ANY);
-#ifdef BSD
-    addrs[0].sin_len = sizeof(struct sockaddr_in);
-#endif
-  }
 
   if(v_reuse_addr == Qtrue){
     on = 1;
@@ -514,8 +551,40 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
       rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
   }
 
-  if(sctp_bindx(fileno, (struct sockaddr *) addrs, num_ip, flags) != 0)
-    rb_raise(rb_eSystemCallError, "sctp_bindx: %s", strerror(errno));
+  if(domain == AF_INET6){
+    struct sockaddr_in6 addrs6[MAX_IP_ADDRESSES];
+    bzero(&addrs6, sizeof(addrs6));
+
+    if(!NIL_P(v_addresses)){
+      for(i = 0; i < num_ip; i++){
+        v_address = RARRAY_AREF(v_addresses, i);
+        parse_ip_address_v6(StringValueCStr(v_address), port, &addrs6[i]);
+      }
+    }
+    else{
+      set_any_address_v6(port, &addrs6[0]);
+    }
+
+    if(sctp_bindx(fileno, (struct sockaddr *)addrs6, num_ip, flags) != 0)
+      rb_raise(rb_eSystemCallError, "sctp_bindx: %s", strerror(errno));
+  }
+  else{
+    struct sockaddr_in addrs[MAX_IP_ADDRESSES];
+    bzero(&addrs, sizeof(addrs));
+
+    if(!NIL_P(v_addresses)){
+      for(i = 0; i < num_ip; i++){
+        v_address = RARRAY_AREF(v_addresses, i);
+        parse_ip_address_v4(StringValueCStr(v_address), port, &addrs[i]);
+      }
+    }
+    else{
+      set_any_address_v4(port, &addrs[0]);
+    }
+
+    if(sctp_bindx(fileno, (struct sockaddr *)addrs, num_ip, flags) != 0)
+      rb_raise(rb_eSystemCallError, "sctp_bindx: %s", strerror(errno));
+  }
 
   if(port == 0){
     struct sockaddr_in sin;
@@ -550,10 +619,9 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
  * methods will automatically establish associations.
  */
 static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
-  struct sockaddr_in addrs[MAX_IP_ADDRESSES];
-  int i, num_ip, fileno;
+  int i, num_ip, fileno, domain, port;
   sctp_assoc_t assoc;
-  VALUE v_address, v_domain, v_options, v_addresses, v_port;
+  VALUE v_address, v_options, v_addresses, v_port;
 
   rb_scan_args(argc, argv, "01", &v_options);
 
@@ -571,25 +639,41 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
   if(NIL_P(v_port))
     rb_raise(rb_eArgError, "you must specify a port");
 
-  v_domain = rb_iv_get(self, "@domain");
+  CHECK_SOCKET_CLOSED(self);
 
-  num_ip = (int)RARRAY_LEN(v_addresses);
-  bzero(&addrs, sizeof(addrs));
-
-  for(i = 0; i < num_ip; i++){
-    v_address = RARRAY_AREF(v_addresses, i);
-    addrs[i].sin_family = NUM2INT(v_domain);
-    addrs[i].sin_port = htons(NUM2INT(v_port));
-    addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
-#ifdef BSD
-    addrs[i].sin_len = sizeof(struct sockaddr_in);
-#endif
-  }
-
+  domain = NUM2INT(rb_iv_get(self, "@domain"));
+  port = NUM2INT(v_port);
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
-  if(sctp_connectx(fileno, (struct sockaddr *) addrs, num_ip, &assoc) < 0)
-    rb_raise(rb_eSystemCallError, "sctp_connectx: %s", strerror(errno));
+  num_ip = (int)RARRAY_LEN(v_addresses);
+
+  if(num_ip > MAX_IP_ADDRESSES)
+    rb_raise(rb_eArgError, "too many IP addresses, maximum is eight");
+
+  if(domain == AF_INET6){
+    struct sockaddr_in6 addrs6[MAX_IP_ADDRESSES];
+    bzero(&addrs6, sizeof(addrs6));
+
+    for(i = 0; i < num_ip; i++){
+      v_address = RARRAY_AREF(v_addresses, i);
+      parse_ip_address_v6(StringValueCStr(v_address), port, &addrs6[i]);
+    }
+
+    if(sctp_connectx(fileno, (struct sockaddr *)addrs6, num_ip, &assoc) < 0)
+      rb_raise(rb_eSystemCallError, "sctp_connectx: %s", strerror(errno));
+  }
+  else{
+    struct sockaddr_in addrs[MAX_IP_ADDRESSES];
+    bzero(&addrs, sizeof(addrs));
+
+    for(i = 0; i < num_ip; i++){
+      v_address = RARRAY_AREF(v_addresses, i);
+      parse_ip_address_v4(StringValueCStr(v_address), port, &addrs[i]);
+    }
+
+    if(sctp_connectx(fileno, (struct sockaddr *)addrs, num_ip, &assoc) < 0)
+      rb_raise(rb_eSystemCallError, "sctp_connectx: %s", strerror(errno));
+  }
 
   rb_iv_set(self, "@association_id", INT2NUM(assoc));
 
@@ -832,9 +916,8 @@ static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
 static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   VALUE v_msg, v_message, v_addresses;
   struct iovec iov[IOV_MAX];
-  struct sockaddr_in* addrs;
   struct sctp_sendv_spa spa;
-  int i, fileno, size, num_ip;
+  int i, fileno, size, num_ip, domain, port;
   ssize_t num_bytes;
 
   Check_Type(v_options, T_HASH);
@@ -856,10 +939,11 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   if(!NIL_P(v_addresses)){
     Check_Type(v_addresses, T_ARRAY);
     num_ip = (int)RARRAY_LEN(v_addresses);
-    addrs = (struct sockaddr_in*)alloca(num_ip * sizeof(*addrs));
+
+    if(num_ip > MAX_IP_ADDRESSES)
+      rb_raise(rb_eArgError, "too many IP addresses, maximum is eight");
   }
   else{
-    addrs = NULL;
     num_ip = 0;
   }
 
@@ -877,8 +961,15 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   spa.sendv_sndinfo.snd_flags = SCTP_UNORDERED;
   spa.sendv_sndinfo.snd_assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
 
-  if(!NIL_P(v_addresses)){
-    int i, port, domain;
+  for(i = 0; i < size; i++){
+    v_msg = RARRAY_AREF(v_message, i);
+    iov[i].iov_base = StringValueCStr(v_msg);
+    iov[i].iov_len = RSTRING_LEN(v_msg);
+  }
+
+  domain = NUM2INT(rb_iv_get(self, "@domain"));
+
+  if(num_ip > 0){
     VALUE v_address, v_port;
 
     v_port = rb_iv_get(self, "@port");
@@ -888,36 +979,62 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
     else
       port = NUM2INT(v_port);
 
-    domain = NUM2INT(rb_iv_get(self, "@domain"));
+    if(domain == AF_INET6){
+      struct sockaddr_in6* addrs6 = (struct sockaddr_in6*)alloca(num_ip * sizeof(struct sockaddr_in6));
+      bzero(addrs6, num_ip * sizeof(struct sockaddr_in6));
 
-    for(i = 0; i < num_ip; i++){
-      v_address = RARRAY_AREF(v_addresses, i);
-      addrs[i].sin_family = domain;
-      addrs[i].sin_port = htons(port);
-      addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
-#ifdef BSD
-      addrs[i].sin_len = sizeof(struct sockaddr_in);
-#endif
+      for(i = 0; i < num_ip; i++){
+        v_address = RARRAY_AREF(v_addresses, i);
+        parse_ip_address_v6(StringValueCStr(v_address), port, &addrs6[i]);
+      }
+
+      num_bytes = (ssize_t)sctp_sendv(
+        fileno,
+        iov,
+        size,
+        (struct sockaddr*)addrs6,
+        num_ip,
+        &spa,
+        sizeof(spa),
+        SCTP_SENDV_SPA,
+        0
+      );
+    }
+    else{
+      struct sockaddr_in* addrs = (struct sockaddr_in*)alloca(num_ip * sizeof(struct sockaddr_in));
+      bzero(addrs, num_ip * sizeof(struct sockaddr_in));
+
+      for(i = 0; i < num_ip; i++){
+        v_address = RARRAY_AREF(v_addresses, i);
+        parse_ip_address_v4(StringValueCStr(v_address), port, &addrs[i]);
+      }
+
+      num_bytes = (ssize_t)sctp_sendv(
+        fileno,
+        iov,
+        size,
+        (struct sockaddr*)addrs,
+        num_ip,
+        &spa,
+        sizeof(spa),
+        SCTP_SENDV_SPA,
+        0
+      );
     }
   }
-
-  for(i = 0; i < size; i++){
-    v_msg = RARRAY_AREF(v_message, i);
-    iov[i].iov_base = StringValueCStr(v_msg);
-    iov[i].iov_len = RSTRING_LEN(v_msg);
+  else{
+    num_bytes = (ssize_t)sctp_sendv(
+      fileno,
+      iov,
+      size,
+      NULL,
+      0,
+      &spa,
+      sizeof(spa),
+      SCTP_SENDV_SPA,
+      0
+    );
   }
-
-  num_bytes = (ssize_t)sctp_sendv(
-    fileno,
-    iov,
-    size,
-    (struct sockaddr*)addrs,
-    num_ip,
-    &spa,
-    sizeof(spa),
-    SCTP_SENDV_SPA,
-    0
-  );
 
   if(num_bytes < 0)
     rb_raise(rb_eSystemCallError, "sctp_sendv: %s", strerror(errno));
@@ -1176,12 +1293,9 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   uint16_t stream;
   uint32_t ppid, flags, ttl, context;
   ssize_t num_bytes;
-  struct sockaddr_in addrs[MAX_IP_ADDRESSES];
-  int fileno, size, num_ip;
+  int fileno, num_ip, domain;
 
   Check_Type(v_options, T_HASH);
-
-  bzero(&addrs, sizeof(addrs));
 
   v_msg       = rb_hash_aref2(v_options, "message");
   v_stream    = rb_hash_aref2(v_options, "stream");
@@ -1222,12 +1336,19 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   else
     context = NUM2INT(v_context);
 
+  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  domain = NUM2INT(rb_iv_get(self, "@domain"));
+
   if(!NIL_P(v_addresses)){
     int i, port;
     VALUE v_address, v_port;
 
     Check_Type(v_addresses, T_ARRAY);
     num_ip = (int)RARRAY_LEN(v_addresses);
+
+    if(num_ip > MAX_IP_ADDRESSES)
+      rb_raise(rb_eArgError, "too many IP addresses, maximum is eight");
+
     v_port = rb_hash_aref2(v_options, "port");
 
     if(NIL_P(v_port))
@@ -1235,47 +1356,98 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
     else
       port = NUM2INT(v_port);
 
-    for(i = 0; i < num_ip; i++){
-      v_address = RARRAY_AREF(v_addresses, i);
-      addrs[i].sin_family = NUM2INT(rb_iv_get(self, "@domain"));
-      addrs[i].sin_port = htons(port);
-      addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
+    if(domain == AF_INET6){
+      struct sockaddr_in6 addrs6[MAX_IP_ADDRESSES];
+      int size;
+
+      bzero(&addrs6, sizeof(addrs6));
+
+      for(i = 0; i < num_ip; i++){
+        v_address = RARRAY_AREF(v_addresses, i);
+        parse_ip_address_v6(StringValueCStr(v_address), port, &addrs6[i]);
+      }
+
+      size = num_ip * sizeof(struct sockaddr_in6);
+
 #ifdef BSD
-      addrs[i].sin_len = sizeof(struct sockaddr_in);
+      num_bytes = (ssize_t)sctp_sendmsgx(
+        fileno,
+        StringValueCStr(v_msg),
+        RSTRING_LEN(v_msg),
+        (struct sockaddr*)addrs6,
+        num_ip,
+        ppid,
+        flags,
+        stream,
+        ttl,
+        context
+      );
+#else
+      num_bytes = (ssize_t)sctp_sendmsg(
+        fileno,
+        StringValueCStr(v_msg),
+        RSTRING_LEN(v_msg),
+        (struct sockaddr*)addrs6,
+        size,
+        ppid,
+        flags,
+        stream,
+        ttl,
+        context
+      );
 #endif
     }
+    else{
+      struct sockaddr_in addrs[MAX_IP_ADDRESSES];
+      int size;
 
-    size = sizeof(addrs);
-  }
-  else{
-    num_ip = 0;
-    size = 0;
-  }
+      bzero(&addrs, sizeof(addrs));
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+      for(i = 0; i < num_ip; i++){
+        v_address = RARRAY_AREF(v_addresses, i);
+        parse_ip_address_v4(StringValueCStr(v_address), port, &addrs[i]);
+      }
+
+      size = num_ip * sizeof(struct sockaddr_in);
 
 #ifdef BSD
-  if(num_ip){
-    num_bytes = (ssize_t)sctp_sendmsgx(
-      fileno,
-      StringValueCStr(v_msg),
-      RSTRING_LEN(v_msg),
-      (struct sockaddr*)addrs,
-      num_ip,
-      ppid,
-      flags,
-      stream,
-      ttl,
-      context
-    );
+      num_bytes = (ssize_t)sctp_sendmsgx(
+        fileno,
+        StringValueCStr(v_msg),
+        RSTRING_LEN(v_msg),
+        (struct sockaddr*)addrs,
+        num_ip,
+        ppid,
+        flags,
+        stream,
+        ttl,
+        context
+      );
+#else
+      num_bytes = (ssize_t)sctp_sendmsg(
+        fileno,
+        StringValueCStr(v_msg),
+        RSTRING_LEN(v_msg),
+        (struct sockaddr*)addrs,
+        size,
+        ppid,
+        flags,
+        stream,
+        ttl,
+        context
+      );
+#endif
+    }
   }
   else{
+    // No addresses - use empty addrs
+    num_ip = 0;
     num_bytes = (ssize_t)sctp_sendmsg(
       fileno,
       StringValueCStr(v_msg),
       RSTRING_LEN(v_msg),
-      (struct sockaddr*)addrs,
-      size,
+      NULL,
+      0,
       ppid,
       flags,
       stream,
@@ -1283,20 +1455,6 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
       context
     );
   }
-#else
-  num_bytes = (ssize_t)sctp_sendmsg(
-    fileno,
-    StringValueCStr(v_msg),
-    RSTRING_LEN(v_msg),
-    (struct sockaddr*)addrs,
-    size,
-    ppid,
-    flags,
-    stream,
-    ttl,
-    context
-  );
-#endif
 
   if(num_bytes < 0){
 #ifdef BSD
@@ -1954,7 +2112,7 @@ static VALUE rsctp_get_status(VALUE self){
   sctp_assoc_t assoc_id;
   struct sctp_status status;
   struct sctp_paddrinfo* spinfo;
-  char tmpname[INET_ADDRSTRLEN];
+  char tmpname[INET6_ADDRSTRLEN];
 
   bzero(&status, sizeof(status));
 
