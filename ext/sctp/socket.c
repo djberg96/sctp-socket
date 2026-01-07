@@ -883,8 +883,18 @@ static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
   }
 
   for(i = 0; i < num_addrs; i++){
+    struct sockaddr* sa = &addrs[i];
     bzero(&str, sizeof(str));
-    inet_ntop(AF_INET, &(((struct sockaddr_in *)&addrs[i])->sin_addr), str, sizeof(str));
+
+    if(sa->sa_family == AF_INET6){
+      struct sockaddr_in6* sin6 = (struct sockaddr_in6*)sa;
+      inet_ntop(AF_INET6, &sin6->sin6_addr, str, sizeof(str));
+    }
+    else{
+      struct sockaddr_in* sin = (struct sockaddr_in*)sa;
+      inet_ntop(AF_INET, &sin->sin_addr, str, sizeof(str));
+    }
+
     rb_ary_push(v_array, rb_str_new2(str));
   }
 
@@ -944,8 +954,18 @@ static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
   }
 
   for(i = 0; i < num_addrs; i++){
+    struct sockaddr* sa = &addrs[i];
     bzero(&str, sizeof(str));
-    inet_ntop(AF_INET, &(((struct sockaddr_in *)&addrs[i])->sin_addr), str, sizeof(str));
+
+    if(sa->sa_family == AF_INET6){
+      struct sockaddr_in6* sin6 = (struct sockaddr_in6*)sa;
+      inet_ntop(AF_INET6, &sin6->sin6_addr, str, sizeof(str));
+    }
+    else{
+      struct sockaddr_in* sin = (struct sockaddr_in*)sa;
+      inet_ntop(AF_INET, &sin->sin_addr, str, sizeof(str));
+    }
+
     rb_ary_push(v_array, rb_str_new2(str));
   }
 
@@ -1407,6 +1427,8 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
     context = 0;
   else
     context = NUM2INT(v_context);
+
+  CHECK_SOCKET_CLOSED(self);
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   domain = NUM2INT(rb_iv_get(self, "@domain"));
