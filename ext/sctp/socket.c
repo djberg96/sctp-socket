@@ -451,7 +451,7 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
  * Returns the port that it was bound to.
  */
 static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
-  struct sockaddr_in addrs[MAX_IP_ADDRESSES];
+  struct sockaddr_storage addrs[MAX_IP_ADDRESSES];
   int i, fileno, num_ip, flags, domain, port, on;
   VALUE v_addresses, v_port, v_flags, v_address, v_reuse_addr, v_options;
 
@@ -485,27 +485,19 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   if(num_ip > MAX_IP_ADDRESSES)
     rb_raise(rb_eArgError, "too many IP addresses to bind, maximum is eight");
 
+  CHECK_SOCKET_CLOSED(self);
+
   domain = NUM2INT(rb_iv_get(self, "@domain"));
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
 
   if(!NIL_P(v_addresses)){
     for(i = 0; i < num_ip; i++){
       v_address = RARRAY_AREF(v_addresses, i);
-      addrs[i].sin_family = domain;
-      addrs[i].sin_port = htons(port);
-      addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
-#ifdef BSD
-      addrs[i].sin_len = sizeof(struct sockaddr_in);
-#endif
+      parse_ip_address(StringValueCStr(v_address), port, domain, &addrs[i]);
     }
   }
   else{
-    addrs[0].sin_family = domain;
-    addrs[0].sin_port = htons(port);
-    addrs[0].sin_addr.s_addr = htonl(INADDR_ANY);
-#ifdef BSD
-    addrs[0].sin_len = sizeof(struct sockaddr_in);
-#endif
+    set_any_address(port, domain, &addrs[0]);
   }
 
   if(v_reuse_addr == Qtrue){
@@ -550,10 +542,10 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
  * methods will automatically establish associations.
  */
 static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
-  struct sockaddr_in addrs[MAX_IP_ADDRESSES];
-  int i, num_ip, fileno;
+  struct sockaddr_storage addrs[MAX_IP_ADDRESSES];
+  int i, num_ip, fileno, domain, port;
   sctp_assoc_t assoc;
-  VALUE v_address, v_domain, v_options, v_addresses, v_port;
+  VALUE v_address, v_options, v_addresses, v_port;
 
   rb_scan_args(argc, argv, "01", &v_options);
 
@@ -571,19 +563,21 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
   if(NIL_P(v_port))
     rb_raise(rb_eArgError, "you must specify a port");
 
-  v_domain = rb_iv_get(self, "@domain");
+  CHECK_SOCKET_CLOSED(self);
+
+  domain = NUM2INT(rb_iv_get(self, "@domain"));
+  port = NUM2INT(v_port);
 
   num_ip = (int)RARRAY_LEN(v_addresses);
+
+  if(num_ip > MAX_IP_ADDRESSES)
+    rb_raise(rb_eArgError, "too many IP addresses, maximum is eight");
+
   bzero(&addrs, sizeof(addrs));
 
   for(i = 0; i < num_ip; i++){
     v_address = RARRAY_AREF(v_addresses, i);
-    addrs[i].sin_family = NUM2INT(v_domain);
-    addrs[i].sin_port = htons(NUM2INT(v_port));
-    addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
-#ifdef BSD
-    addrs[i].sin_len = sizeof(struct sockaddr_in);
-#endif
+    parse_ip_address(StringValueCStr(v_address), port, domain, &addrs[i]);
   }
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
@@ -832,9 +826,9 @@ static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
 static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   VALUE v_msg, v_message, v_addresses;
   struct iovec iov[IOV_MAX];
-  struct sockaddr_in* addrs;
+  struct sockaddr_storage* addrs;
   struct sctp_sendv_spa spa;
-  int i, fileno, size, num_ip;
+  int i, fileno, size, num_ip, domain, port;
   ssize_t num_bytes;
 
   Check_Type(v_options, T_HASH);
@@ -856,7 +850,12 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   if(!NIL_P(v_addresses)){
     Check_Type(v_addresses, T_ARRAY);
     num_ip = (int)RARRAY_LEN(v_addresses);
-    addrs = (struct sockaddr_in*)alloca(num_ip * sizeof(*addrs));
+
+    if(num_ip > MAX_IP_ADDRESSES)
+      rb_raise(rb_eArgError, "too many IP addresses, maximum is eight");
+
+    addrs = (struct sockaddr_storage*)alloca(num_ip * sizeof(*addrs));
+    bzero(addrs, num_ip * sizeof(*addrs));
   }
   else{
     addrs = NULL;
@@ -878,7 +877,6 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   spa.sendv_sndinfo.snd_assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
 
   if(!NIL_P(v_addresses)){
-    int i, port, domain;
     VALUE v_address, v_port;
 
     v_port = rb_iv_get(self, "@port");
@@ -892,12 +890,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
 
     for(i = 0; i < num_ip; i++){
       v_address = RARRAY_AREF(v_addresses, i);
-      addrs[i].sin_family = domain;
-      addrs[i].sin_port = htons(port);
-      addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
-#ifdef BSD
-      addrs[i].sin_len = sizeof(struct sockaddr_in);
-#endif
+      parse_ip_address(StringValueCStr(v_address), port, domain, &addrs[i]);
     }
   }
 
@@ -1176,8 +1169,8 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   uint16_t stream;
   uint32_t ppid, flags, ttl, context;
   ssize_t num_bytes;
-  struct sockaddr_in addrs[MAX_IP_ADDRESSES];
-  int fileno, size, num_ip;
+  struct sockaddr_storage addrs[MAX_IP_ADDRESSES];
+  int fileno, size, num_ip, domain;
 
   Check_Type(v_options, T_HASH);
 
@@ -1228,6 +1221,10 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
 
     Check_Type(v_addresses, T_ARRAY);
     num_ip = (int)RARRAY_LEN(v_addresses);
+
+    if(num_ip > MAX_IP_ADDRESSES)
+      rb_raise(rb_eArgError, "too many IP addresses, maximum is eight");
+
     v_port = rb_hash_aref2(v_options, "port");
 
     if(NIL_P(v_port))
@@ -1235,14 +1232,11 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
     else
       port = NUM2INT(v_port);
 
+    domain = NUM2INT(rb_iv_get(self, "@domain"));
+
     for(i = 0; i < num_ip; i++){
       v_address = RARRAY_AREF(v_addresses, i);
-      addrs[i].sin_family = NUM2INT(rb_iv_get(self, "@domain"));
-      addrs[i].sin_port = htons(port);
-      addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
-#ifdef BSD
-      addrs[i].sin_len = sizeof(struct sockaddr_in);
-#endif
+      parse_ip_address(StringValueCStr(v_address), port, domain, &addrs[i]);
     }
 
     size = sizeof(addrs);
@@ -1954,7 +1948,7 @@ static VALUE rsctp_get_status(VALUE self){
   sctp_assoc_t assoc_id;
   struct sctp_status status;
   struct sctp_paddrinfo* spinfo;
-  char tmpname[INET_ADDRSTRLEN];
+  char tmpname[INET6_ADDRSTRLEN];
 
   bzero(&status, sizeof(status));
 
