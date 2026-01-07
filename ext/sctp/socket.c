@@ -256,12 +256,18 @@ VALUE get_notification_info(char* buffer){
           v_str = rb_str_new2("unknown");
       }
 
-      inet_ntop(
-        ((struct sockaddr_in *)&snp->sn_paddr_change.spc_aaddr)->sin_family,
-        &(((struct sockaddr_in *)&snp->sn_paddr_change.spc_aaddr)->sin_addr),
-        str,
-        sizeof(str)
-      );
+      {
+        struct sockaddr* sa = (struct sockaddr*)&snp->sn_paddr_change.spc_aaddr;
+
+        if(sa->sa_family == AF_INET6){
+          struct sockaddr_in6* sin6 = (struct sockaddr_in6*)sa;
+          inet_ntop(AF_INET6, &sin6->sin6_addr, str, sizeof(str));
+        }
+        else{
+          struct sockaddr_in* sin = (struct sockaddr_in*)sa;
+          inet_ntop(AF_INET, &sin->sin_addr, str, sizeof(str));
+        }
+      }
 
       v_notification = rb_struct_new(v_peeraddr_change_struct,
         UINT2NUM(snp->sn_paddr_change.spc_type),
@@ -2368,7 +2374,18 @@ static VALUE rsctp_get_peer_address_params(VALUE self){
   if(sctp_opt_info(fileno, assoc_id, SCTP_PEER_ADDR_PARAMS, (void*)&paddr, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
-  inet_ntop(AF_INET, ((struct sockaddr_in*)&paddr.spp_address), str, sizeof(str));
+  {
+    struct sockaddr* sa = (struct sockaddr*)&paddr.spp_address;
+
+    if(sa->sa_family == AF_INET6){
+      struct sockaddr_in6* sin6 = (struct sockaddr_in6*)sa;
+      inet_ntop(AF_INET6, &sin6->sin6_addr, str, sizeof(str));
+    }
+    else{
+      struct sockaddr_in* sin = (struct sockaddr_in*)sa;
+      inet_ntop(AF_INET, &sin->sin_addr, str, sizeof(str));
+    }
+  }
 
   return rb_struct_new(
     v_sctp_peer_addr_params_struct,
@@ -3065,10 +3082,9 @@ static VALUE rsctp_set_default_send_params(VALUE self, VALUE v_options){
  */
 static VALUE rsctp_set_peer_address_params(VALUE self, VALUE v_options){
   VALUE v_assoc_id, v_address, v_hbinterval, v_pathmaxrxt, v_pathmtu, v_flags, v_ipv6_flowlabel;
-  int fileno;
+  int fileno, domain;
   sctp_assoc_t assoc_id;
   struct sctp_paddrparams paddr;
-  struct sockaddr_in* sin;
 
   if(!RB_TYPE_P(v_options, T_HASH))
     rb_raise(rb_eTypeError, "options must be a hash");
@@ -3078,6 +3094,7 @@ static VALUE rsctp_set_peer_address_params(VALUE self, VALUE v_options){
   CHECK_SOCKET_CLOSED(self);
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  domain = NUM2INT(rb_iv_get(self, "@domain"));
 
   v_assoc_id = rb_hash_aref2(v_options, "association_id");
   v_address = rb_hash_aref2(v_options, "address");
@@ -3093,12 +3110,28 @@ static VALUE rsctp_set_peer_address_params(VALUE self, VALUE v_options){
   assoc_id = NUM2INT(v_assoc_id);
   paddr.spp_assoc_id = assoc_id;
 
-  // If address is provided, set up the sockaddr structure
+  // If address is provided, set up the sockaddr structure based on domain
   if(!NIL_P(v_address)){
-    sin = (struct sockaddr_in*)&paddr.spp_address;
-    sin->sin_family = AF_INET;
-    if(inet_pton(AF_INET, StringValueCStr(v_address), &sin->sin_addr) <= 0)
-      rb_raise(rb_eArgError, "invalid IP address");
+    const char* addr_str = StringValueCStr(v_address);
+
+    if(domain == AF_INET6){
+      struct sockaddr_in6* sin6 = (struct sockaddr_in6*)&paddr.spp_address;
+      sin6->sin6_family = AF_INET6;
+      if(inet_pton(AF_INET6, addr_str, &sin6->sin6_addr) <= 0)
+        rb_raise(rb_eArgError, "invalid IPv6 address: %s", addr_str);
+#ifdef BSD
+      sin6->sin6_len = sizeof(struct sockaddr_in6);
+#endif
+    }
+    else{
+      struct sockaddr_in* sin = (struct sockaddr_in*)&paddr.spp_address;
+      sin->sin_family = AF_INET;
+      if(inet_pton(AF_INET, addr_str, &sin->sin_addr) <= 0)
+        rb_raise(rb_eArgError, "invalid IPv4 address: %s", addr_str);
+#ifdef BSD
+      sin->sin_len = sizeof(struct sockaddr_in);
+#endif
+    }
   }
 
   if(!NIL_P(v_hbinterval))
