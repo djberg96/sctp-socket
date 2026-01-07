@@ -21,8 +21,8 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
     end
 
     after do
-      @socket.close if @socket && !@socket.closed?
-      @server.close if @server && !@server.closed?
+      @socket.close(:linger => 0) if @socket && !@socket.closed?
+      @server.close(:linger => 0) if @server && !@server.closed?
     end
 
     example "association change notification is properly structured" do
