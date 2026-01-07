@@ -1358,7 +1358,6 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
 
     if(domain == AF_INET6){
       struct sockaddr_in6 addrs6[MAX_IP_ADDRESSES];
-      int size;
 
       bzero(&addrs6, sizeof(addrs6));
 
@@ -1366,8 +1365,6 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
         v_address = RARRAY_AREF(v_addresses, i);
         parse_ip_address_v6(StringValueCStr(v_address), port, &addrs6[i]);
       }
-
-      size = num_ip * sizeof(struct sockaddr_in6);
 
 #ifdef BSD
       num_bytes = (ssize_t)sctp_sendmsgx(
@@ -1388,7 +1385,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
         StringValueCStr(v_msg),
         RSTRING_LEN(v_msg),
         (struct sockaddr*)addrs6,
-        size,
+        num_ip * sizeof(struct sockaddr_in6),
         ppid,
         flags,
         stream,
@@ -1399,7 +1396,6 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
     }
     else{
       struct sockaddr_in addrs[MAX_IP_ADDRESSES];
-      int size;
 
       bzero(&addrs, sizeof(addrs));
 
@@ -1407,8 +1403,6 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
         v_address = RARRAY_AREF(v_addresses, i);
         parse_ip_address_v4(StringValueCStr(v_address), port, &addrs[i]);
       }
-
-      size = num_ip * sizeof(struct sockaddr_in);
 
 #ifdef BSD
       num_bytes = (ssize_t)sctp_sendmsgx(
@@ -1429,7 +1423,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
         StringValueCStr(v_msg),
         RSTRING_LEN(v_msg),
         (struct sockaddr*)addrs,
-        size,
+        num_ip * sizeof(struct sockaddr_in),
         ppid,
         flags,
         stream,
@@ -2557,7 +2551,7 @@ static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
   size_t len;
   char* key;
   uint keynum;
-  socklen_t size;
+  size_t size;
   sctp_assoc_t assoc_id;
   struct sctp_authkey* auth_key;
   VALUE v_key, v_keynumber, v_assoc_id;
