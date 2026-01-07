@@ -490,7 +490,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
 
   if(!NIL_P(v_addresses)){
     for(i = 0; i < num_ip; i++){
-      v_address = RARRAY_PTR(v_addresses)[i];
+      v_address = RARRAY_AREF(v_addresses, i);
       addrs[i].sin_family = domain;
       addrs[i].sin_port = htons(port);
       addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
@@ -577,7 +577,7 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
   bzero(&addrs, sizeof(addrs));
 
   for(i = 0; i < num_ip; i++){
-    v_address = RARRAY_PTR(v_addresses)[i];
+    v_address = RARRAY_AREF(v_addresses, i);
     addrs[i].sin_family = NUM2INT(v_domain);
     addrs[i].sin_port = htons(NUM2INT(v_port));
     addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
@@ -891,7 +891,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
     domain = NUM2INT(rb_iv_get(self, "@domain"));
 
     for(i = 0; i < num_ip; i++){
-      v_address = RARRAY_PTR(v_addresses)[i];
+      v_address = RARRAY_AREF(v_addresses, i);
       addrs[i].sin_family = domain;
       addrs[i].sin_port = htons(port);
       addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
@@ -902,7 +902,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   }
 
   for(i = 0; i < size; i++){
-    v_msg = RARRAY_PTR(v_message)[i];
+    v_msg = RARRAY_AREF(v_message, i);
     iov[i].iov_base = StringValueCStr(v_msg);
     iov[i].iov_len = RSTRING_LEN(v_msg);
   }
@@ -1236,7 +1236,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
       port = NUM2INT(v_port);
 
     for(i = 0; i < num_ip; i++){
-      v_address = RARRAY_PTR(v_addresses)[i];
+      v_address = RARRAY_AREF(v_addresses, i);
       addrs[i].sin_family = NUM2INT(rb_iv_get(self, "@domain"));
       addrs[i].sin_port = htons(port);
       addrs[i].sin_addr.s_addr = inet_addr(StringValueCStr(v_address));
