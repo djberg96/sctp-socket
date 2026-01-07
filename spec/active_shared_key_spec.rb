@@ -131,8 +131,8 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
       test_socket = described_class.new
       test_socket.close
 
-      expect{ test_socket.get_active_shared_key(0) }.to raise_error(TypeError, /no implicit conversion from nil to integer/)
-      expect{ test_socket.set_active_shared_key(0) }.to raise_error(TypeError, /no implicit conversion from nil to integer/)
+      expect{ test_socket.get_active_shared_key(0) }.to raise_error(IOError, "socket is closed")
+      expect{ test_socket.set_active_shared_key(0) }.to raise_error(IOError, "socket is closed")
     end
 
     example "methods use socket's association_id when nil passed" do

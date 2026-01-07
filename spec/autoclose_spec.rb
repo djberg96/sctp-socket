@@ -97,8 +97,8 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
     example "autoclose= behavior on closed socket" do
       @autoclose_socket.close
       # Operations on closed socket should fail
-      expect{ @autoclose_socket.autoclose = 30 }.to raise_error(TypeError)
-      expect{ @autoclose_socket.get_autoclose }.to raise_error(TypeError)
+      expect{ @autoclose_socket.autoclose = 30 }.to raise_error(IOError, "socket is closed")
+      expect{ @autoclose_socket.get_autoclose }.to raise_error(IOError, "socket is closed")
     end
 
     example "autoclose setting affects association behavior" do

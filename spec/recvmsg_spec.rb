@@ -157,7 +157,7 @@ RSpec.describe SCTP::Socket, type: :sctp_socket do
 
     example "recvmsg handles closed socket gracefully" do
       @socket.close
-      expect { @socket.recvmsg }.to raise_error(TypeError, /no implicit conversion from nil to integer/)
+      expect { @socket.recvmsg }.to raise_error(IOError, "socket is closed")
     end
 
     example "recvmsg with different buffer sizes" do
