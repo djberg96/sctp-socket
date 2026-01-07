@@ -63,6 +63,7 @@ VALUE v_sctp_initmsg_struct;
 #define MAX_IP_ADDRESSES 8
 #define DEFAULT_BUFFER_SIZE 1024
 #define IP_BUFFER_SIZE INET6_ADDRSTRLEN
+#define MAX_NOTIFICATION_DATA 8192
 
 /*
  * Helper function to parse an IP address string and fill a sockaddr_in or sockaddr_in6 structure.
@@ -273,83 +274,150 @@ VALUE get_notification_info(char* buffer){
       );
       break;
     case SCTP_REMOTE_ERROR:
-      v_temp = ALLOCA_N(VALUE, snp->sn_remote_error.sre_length);
+      {
+        size_t data_len = 0;
+        VALUE v_data_ary;
 
-      for(i = 0; i < snp->sn_remote_error.sre_length; i++){
-        v_temp[i] = UINT2NUM(snp->sn_remote_error.sre_data[i]);
+        // Calculate actual data length (total length minus fixed header)
+        if(snp->sn_remote_error.sre_length > offsetof(struct sctp_remote_error, sre_data))
+          data_len = snp->sn_remote_error.sre_length - offsetof(struct sctp_remote_error, sre_data);
+
+        // Bounds check to prevent stack overflow
+        if(data_len > MAX_NOTIFICATION_DATA)
+          data_len = MAX_NOTIFICATION_DATA;
+
+        if(data_len > 0){
+          v_temp = ALLOCA_N(VALUE, data_len);
+          for(i = 0; i < data_len; i++){
+            v_temp[i] = UINT2NUM(snp->sn_remote_error.sre_data[i]);
+          }
+          v_data_ary = rb_ary_new4(data_len, v_temp);
+        }
+        else{
+          v_data_ary = rb_ary_new();
+        }
+
+        v_notification = rb_struct_new(v_remote_error_struct,
+          UINT2NUM(snp->sn_remote_error.sre_type),
+          UINT2NUM(snp->sn_remote_error.sre_flags),
+          UINT2NUM(snp->sn_remote_error.sre_length),
+          UINT2NUM(snp->sn_remote_error.sre_error),
+          UINT2NUM(snp->sn_remote_error.sre_assoc_id),
+          v_data_ary
+        );
       }
-
-      v_notification = rb_struct_new(v_remote_error_struct,
-        UINT2NUM(snp->sn_remote_error.sre_type),
-        UINT2NUM(snp->sn_remote_error.sre_flags),
-        UINT2NUM(snp->sn_remote_error.sre_length),
-        UINT2NUM(snp->sn_remote_error.sre_error),
-        UINT2NUM(snp->sn_remote_error.sre_assoc_id),
-        rb_ary_new4(snp->sn_remote_error.sre_length, v_temp)
-      );
       break;
 #ifdef SCTP_SEND_FAILED_EVENT
     case SCTP_SEND_FAILED_EVENT:
+      {
+        size_t data_len = 0;
+        VALUE v_data_ary;
+
 #ifdef HAVE_STRUCT_SCTP_SEND_FAILED_EVENT_SSFE_LENGTH
-      v_temp = ALLOCA_N(VALUE, snp->sn_send_failed_event.ssfe_length);
+        // Calculate actual data length (total length minus fixed header)
+        if(snp->sn_send_failed_event.ssfe_length > offsetof(struct sctp_send_failed_event, ssfe_data))
+          data_len = snp->sn_send_failed_event.ssfe_length - offsetof(struct sctp_send_failed_event, ssfe_data);
 
-      for(i = 0; i < snp->sn_send_failed_event.ssfe_length; i++){
-        v_temp[i] = UINT2NUM(snp->sn_send_failed_event.ssfe_data[i]);
-      }
+        // Bounds check to prevent stack overflow
+        if(data_len > MAX_NOTIFICATION_DATA)
+          data_len = MAX_NOTIFICATION_DATA;
 
-      v_notification = rb_struct_new(v_send_failed_event_struct,
-        UINT2NUM(snp->sn_send_failed_event.ssfe_type),
-        UINT2NUM(snp->sn_send_failed_event.ssfe_length),
-        UINT2NUM(snp->sn_send_failed_event.ssfe_error),
-        rb_struct_new(v_sndinfo_struct,
-          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_sid),
-          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_flags),
-          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_ppid),
-          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_context),
-          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_assoc_id)
-        ),
-        UINT2NUM(snp->sn_send_failed_event.ssfe_assoc_id),
-        rb_ary_new4(snp->sn_send_failed_event.ssfe_length, v_temp)
-      );
+        if(data_len > 0){
+          v_temp = ALLOCA_N(VALUE, data_len);
+          for(i = 0; i < data_len; i++){
+            v_temp[i] = UINT2NUM(snp->sn_send_failed_event.ssfe_data[i]);
+          }
+          v_data_ary = rb_ary_new4(data_len, v_temp);
+        }
+        else{
+          v_data_ary = rb_ary_new();
+        }
+
+        v_notification = rb_struct_new(v_send_failed_event_struct,
+          UINT2NUM(snp->sn_send_failed_event.ssfe_type),
+          UINT2NUM(snp->sn_send_failed_event.ssfe_length),
+          UINT2NUM(snp->sn_send_failed_event.ssfe_error),
+          rb_struct_new(v_sndinfo_struct,
+            UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_sid),
+            UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_flags),
+            UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_ppid),
+            UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_context),
+            UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_assoc_id)
+          ),
+          UINT2NUM(snp->sn_send_failed_event.ssfe_assoc_id),
+          v_data_ary
+        );
 #else
-      v_temp = ALLOCA_N(VALUE, snp->sn_send_failed_event.ssf_length);
+        // Calculate actual data length (total length minus fixed header)
+        if(snp->sn_send_failed_event.ssf_length > offsetof(struct sctp_send_failed_event, ssf_data))
+          data_len = snp->sn_send_failed_event.ssf_length - offsetof(struct sctp_send_failed_event, ssf_data);
 
-      for(i = 0; i < snp->sn_send_failed_event.ssf_length; i++){
-        v_temp[i] = UINT2NUM(snp->sn_send_failed_event.ssf_data[i]);
-      }
+        // Bounds check to prevent stack overflow
+        if(data_len > MAX_NOTIFICATION_DATA)
+          data_len = MAX_NOTIFICATION_DATA;
 
-      v_notification = rb_struct_new(v_send_failed_event_struct,
-        UINT2NUM(snp->sn_send_failed_event.ssf_type),
-        UINT2NUM(snp->sn_send_failed_event.ssf_length),
-        UINT2NUM(snp->sn_send_failed_event.ssf_error),
-        rb_struct_new(v_sndinfo_struct,
-          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_sid),
-          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_flags),
-          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_ppid),
-          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_context),
-          UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_assoc_id)
-        ),
-        UINT2NUM(snp->sn_send_failed_event.ssf_assoc_id),
-        rb_ary_new4(snp->sn_send_failed_event.ssf_length, v_temp)
-      );
+        if(data_len > 0){
+          v_temp = ALLOCA_N(VALUE, data_len);
+          for(i = 0; i < data_len; i++){
+            v_temp[i] = UINT2NUM(snp->sn_send_failed_event.ssf_data[i]);
+          }
+          v_data_ary = rb_ary_new4(data_len, v_temp);
+        }
+        else{
+          v_data_ary = rb_ary_new();
+        }
+
+        v_notification = rb_struct_new(v_send_failed_event_struct,
+          UINT2NUM(snp->sn_send_failed_event.ssf_type),
+          UINT2NUM(snp->sn_send_failed_event.ssf_length),
+          UINT2NUM(snp->sn_send_failed_event.ssf_error),
+          rb_struct_new(v_sndinfo_struct,
+            UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_sid),
+            UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_flags),
+            UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_ppid),
+            UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_context),
+            UINT2NUM(snp->sn_send_failed_event.ssfe_info.snd_assoc_id)
+          ),
+          UINT2NUM(snp->sn_send_failed_event.ssf_assoc_id),
+          v_data_ary
+        );
 #endif
+      }
       break;
 #else
     case SCTP_SEND_FAILED:
-      v_temp = ALLOCA_N(VALUE, snp->sn_send_failed.ssf_length);
+      {
+        size_t data_len = 0;
+        VALUE v_data_ary;
 
-      for(i = 0; i < snp->sn_send_failed.ssf_length; i++){
-        v_temp[i] = UINT2NUM(snp->sn_send_failed.ssf_data[i]);
+        // Calculate actual data length (total length minus fixed header)
+        if(snp->sn_send_failed.ssf_length > offsetof(struct sctp_send_failed, ssf_data))
+          data_len = snp->sn_send_failed.ssf_length - offsetof(struct sctp_send_failed, ssf_data);
+
+        // Bounds check to prevent stack overflow
+        if(data_len > MAX_NOTIFICATION_DATA)
+          data_len = MAX_NOTIFICATION_DATA;
+
+        if(data_len > 0){
+          v_temp = ALLOCA_N(VALUE, data_len);
+          for(i = 0; i < data_len; i++){
+            v_temp[i] = UINT2NUM(snp->sn_send_failed.ssf_data[i]);
+          }
+          v_data_ary = rb_ary_new4(data_len, v_temp);
+        }
+        else{
+          v_data_ary = rb_ary_new();
+        }
+
+        v_notification = rb_struct_new(v_send_failed_event_struct,
+          UINT2NUM(snp->sn_send_failed.ssf_type),
+          UINT2NUM(snp->sn_send_failed.ssf_length),
+          UINT2NUM(snp->sn_send_failed.ssf_error),
+          Qnil,
+          UINT2NUM(snp->sn_send_failed.ssf_assoc_id),
+          v_data_ary
+        );
       }
-
-      v_notification = rb_struct_new(v_send_failed_event_struct,
-        UINT2NUM(snp->sn_send_failed.ssf_type),
-        UINT2NUM(snp->sn_send_failed.ssf_length),
-        UINT2NUM(snp->sn_send_failed.ssf_error),
-        Qnil,
-        UINT2NUM(snp->sn_send_failed.ssf_assoc_id),
-        rb_ary_new4(snp->sn_send_failed.ssf_length, v_temp)
-      );
       break;
 #endif
     case SCTP_SHUTDOWN_EVENT:
