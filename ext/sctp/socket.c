@@ -90,6 +90,8 @@ VALUE rb_hash_aref2(VALUE v_hash, const char* key){
  *   socket1 = SCTP::Socket.new
  *   socket2 = SCTP::Socket.new(Socket::PF_INET, Socket::SOCK_STREAM)
  */
+static int usrsctp_initialized = 0;
+
 static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
 #ifdef HAVE_USRSCTP_H
   struct socket* fileno;
@@ -108,14 +110,18 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
     v_type = INT2NUM(SOCK_SEQPACKET);
 
 #ifdef HAVE_USRSCTP_H
-  usrsctp_init(0, NULL, NULL);
+  if(!usrsctp_initialized){
+    usrsctp_init(0, NULL, NULL);
+    usrsctp_initialized = 1;
+  }
+
   fileno = usrsctp_socket(NUM2INT(v_domain), NUM2INT(v_type), IPPROTO_SCTP, NULL, NULL, 0, NULL);
 
   if(!fileno){
     rb_raise(rb_eSystemCallError, "socket: %s", strerror(errno));
   }
   else{
-    rb_iv_set(self, "@fileno", INT2NUM((intptr_t)fileno)); // TODO: Not sure this works
+    rb_iv_set(self, "@fileno", LONG2NUM((intptr_t)fileno));
   }
 #else
   fileno = socket(NUM2INT(v_domain), NUM2INT(v_type), IPPROTO_SCTP);
@@ -298,7 +304,7 @@ static VALUE rsctp_close(VALUE self){
   VALUE v_fileno = rb_iv_get(self, "@fileno");
 
 #ifdef HAVE_USRSCTP_H
-  usrsctp_close((struct socket*)(uintptr_t)NUM2INT(v_fileno)); // This go boom
+  usrsctp_close((struct socket*)(uintptr_t)NUM2LONG(v_fileno));
 #else
   if(close(NUM2INT(v_fileno)))
     rb_raise(rb_eSystemCallError, "close: %s", strerror(errno));
