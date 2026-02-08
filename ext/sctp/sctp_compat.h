@@ -237,6 +237,10 @@ static inline ssize_t sctp_sys_sendmsg(sctp_sock_t fd, const void* msg, size_t l
     spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
   }
 
+  /* usrsctp only supports at most one destination address */
+  if(addrcnt > 1)
+    addrcnt = 1;
+
   return usrsctp_sendv(fd, msg, len, to, addrcnt,
       &spa, sizeof(spa), SCTP_SENDV_SPA, 0);
 }
