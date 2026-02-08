@@ -108,14 +108,18 @@ static inline int sctp_sys_close(sctp_sock_t fd){
 /* --- sendv wrapper ---
  * Native sctp_sendv uses iov+iovlen; usrsctp_sendv uses buf+len.
  * This wrapper concatenates iov entries if needed.
- * Note: usrsctp_sendv only supports a single destination address (addrcnt<=1)
- * on connected sockets, so we cap addrcnt at 1 if addresses are provided.
+ *
+ * usrsctp_sendv only supports a single destination address (addrcnt<=1),
+ * so we cap addrcnt at 1.  This is not a practical limitation: SCTP's
+ * multihoming addresses are exchanged during association setup (INIT/INIT-ACK)
+ * and the stack already knows every peer address.  When sending data the
+ * address parameter only selects which path to use for that message (or NULL
+ * for the primary path), so more than one address is never meaningful.
  */
 static inline ssize_t sctp_sys_sendv(sctp_sock_t fd, const struct iovec* iov, int iovcnt,
     struct sockaddr* addrs, int addrcnt, void* info, socklen_t infolen,
     unsigned int infotype, int flags)
 {
-  /* usrsctp only supports at most one destination address */
   if(addrcnt > 1)
     addrcnt = 1;
 
@@ -237,7 +241,10 @@ static inline ssize_t sctp_sys_sendmsg(sctp_sock_t fd, const void* msg, size_t l
     spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
   }
 
-  /* usrsctp only supports at most one destination address */
+  /*
+   * Cap to one destination address — see the comment on sctp_sys_sendv
+   * for why this is not a practical limitation.
+   */
   if(addrcnt > 1)
     addrcnt = 1;
 
