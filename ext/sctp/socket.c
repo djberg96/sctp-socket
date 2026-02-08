@@ -2335,9 +2335,11 @@ static VALUE rsctp_get_status(VALUE self){
  */
 static VALUE rsctp_get_subscriptions(VALUE self){
   sctp_sock_t fileno;
-  socklen_t size;
   sctp_assoc_t assoc_id;
   struct sctp_event_subscribe events;
+#ifndef HAVE_USRSCTP_H
+  socklen_t size;
+#endif
 
   bzero(&events, sizeof(events));
 
@@ -2345,7 +2347,6 @@ static VALUE rsctp_get_subscriptions(VALUE self){
 
   fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
-  size = sizeof(struct sctp_event_subscribe);
 
 #ifdef HAVE_USRSCTP_H
   /* usrsctp uses SCTP_EVENT + struct sctp_event for per-event query */
@@ -2387,6 +2388,7 @@ static VALUE rsctp_get_subscriptions(VALUE self){
 #undef QUERY_EVENT
   }
 #else
+  size = sizeof(struct sctp_event_subscribe);
   if(sctp_sys_opt_info(fileno, assoc_id, SCTP_EVENTS, (void*)&events, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 #endif
@@ -2786,7 +2788,7 @@ static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
   size_t len;
   char* key;
   uint keynum;
-  size_t size;
+  socklen_t size;
   sctp_assoc_t assoc_id;
   struct sctp_authkey* auth_key;
   VALUE v_key, v_keynumber, v_assoc_id;
@@ -2810,7 +2812,7 @@ static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
     keynum = NUM2INT(v_keynumber);
 
   // Allocate the structure with space for the key
-  size = sizeof(struct sctp_authkey) + len;
+  size = (socklen_t)(sizeof(struct sctp_authkey) + len);
   auth_key = malloc(size);
 
   if (auth_key == NULL)
