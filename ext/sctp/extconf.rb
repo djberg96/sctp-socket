@@ -1,6 +1,17 @@
 require 'mkmf'
 
 dir_config('sctp')
+
+# On macOS with Homebrew, add its prefix so headers/libs can be found.
+if RUBY_PLATFORM =~ /darwin/
+  homebrew_prefix = ENV['HOMEBREW_PREFIX'] || '/opt/homebrew'
+
+  if File.directory?("#{homebrew_prefix}/include")
+    $CFLAGS  << " -I#{homebrew_prefix}/include"
+    $LDFLAGS << " -L#{homebrew_prefix}/lib"
+  end
+end
+
 have_header('arpa/inet.h')
 
 # Prefer libusrsctp if found.
