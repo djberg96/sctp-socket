@@ -45,7 +45,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Setup usrsctp
-      run: brew install usrsctp
+      run: brew install libusrsctp
     - name: Setup loopback aliases
       run: |
           sudo ifconfig lo0 alias 1.1.1.1/24 up
