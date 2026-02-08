@@ -105,7 +105,7 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
 
   if(NIL_P(v_domain))
     v_domain = INT2NUM(PF_INET);
-  
+
   if(NIL_P(v_type))
     v_type = INT2NUM(SOCK_SEQPACKET);
 
@@ -724,7 +724,7 @@ static VALUE rsctp_send(VALUE self, VALUE v_options){
  *  :stream    -> The SCTP stream number you wish to send the message on.
  *  :addresses -> An array of addresses to send the message to.
  *  :context   -> The default context used for the sendmsg call if the send fails.
- *  :ppid      -> The payload protocol identifier that is passed to the peer endpoint. 
+ *  :ppid      -> The payload protocol identifier that is passed to the peer endpoint.
  *  :flags     -> A bitwise integer that contain one or more values that control behavior.
  *
  *  Note that the :addresses option is not mandatory in a one-to-one (SOCK_STREAM)
@@ -874,7 +874,7 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   if(NIL_P(v_flags))
     flags = 0;
   else
-    flags = NUM2INT(v_flags);  
+    flags = NUM2INT(v_flags);
 
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   length = sizeof(struct sockaddr_in);
@@ -1179,7 +1179,7 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
  *   :peer_error (aka remote error)
  *
  * Example:
- * 
+ *
  *   socket = SCTP::Socket.new
  *
  *   socket.bind(:port => port, :addresses => ['127.0.0.1'])
@@ -1276,7 +1276,7 @@ static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
 
   if(listen(fileno, backlog) < 0)
     rb_raise(rb_eSystemCallError, "listen: %s", strerror(errno));
-  
+
   return self;
 }
 */
@@ -1300,7 +1300,7 @@ static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
 static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
   int fileno, assoc_fileno;
   sctp_assoc_t assoc_id;
-    
+
   fileno = NUM2INT(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(v_assoc_id);
 
