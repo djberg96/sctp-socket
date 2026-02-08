@@ -2,36 +2,45 @@ require 'mkmf'
 
 dir_config('sctp')
 
-unless have_header('netinet/sctp.h')
-  os = IO.readlines('/etc/os-release').first.split('=').last
-  msg = "\nSCTP HEADERS NOT FOUND. PLEASE INSTALL THEM FIRST LIKE SO:\n\n"
+if have_header('netinet/sctp.h')
+  # Native kernel SCTP (Linux, FreeBSD, etc.)
+  header = 'netinet/sctp.h'
+  have_library('sctp')
+  have_func('sctp_sendv', header)
+  have_func('sctp_recvv', header)
+else
+  # Fall back to usrsctp (primarily for macOS)
+  if RUBY_PLATFORM =~ /darwin/
+    homebrew_prefix = ENV['HOMEBREW_PREFIX'] || '/opt/homebrew'
 
-  if os =~ /red|fedora|centos/i
-    msg << "#####################################################################################\n"
-    msg << "# dnf install lksctp-tools                                                          #\n"
-    msg << "# dnf install kernel-modules-extra                                                  #\n"
-    msg << "#                                                                                   #\n"
-    msg << "# sed -e '/blacklist sctp/s/^b/#b/g' -i /etc/modprobe.d/sctp-blacklist.conf         #\n"
-    msg << "# sed -e '/blacklist sctp/s/^b/#b/g' -i /etc/modprobe.d/sctp_diag-blacklist.conf    #\n"
-    msg << "#                                                                                   #\n"
-    msg << "# sudo systemctl restart systemd-modules-load.service                               #\n"
-    msg << "#####################################################################################\n"
-  else
-    msg << "sudo apt-get install libsctp-dev lksctp-tools\n\n"
+    if File.directory?("#{homebrew_prefix}/include")
+      $CFLAGS  << " -I#{homebrew_prefix}/include"
+      $LDFLAGS << " -L#{homebrew_prefix}/lib"
+    end
   end
 
-  warn msg
-  exit
+  unless have_header('usrsctp.h')
+    abort <<~MSG
+
+      ERROR: Neither netinet/sctp.h nor usrsctp.h found.
+
+      On macOS:   brew install libusrsctp
+      On Ubuntu:  sudo apt-get install libsctp-dev lksctp-tools
+      On Fedora:  dnf install lksctp-tools kernel-modules-extra
+
+    MSG
+  end
+
+  header = 'usrsctp.h'
+  have_library('usrsctp')
+
+  # usrsctp always provides sendv/recvv (as usrsctp_sendv/usrsctp_recvv),
+  # so define the feature macros so those code paths compile in.
+  $defs << '-DHAVE_SCTP_SENDV=1'
+  $defs << '-DHAVE_SCTP_RECVV=1'
 end
 
-header = 'netinet/sctp.h'
-
-have_library('sctp')
-
 have_header('sys/param.h')
-
-have_func('sctp_sendv', header)
-have_func('sctp_recvv', header)
 
 have_struct_member('struct sctp_event_subscribe', 'sctp_send_failure_event', header)
 have_struct_member('struct sctp_event_subscribe', 'sctp_stream_reset_event', header)

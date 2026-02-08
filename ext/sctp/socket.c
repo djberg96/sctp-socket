@@ -2,11 +2,12 @@
 #include <string.h>
 #include <errno.h>
 #include <arpa/inet.h>
-#include <netinet/sctp.h>
 
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
 #endif
+
+#include "sctp_compat.h"
 
 VALUE mSCTP;
 VALUE cSocket;
@@ -41,7 +42,7 @@ VALUE v_sctp_initmsg_struct;
 
 // Memory safety and error handling macros
 #define CHECK_FILENO_VALID(fileno) do { \
-  if ((fileno) < 0) { \
+  if (SCTP_FD_INVALID(fileno)) { \
     rb_raise(rb_eSystemCallError, "invalid file descriptor"); \
   } \
 } while(0)
@@ -54,8 +55,7 @@ VALUE v_sctp_initmsg_struct;
 } while(0)
 
 #define CHECK_SOCKET_CLOSED(self) do { \
-  VALUE v_fileno = rb_iv_get((self), "@fileno"); \
-  if (NIL_P(v_fileno) || NUM2INT(v_fileno) < 0) { \
+  if (NIL_P(rb_iv_get((self), "@fileno"))) { \
     rb_raise(rb_eIOError, "socket is closed"); \
   } \
 } while(0)
@@ -502,7 +502,7 @@ VALUE get_notification_info(char* buffer){
  *   socket2 = SCTP::Socket.new(Socket::AF_INET, Socket::SOCK_STREAM)
  */
 static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
-  int fileno;
+  sctp_sock_t fileno;
   VALUE v_domain, v_type;
 
   rb_scan_args(argc, argv, "02", &v_domain, &v_type);
@@ -526,14 +526,14 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
       rb_raise(rb_eArgError, "unsupported socket type: %d", type);
   }
 
-  fileno = socket(NUM2INT(v_domain), NUM2INT(v_type), IPPROTO_SCTP);
+  fileno = sctp_sys_socket(NUM2INT(v_domain), NUM2INT(v_type), IPPROTO_SCTP);
 
-  if(fileno < 0)
+  if(SCTP_FD_INVALID(fileno))
     rb_raise(rb_eSystemCallError, "socket: %s", strerror(errno));
 
   rb_iv_set(self, "@domain", v_domain);
   rb_iv_set(self, "@type", v_type);
-  rb_iv_set(self, "@fileno", INT2NUM(fileno));
+  rb_iv_set(self, "@fileno", SCTP_FD_TO_NUM(fileno));
   rb_iv_set(self, "@association_id", INT2NUM(0));
 
   return self;
@@ -583,7 +583,8 @@ static VALUE rsctp_init(int argc, VALUE* argv, VALUE self){
  * Returns the port that it was bound to.
  */
 static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
-  int i, fileno, num_ip, flags, domain, port, on;
+  sctp_sock_t fileno;
+  int i, num_ip, flags, domain, port, on;
   VALUE v_addresses, v_port, v_flags, v_address, v_reuse_addr, v_options;
 
   rb_scan_args(argc, argv, "01", &v_options);
@@ -617,11 +618,11 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   CHECK_SOCKET_CLOSED(self);
 
   domain = NUM2INT(rb_iv_get(self, "@domain"));
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
 
   if(v_reuse_addr == Qtrue){
     on = 1;
-    if(setsockopt(fileno, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0)
+    if(sctp_sys_setsockopt(fileno, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0)
       rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
   }
 
@@ -639,7 +640,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
       set_any_address_v6(port, &addrs6[0]);
     }
 
-    if(sctp_bindx(fileno, (struct sockaddr *)addrs6, num_ip, flags) != 0)
+    if(sctp_sys_bindx(fileno, (struct sockaddr *)addrs6, num_ip, flags) != 0)
       rb_raise(rb_eSystemCallError, "sctp_bindx: %s", strerror(errno));
   }
   else{
@@ -656,7 +657,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
       set_any_address_v4(port, &addrs[0]);
     }
 
-    if(sctp_bindx(fileno, (struct sockaddr *)addrs, num_ip, flags) != 0)
+    if(sctp_sys_bindx(fileno, (struct sockaddr *)addrs, num_ip, flags) != 0)
       rb_raise(rb_eSystemCallError, "sctp_bindx: %s", strerror(errno));
   }
 
@@ -665,7 +666,7 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
     socklen_t len = sizeof(sin);
     bzero(&sin, len);
 
-    if(getsockname(fileno, (struct sockaddr *)&sin, &len) == -1)
+    if(sctp_sys_getsockname(fileno, (struct sockaddr *)&sin, &len) == -1)
       rb_raise(rb_eSystemCallError, "getsockname: %s", strerror(errno));
 
     port = sin.sin_port;
@@ -693,7 +694,8 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
  * methods will automatically establish associations.
  */
 static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
-  int i, num_ip, fileno, domain, port;
+  sctp_sock_t fileno;
+  int i, num_ip, domain, port;
   sctp_assoc_t assoc;
   VALUE v_address, v_options, v_addresses, v_port;
 
@@ -717,7 +719,7 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
 
   domain = NUM2INT(rb_iv_get(self, "@domain"));
   port = NUM2INT(v_port);
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
 
   num_ip = (int)RARRAY_LEN(v_addresses);
 
@@ -733,7 +735,7 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
       parse_ip_address_v6(StringValueCStr(v_address), port, &addrs6[i]);
     }
 
-    if(sctp_connectx(fileno, (struct sockaddr *)addrs6, num_ip, &assoc) < 0)
+    if(sctp_sys_connectx(fileno, (struct sockaddr *)addrs6, num_ip, &assoc) < 0)
       rb_raise(rb_eSystemCallError, "sctp_connectx: %s", strerror(errno));
   }
   else{
@@ -745,7 +747,7 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
       parse_ip_address_v4(StringValueCStr(v_address), port, &addrs[i]);
     }
 
-    if(sctp_connectx(fileno, (struct sockaddr *)addrs, num_ip, &assoc) < 0)
+    if(sctp_sys_connectx(fileno, (struct sockaddr *)addrs, num_ip, &assoc) < 0)
       rb_raise(rb_eSystemCallError, "sctp_connectx: %s", strerror(errno));
   }
 
@@ -777,7 +779,7 @@ static VALUE rsctp_connectx(int argc, VALUE* argv, VALUE self){
  */
 static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
   VALUE v_options, v_linger, v_fileno;
-  int fileno;
+  sctp_sock_t fileno;
 
   rb_scan_args(argc, argv, "01", &v_options);
 
@@ -792,7 +794,7 @@ static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
   if(NIL_P(v_fileno)) // Already closed
     return self;
 
-  fileno = NUM2INT(v_fileno);
+  fileno = NUM_TO_SCTP_FD(v_fileno);
 
   if(!NIL_P(v_linger)){
     struct linger lin;
@@ -804,11 +806,11 @@ static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
     lin.l_onoff = 1;
     lin.l_linger = linger_time;
 
-    if(setsockopt(fileno, SOL_SOCKET, SO_LINGER, &lin, sizeof(struct linger)) < 0)
+    if(sctp_sys_setsockopt(fileno, SOL_SOCKET, SO_LINGER, &lin, sizeof(struct linger)) < 0)
       rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
   }
 
-  if(close(fileno) < 0)
+  if(sctp_sys_close(fileno) < 0)
     rb_raise(rb_eSystemCallError, "close: %s", strerror(errno));
 
   // Mark socket as closed
@@ -858,7 +860,8 @@ static VALUE rsctp_closed_p(VALUE self){
 static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
   sctp_assoc_t assoc_id;
   struct sockaddr* addrs = NULL;
-  int i, fileno, num_addrs;
+  sctp_sock_t fileno;
+  int i, num_addrs;
   char str[IP_BUFFER_SIZE];
   VALUE v_fileno, v_association_id;
   VALUE v_array = rb_ary_new();
@@ -867,10 +870,10 @@ static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
 
   if(NIL_P(v_fileno)){
     CHECK_SOCKET_CLOSED(self);
-    fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+    fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   }
   else{
-    fileno = NUM2INT(v_fileno);
+    fileno = NUM_TO_SCTP_FD(v_fileno);
     CHECK_FILENO_VALID(fileno);
   }
 
@@ -879,11 +882,11 @@ static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
   else
     assoc_id = NUM2INT(v_association_id);
 
-  num_addrs = sctp_getpaddrs(fileno, assoc_id, &addrs);
+  num_addrs = sctp_sys_getpaddrs(fileno, assoc_id, &addrs);
 
   if(num_addrs < 0){
     if(addrs != NULL)
-      sctp_freepaddrs(addrs);
+      sctp_sys_freepaddrs(addrs);
 
     rb_raise(rb_eSystemCallError, "sctp_getpaddrs: %s", strerror(errno));
   }
@@ -904,7 +907,7 @@ static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
     rb_ary_push(v_array, rb_str_new2(str));
   }
 
-  sctp_freepaddrs(addrs);
+  sctp_sys_freepaddrs(addrs);
 
   return v_array;
 }
@@ -929,7 +932,8 @@ static VALUE rsctp_getpeernames(int argc, VALUE* argv, VALUE self){
 static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
   sctp_assoc_t assoc_id;
   struct sockaddr* addrs = NULL;
-  int i, fileno, num_addrs;
+  sctp_sock_t fileno;
+  int i, num_addrs;
   char str[IP_BUFFER_SIZE];
   VALUE v_assoc_fileno, v_assoc_id;
   VALUE v_array = rb_ary_new();
@@ -938,10 +942,10 @@ static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
 
   if(NIL_P(v_assoc_fileno)){
     CHECK_SOCKET_CLOSED(self);
-    fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+    fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   }
   else{
-    fileno = NUM2INT(v_assoc_fileno);
+    fileno = NUM_TO_SCTP_FD(v_assoc_fileno);
     CHECK_FILENO_VALID(fileno);
   }
 
@@ -950,11 +954,11 @@ static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
   else
     assoc_id = NUM2INT(v_assoc_id);
 
-  num_addrs = sctp_getladdrs(fileno, assoc_id, &addrs);
+  num_addrs = sctp_sys_getladdrs(fileno, assoc_id, &addrs);
 
   if(num_addrs < 0){
     if(addrs != NULL)
-      sctp_freeladdrs(addrs);
+      sctp_sys_freeladdrs(addrs);
 
     rb_raise(rb_eSystemCallError, "sctp_getladdrs: %s", strerror(errno));
   }
@@ -975,7 +979,7 @@ static VALUE rsctp_getlocalnames(int argc, VALUE* argv, VALUE self){
     rb_ary_push(v_array, rb_str_new2(str));
   }
 
-  sctp_freeladdrs(addrs);
+  sctp_sys_freeladdrs(addrs);
 
   return v_array;
 }
@@ -1011,7 +1015,8 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
   VALUE v_msg, v_message, v_addresses;
   struct iovec iov[IOV_MAX];
   struct sctp_sendv_spa spa;
-  int i, fileno, size, num_ip, domain, port;
+  sctp_sock_t fileno;
+  int i, size, num_ip, domain, port;
   ssize_t num_bytes;
 
   Check_Type(v_options, T_HASH);
@@ -1041,7 +1046,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
     num_ip = 0;
   }
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   size = (int)RARRAY_LEN(v_message);
 
   if(!size)
@@ -1082,7 +1087,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
         parse_ip_address_v6(StringValueCStr(v_address), port, &addrs6[i]);
       }
 
-      num_bytes = (ssize_t)sctp_sendv(
+      num_bytes = (ssize_t)sctp_sys_sendv(
         fileno,
         iov,
         size,
@@ -1103,7 +1108,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
         parse_ip_address_v4(StringValueCStr(v_address), port, &addrs[i]);
       }
 
-      num_bytes = (ssize_t)sctp_sendv(
+      num_bytes = (ssize_t)sctp_sys_sendv(
         fileno,
         iov,
         size,
@@ -1117,7 +1122,7 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
     }
   }
   else{
-    num_bytes = (ssize_t)sctp_sendv(
+    num_bytes = (ssize_t)sctp_sys_sendv(
       fileno,
       iov,
       size,
@@ -1168,7 +1173,8 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
  */
 static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
   VALUE v_flags, v_buffer_size;
-  int fileno, flags, on, buffer_size;
+  sctp_sock_t fileno;
+  int flags, on, buffer_size;
   ssize_t bytes;
   uint infotype;
   socklen_t infolen;
@@ -1183,7 +1189,7 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
 
   if(NIL_P(v_flags))
     flags = 0;
@@ -1208,7 +1214,7 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
 	iov->iov_len = buffer_size;
 
   on = 1;
-  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_RECVRCVINFO, &on, sizeof(on)) < 0){
+  if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_RECVRCVINFO, &on, sizeof(on)) < 0){
     free(buffer);
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
   }
@@ -1216,7 +1222,7 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
   infolen = sizeof(struct sctp_rcvinfo);
   infotype = 0;
 
-  bytes = (ssize_t)sctp_recvv(
+  bytes = (ssize_t)sctp_sys_recvv(
     fileno,
     iov,
     1,
@@ -1275,7 +1281,7 @@ static VALUE rsctp_send(VALUE self, VALUE v_options){
   uint16_t stream;
   uint32_t ppid, send_flags, ctrl_flags, ttl, context;
   ssize_t num_bytes;
-  int fileno;
+  sctp_sock_t fileno;
   sctp_assoc_t assoc_id;
   struct sctp_sndrcvinfo info;
   VALUE v_msg, v_stream, v_ppid, v_context, v_send_flags, v_ctrl_flags, v_ttl, v_assoc_id;
@@ -1338,9 +1344,9 @@ static VALUE rsctp_send(VALUE self, VALUE v_options){
   info.sinfo_timetolive = ttl;
   info.sinfo_assoc_id = assoc_id;
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
 
-  num_bytes = (ssize_t)sctp_send(
+  num_bytes = (ssize_t)sctp_sys_send(
     fileno,
     StringValueCStr(v_msg),
     RSTRING_LEN(v_msg),
@@ -1391,7 +1397,8 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
   uint16_t stream;
   uint32_t ppid, flags, ttl, context;
   ssize_t num_bytes;
-  int fileno, num_ip, domain;
+  sctp_sock_t fileno;
+  int num_ip, domain;
 
   Check_Type(v_options, T_HASH);
 
@@ -1436,7 +1443,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   domain = NUM2INT(rb_iv_get(self, "@domain"));
 
   if(!NIL_P(v_addresses)){
@@ -1466,8 +1473,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
         parse_ip_address_v6(StringValueCStr(v_address), port, &addrs6[i]);
       }
 
-#ifdef BSD
-      num_bytes = (ssize_t)sctp_sendmsgx(
+      num_bytes = (ssize_t)sctp_sys_sendmsg(
         fileno,
         StringValueCStr(v_msg),
         RSTRING_LEN(v_msg),
@@ -1479,20 +1485,6 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
         ttl,
         context
       );
-#else
-      num_bytes = (ssize_t)sctp_sendmsg(
-        fileno,
-        StringValueCStr(v_msg),
-        RSTRING_LEN(v_msg),
-        (struct sockaddr*)addrs6,
-        num_ip * sizeof(struct sockaddr_in6),
-        ppid,
-        flags,
-        stream,
-        ttl,
-        context
-      );
-#endif
     }
     else{
       struct sockaddr_in addrs[MAX_IP_ADDRESSES];
@@ -1504,8 +1496,7 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
         parse_ip_address_v4(StringValueCStr(v_address), port, &addrs[i]);
       }
 
-#ifdef BSD
-      num_bytes = (ssize_t)sctp_sendmsgx(
+      num_bytes = (ssize_t)sctp_sys_sendmsg(
         fileno,
         StringValueCStr(v_msg),
         RSTRING_LEN(v_msg),
@@ -1517,26 +1508,12 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
         ttl,
         context
       );
-#else
-      num_bytes = (ssize_t)sctp_sendmsg(
-        fileno,
-        StringValueCStr(v_msg),
-        RSTRING_LEN(v_msg),
-        (struct sockaddr*)addrs,
-        num_ip * sizeof(struct sockaddr_in),
-        ppid,
-        flags,
-        stream,
-        ttl,
-        context
-      );
-#endif
     }
   }
   else{
     // No addresses - use empty addrs
     num_ip = 0;
-    num_bytes = (ssize_t)sctp_sendmsg(
+    num_bytes = (ssize_t)sctp_sys_sendmsg(
       fileno,
       StringValueCStr(v_msg),
       RSTRING_LEN(v_msg),
@@ -1550,16 +1527,8 @@ static VALUE rsctp_sendmsg(VALUE self, VALUE v_options){
     );
   }
 
-  if(num_bytes < 0){
-#ifdef BSD
-    if(num_ip > 0)
-      rb_raise(rb_eSystemCallError, "sctp_sendmsgx: %s", strerror(errno));
-    else
-      rb_raise(rb_eSystemCallError, "sctp_sendmsg: %s", strerror(errno));
-#else
+  if(num_bytes < 0)
     rb_raise(rb_eSystemCallError, "sctp_sendmsg: %s", strerror(errno));
-#endif
-  }
 
   return LONG2NUM(num_bytes);
 }
@@ -1597,7 +1566,8 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   VALUE v_flags, v_buffer_size, v_notification, v_message;
   struct sctp_sndrcvinfo sndrcvinfo;
   struct sockaddr_in clientaddr;
-  int flags, fileno, buffer_size;
+  sctp_sock_t fileno;
+  int flags, buffer_size;
   ssize_t bytes;
   char *buffer;
   socklen_t length;
@@ -1623,14 +1593,14 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   length = sizeof(struct sockaddr_in);
 
   bzero(buffer, buffer_size);
   bzero(&clientaddr, sizeof(clientaddr));
   bzero(&sndrcvinfo, sizeof(sndrcvinfo));
 
-  bytes = (ssize_t)sctp_recvmsg(
+  bytes = (ssize_t)sctp_sys_recvmsg(
     fileno,
     buffer,
     buffer_size,
@@ -1691,7 +1661,7 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
  * By default these values are set to zero (i.e. ignored).
  */
 static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
-  int fileno;
+  sctp_sock_t fileno;
   struct sctp_initmsg initmsg;
   VALUE v_output, v_input, v_attempts, v_timeout;
 
@@ -1704,7 +1674,7 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
   v_attempts = rb_hash_aref2(v_options, "max_attempts");
   v_timeout  = rb_hash_aref2(v_options, "timeout");
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
 
   if(!NIL_P(v_output))
     initmsg.sinit_num_ostreams = NUM2INT(v_output);
@@ -1718,7 +1688,7 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
   if(!NIL_P(v_timeout))
     initmsg.sinit_max_init_timeo = NUM2INT(v_timeout);
 
-  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_INITMSG, &initmsg, sizeof(initmsg)) < 0)
+  if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_INITMSG, &initmsg, sizeof(initmsg)) < 0)
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   return self;
@@ -1763,7 +1733,7 @@ static VALUE rsctp_set_initmsg(VALUE self, VALUE v_options){
  *   socket.subscribe(:data_io => true, :shutdown => true, :send_failure => true)
  */
 static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
-  int fileno;
+  sctp_sock_t fileno;
   struct sctp_event_subscribe events;
 
   bzero(&events, sizeof(events));
@@ -1771,7 +1741,7 @@ static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
 
   if(RTEST(rb_hash_aref2(v_options, "data_io")))
     events.sctp_data_io_event = 1;
@@ -1807,8 +1777,43 @@ static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
   if(RTEST(rb_hash_aref2(v_options, "sender_dry")))
     events.sctp_sender_dry_event = 1;
 
-  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_EVENTS, &events, sizeof(events)) < 0)
+#ifdef HAVE_USRSCTP_H
+  /* usrsctp uses SCTP_EVENT + struct sctp_event for per-event subscription */
+  {
+    struct sctp_event se;
+    memset(&se, 0, sizeof(se));
+    se.se_assoc_id = 0;
+
+    /* data_io: enable via SCTP_RECVRCVINFO sockopt */
+    if(events.sctp_data_io_event){
+      int on = 1;
+      if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_RECVRCVINFO, &on, sizeof(on)) < 0)
+        rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+    }
+
+#define SUBSCRIBE_EVENT(field, type) \
+    if(events.field){ \
+      se.se_type = (type); se.se_on = 1; \
+      if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_EVENT, &se, sizeof(se)) < 0) \
+        rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno)); \
+    }
+
+    SUBSCRIBE_EVENT(sctp_association_event,       SCTP_ASSOC_CHANGE)
+    SUBSCRIBE_EVENT(sctp_address_event,           SCTP_PEER_ADDR_CHANGE)
+    SUBSCRIBE_EVENT(sctp_send_failure_event,      SCTP_SEND_FAILED)
+    SUBSCRIBE_EVENT(sctp_peer_error_event,        SCTP_REMOTE_ERROR)
+    SUBSCRIBE_EVENT(sctp_shutdown_event,          SCTP_SHUTDOWN_EVENT)
+    SUBSCRIBE_EVENT(sctp_partial_delivery_event,  SCTP_PARTIAL_DELIVERY_EVENT)
+    SUBSCRIBE_EVENT(sctp_adaptation_layer_event,  SCTP_ADAPTATION_INDICATION)
+    SUBSCRIBE_EVENT(sctp_authentication_event,    SCTP_AUTHENTICATION_EVENT)
+    SUBSCRIBE_EVENT(sctp_sender_dry_event,        SCTP_SENDER_DRY_EVENT)
+
+#undef SUBSCRIBE_EVENT
+  }
+#else
+  if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_EVENTS, &events, sizeof(events)) < 0)
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+#endif
 
   return self;
 }
@@ -1839,7 +1844,8 @@ static VALUE rsctp_subscribe(VALUE self, VALUE v_options){
  */
 static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
   VALUE v_backlog;
-  int backlog, fileno;
+  sctp_sock_t fileno;
+  int backlog;
 
   rb_scan_args(argc, argv, "01", &v_backlog);
 
@@ -1853,9 +1859,9 @@ static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
 
-  if(listen(fileno, backlog) < 0)
+  if(sctp_sys_listen(fileno, backlog) < 0)
     rb_raise(rb_eSystemCallError, "listen: %s", strerror(errno));
 
   return self;
@@ -1880,20 +1886,20 @@ static VALUE rsctp_listen(int argc, VALUE* argv, VALUE self){
  *   end
  */
 static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
-  int fileno, assoc_fileno;
+  sctp_sock_t fileno, assoc_fileno;
   sctp_assoc_t assoc_id;
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(v_assoc_id);
 
-  assoc_fileno = sctp_peeloff(fileno, assoc_id);
+  assoc_fileno = sctp_sys_peeloff(fileno, assoc_id);
 
-  if(assoc_fileno < 0)
+  if(SCTP_FD_INVALID(assoc_fileno))
     rb_raise(rb_eSystemCallError, "sctp_peeloff: %s", strerror(errno));
 
-  return INT2NUM(assoc_fileno);
+  return SCTP_FD_TO_NUM(assoc_fileno);
 }
 
 /*
@@ -1915,34 +1921,60 @@ static VALUE rsctp_peeloff(VALUE self, VALUE v_assoc_id){
  *  * association_id
  */
 static VALUE rsctp_get_default_send_params(VALUE self){
-  int fileno;
+  sctp_sock_t fileno;
   socklen_t size;
   sctp_assoc_t assoc_id;
-  struct sctp_sndrcvinfo sndrcv;
-
-  bzero(&sndrcv, sizeof(sndrcv));
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
-  size = sizeof(struct sctp_sndrcvinfo);
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_DEFAULT_SEND_PARAM, (void*)&sndrcv, &size) < 0)
-    rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+#ifdef HAVE_USRSCTP_H
+  {
+    struct sctp_sndinfo sndinfo;
+    bzero(&sndinfo, sizeof(sndinfo));
+    size = sizeof(sndinfo);
 
-  return rb_struct_new(
-    v_sctp_default_send_params_struct,
-    INT2NUM(sndrcv.sinfo_stream),
-    INT2NUM(sndrcv.sinfo_ssn),
-    INT2NUM(sndrcv.sinfo_flags),
-    INT2NUM(sndrcv.sinfo_ppid),
-    INT2NUM(sndrcv.sinfo_context),
-    INT2NUM(sndrcv.sinfo_timetolive),
-    INT2NUM(sndrcv.sinfo_tsn),
-    INT2NUM(sndrcv.sinfo_cumtsn),
-    INT2NUM(sndrcv.sinfo_assoc_id)
-  );
+    if(sctp_sys_opt_info(fileno, assoc_id, SCTP_DEFAULT_SNDINFO, (void*)&sndinfo, &size) < 0)
+      rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+    return rb_struct_new(
+      v_sctp_default_send_params_struct,
+      INT2NUM(sndinfo.snd_sid),
+      INT2NUM(0),  /* ssn - not available via sndinfo */
+      INT2NUM(sndinfo.snd_flags),
+      INT2NUM(sndinfo.snd_ppid),
+      INT2NUM(sndinfo.snd_context),
+      INT2NUM(0),  /* timetolive - not available via sndinfo */
+      INT2NUM(0),  /* tsn - not available via sndinfo */
+      INT2NUM(0),  /* cumtsn - not available via sndinfo */
+      INT2NUM(sndinfo.snd_assoc_id)
+    );
+  }
+#else
+  {
+    struct sctp_sndrcvinfo sndrcv;
+    bzero(&sndrcv, sizeof(sndrcv));
+    size = sizeof(struct sctp_sndrcvinfo);
+
+    if(sctp_sys_opt_info(fileno, assoc_id, SCTP_DEFAULT_SEND_PARAM, (void*)&sndrcv, &size) < 0)
+      rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+
+    return rb_struct_new(
+      v_sctp_default_send_params_struct,
+      INT2NUM(sndrcv.sinfo_stream),
+      INT2NUM(sndrcv.sinfo_ssn),
+      INT2NUM(sndrcv.sinfo_flags),
+      INT2NUM(sndrcv.sinfo_ppid),
+      INT2NUM(sndrcv.sinfo_context),
+      INT2NUM(sndrcv.sinfo_timetolive),
+      INT2NUM(sndrcv.sinfo_tsn),
+      INT2NUM(sndrcv.sinfo_cumtsn),
+      INT2NUM(sndrcv.sinfo_assoc_id)
+    );
+  }
+#endif
 }
 
 /*
@@ -1962,7 +1994,7 @@ static VALUE rsctp_get_default_send_params(VALUE self){
  *  All values that refer to time values are measured in milliseconds.
  */
 static VALUE rsctp_get_association_info(VALUE self){
-  int fileno;
+  sctp_sock_t fileno;
   socklen_t size;
   sctp_assoc_t assoc_id;
   struct sctp_assocparams assoc;
@@ -1971,11 +2003,11 @@ static VALUE rsctp_get_association_info(VALUE self){
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
   size = sizeof(struct sctp_assocparams);
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_ASSOCINFO, (void*)&assoc, &size) < 0)
+  if(sctp_sys_opt_info(fileno, assoc_id, SCTP_ASSOCINFO, (void*)&assoc, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
   return rb_struct_new(
@@ -2007,7 +2039,7 @@ static VALUE rsctp_get_association_info(VALUE self){
  */
 static VALUE rsctp_set_association_info(VALUE self, VALUE v_options){
   VALUE v_assoc_id, v_max_rxt, v_nbr_peer, v_peer_rw, v_local_rw, v_cookie;
-  int fileno;
+  sctp_sock_t fileno;
   sctp_assoc_t assoc_id;
   struct sctp_assocparams assoc;
 
@@ -2015,7 +2047,7 @@ static VALUE rsctp_set_association_info(VALUE self, VALUE v_options){
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
 
   v_assoc_id = rb_hash_aref2(v_options, "association_id");
   v_max_rxt  = rb_hash_aref2(v_options, "max_retransmission_count");
@@ -2046,7 +2078,7 @@ static VALUE rsctp_set_association_info(VALUE self, VALUE v_options){
   if(!NIL_P(v_cookie))
     assoc.sasoc_cookie_life = NUM2INT(v_cookie);
 
-  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_ASSOCINFO, &assoc, sizeof(assoc)) < 0)
+  if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_ASSOCINFO, &assoc, sizeof(assoc)) < 0)
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   return rb_struct_new(
@@ -2076,12 +2108,13 @@ static VALUE rsctp_set_association_info(VALUE self, VALUE v_options){
  *  The default is SHUT_RDWR.
  */
 static VALUE rsctp_shutdown(int argc, VALUE* argv, VALUE self){
-  int how, fileno;
+  sctp_sock_t fileno;
+  int how;
   VALUE v_how;
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
 
   rb_scan_args(argc, argv, "01", &v_how);
 
@@ -2093,7 +2126,7 @@ static VALUE rsctp_shutdown(int argc, VALUE* argv, VALUE self){
     how = NUM2INT(v_how);
   }
 
-  if(shutdown(fileno, how) < 0)
+  if(sctp_sys_shutdown(fileno, how) < 0)
     rb_raise(rb_eSystemCallError, "shutdown: %s", strerror(errno));
 
   return self;
@@ -2113,7 +2146,7 @@ static VALUE rsctp_shutdown(int argc, VALUE* argv, VALUE self){
  *  * min
  */
 static VALUE rsctp_get_retransmission_info(VALUE self){
-  int fileno;
+  sctp_sock_t fileno;
   socklen_t size;
   sctp_assoc_t assoc_id;
   struct sctp_rtoinfo rto;
@@ -2122,11 +2155,11 @@ static VALUE rsctp_get_retransmission_info(VALUE self){
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
   size = sizeof(struct sctp_rtoinfo);
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_RTOINFO, (void*)&rto, &size) < 0)
+  if(sctp_sys_opt_info(fileno, assoc_id, SCTP_RTOINFO, (void*)&rto, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
   return rb_struct_new(
@@ -2155,7 +2188,7 @@ static VALUE rsctp_get_retransmission_info(VALUE self){
  */
 static VALUE rsctp_set_retransmission_info(VALUE self, VALUE v_options){
   VALUE v_assoc_id, v_initial, v_max, v_min;
-  int fileno;
+  sctp_sock_t fileno;
   sctp_assoc_t assoc_id;
   struct sctp_rtoinfo rto;
 
@@ -2163,7 +2196,7 @@ static VALUE rsctp_set_retransmission_info(VALUE self, VALUE v_options){
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
 
   v_assoc_id = rb_hash_aref2(v_options, "association_id");
   v_initial = rb_hash_aref2(v_options, "initial");
@@ -2186,7 +2219,7 @@ static VALUE rsctp_set_retransmission_info(VALUE self, VALUE v_options){
   if(!NIL_P(v_min))
     rto.srto_min = NUM2INT(v_min);
 
-  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_RTOINFO, &rto, sizeof(rto)) < 0)
+  if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_RTOINFO, &rto, sizeof(rto)) < 0)
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   return rb_struct_new(
@@ -2223,7 +2256,7 @@ static VALUE rsctp_set_retransmission_info(VALUE self, VALUE v_options){
  *  * primary (IP)
  */
 static VALUE rsctp_get_status(VALUE self){
-  int fileno;
+  sctp_sock_t fileno;
   socklen_t size;
   sctp_assoc_t assoc_id;
   struct sctp_status status;
@@ -2234,11 +2267,11 @@ static VALUE rsctp_get_status(VALUE self){
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
   size = sizeof(struct sctp_status);
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_STATUS, (void*)&status, &size) < 0)
+  if(sctp_sys_opt_info(fileno, assoc_id, SCTP_STATUS, (void*)&status, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
   spinfo = &status.sstat_primary;
@@ -2291,7 +2324,7 @@ static VALUE rsctp_get_status(VALUE self){
  *  * send_failure_event
  */
 static VALUE rsctp_get_subscriptions(VALUE self){
-  int fileno;
+  sctp_sock_t fileno;
   socklen_t size;
   sctp_assoc_t assoc_id;
   struct sctp_event_subscribe events;
@@ -2300,12 +2333,53 @@ static VALUE rsctp_get_subscriptions(VALUE self){
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
   size = sizeof(struct sctp_event_subscribe);
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_EVENTS, (void*)&events, &size) < 0)
+#ifdef HAVE_USRSCTP_H
+  /* usrsctp uses SCTP_EVENT + struct sctp_event for per-event query */
+  {
+    struct sctp_event se;
+    socklen_t se_size;
+
+    memset(&events, 0, sizeof(events));
+
+    /* data_io: check SCTP_RECVRCVINFO sockopt */
+    {
+      int on = 0;
+      socklen_t on_size = sizeof(on);
+      if(sctp_sys_getsockopt(fileno, IPPROTO_SCTP, SCTP_RECVRCVINFO, &on, &on_size) == 0 && on)
+        events.sctp_data_io_event = 1;
+    }
+
+#define QUERY_EVENT(field, type) \
+    memset(&se, 0, sizeof(se)); \
+    se.se_assoc_id = assoc_id; \
+    se.se_type = (type); \
+    se_size = sizeof(se); \
+    if(sctp_sys_getsockopt(fileno, IPPROTO_SCTP, SCTP_EVENT, &se, &se_size) == 0 && se.se_on) \
+      events.field = 1;
+
+    QUERY_EVENT(sctp_association_event,       SCTP_ASSOC_CHANGE)
+    QUERY_EVENT(sctp_address_event,           SCTP_PEER_ADDR_CHANGE)
+    QUERY_EVENT(sctp_send_failure_event,      SCTP_SEND_FAILED)
+    QUERY_EVENT(sctp_peer_error_event,        SCTP_REMOTE_ERROR)
+    QUERY_EVENT(sctp_shutdown_event,          SCTP_SHUTDOWN_EVENT)
+    QUERY_EVENT(sctp_partial_delivery_event,  SCTP_PARTIAL_DELIVERY_EVENT)
+    QUERY_EVENT(sctp_adaptation_layer_event,  SCTP_ADAPTATION_INDICATION)
+    QUERY_EVENT(sctp_authentication_event,    SCTP_AUTHENTICATION_EVENT)
+    QUERY_EVENT(sctp_sender_dry_event,        SCTP_SENDER_DRY_EVENT)
+#ifdef HAVE_STRUCT_SCTP_EVENT_SUBSCRIBE_SCTP_STREAM_RESET_EVENT
+    QUERY_EVENT(sctp_stream_reset_event,      SCTP_STREAM_RESET_EVENT)
+#endif
+
+#undef QUERY_EVENT
+  }
+#else
+  if(sctp_sys_opt_info(fileno, assoc_id, SCTP_EVENTS, (void*)&events, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
+#endif
 
   return rb_struct_new(
     v_sctp_event_subscribe_struct,
@@ -2356,7 +2430,7 @@ static VALUE rsctp_get_subscriptions(VALUE self){
  * * ipv6_flowlabel
  */
 static VALUE rsctp_get_peer_address_params(VALUE self){
-  int fileno;
+  sctp_sock_t fileno;
   char str[IP_BUFFER_SIZE];
   socklen_t size;
   sctp_assoc_t assoc_id;
@@ -2367,11 +2441,11 @@ static VALUE rsctp_get_peer_address_params(VALUE self){
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
   size = sizeof(struct sctp_paddrparams);
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_PEER_ADDR_PARAMS, (void*)&paddr, &size) < 0)
+  if(sctp_sys_opt_info(fileno, assoc_id, SCTP_PEER_ADDR_PARAMS, (void*)&paddr, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
   {
@@ -2418,7 +2492,7 @@ static VALUE rsctp_get_peer_address_params(VALUE self){
  *     (in milliseconds) to use in attempting an INIT.
  */
 static VALUE rsctp_get_init_msg(VALUE self){
-  int fileno;
+  sctp_sock_t fileno;
   socklen_t size;
   sctp_assoc_t assoc_id;
   struct sctp_initmsg initmsg;
@@ -2427,11 +2501,11 @@ static VALUE rsctp_get_init_msg(VALUE self){
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
   size = sizeof(struct sctp_initmsg);
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_INITMSG, (void*)&initmsg, &size) < 0)
+  if(sctp_sys_opt_info(fileno, assoc_id, SCTP_INITMSG, (void*)&initmsg, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
   return rb_struct_new(
@@ -2450,18 +2524,18 @@ static VALUE rsctp_get_init_msg(VALUE self){
  * Returns whether or not the nodelay option has been set.
  */
 static VALUE rsctp_get_nodelay(VALUE self){
-  int fileno;
+  sctp_sock_t fileno;
   socklen_t size;
   sctp_assoc_t assoc_id;
   int value;
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
   size = sizeof(int);
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_NODELAY, (void*)&value, &size) < 0)
+  if(sctp_sys_opt_info(fileno, assoc_id, SCTP_NODELAY, (void*)&value, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
   if(value)
@@ -2479,13 +2553,13 @@ static VALUE rsctp_get_nodelay(VALUE self){
  * cost of more packets in the network.
  */
 static VALUE rsctp_set_nodelay(VALUE self, VALUE v_bool){
-  int fileno;
+  sctp_sock_t fileno;
   socklen_t size;
   int value;
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   size = sizeof(int);
 
   if(NIL_P(v_bool) || v_bool == Qfalse)
@@ -2493,7 +2567,7 @@ static VALUE rsctp_set_nodelay(VALUE self, VALUE v_bool){
   else
     value = 1;
 
-  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_NODELAY, &value, size) < 0)
+  if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_NODELAY, &value, size) < 0)
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   if(value)
@@ -2513,14 +2587,14 @@ static VALUE rsctp_set_nodelay(VALUE self, VALUE v_bool){
  * instead a error will be indicated to the user.
  */
 static VALUE rsctp_disable_fragments(VALUE self, VALUE v_bool){
-  int fileno;
+  sctp_sock_t fileno;
   socklen_t size;
   sctp_assoc_t assoc_id;
   int value;
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
   size = sizeof(int);
 
@@ -2529,7 +2603,7 @@ static VALUE rsctp_disable_fragments(VALUE self, VALUE v_bool){
   else
     value = 1;
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_DISABLE_FRAGMENTS, (void*)&value, &size) < 0)
+  if(sctp_sys_opt_info(fileno, assoc_id, SCTP_DISABLE_FRAGMENTS, (void*)&value, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
   if(value)
@@ -2546,18 +2620,18 @@ static VALUE rsctp_disable_fragments(VALUE self, VALUE v_bool){
  * shut down.
  */
 static VALUE rsctp_get_autoclose(VALUE self){
-  int fileno;
+  sctp_sock_t fileno;
   socklen_t size;
   sctp_assoc_t assoc_id;
   int value;
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
   size = sizeof(int);
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTOCLOSE, (void*)&value, &size) < 0)
+  if(sctp_sys_opt_info(fileno, assoc_id, SCTP_AUTOCLOSE, (void*)&value, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
   return INT2NUM(value);
@@ -2586,15 +2660,15 @@ static VALUE rsctp_get_autoclose(VALUE self){
  * This socket option is applicable to the one-to-many style socket only.
  */
 static VALUE rsctp_set_autoclose(VALUE self, VALUE v_seconds){
-  int fileno;
+  sctp_sock_t fileno;
   int value;
 
   CHECK_SOCKET_CLOSED(self);
 
   value = NUM2INT(v_seconds);
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
 
-  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_AUTOCLOSE, &value, sizeof(value)) < 0)
+  if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_AUTOCLOSE, &value, sizeof(value)) < 0)
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   return INT2NUM(value);
@@ -2607,7 +2681,7 @@ static VALUE rsctp_set_autoclose(VALUE self, VALUE v_seconds){
  * Enables auth for future associations.
  */
 static VALUE rsctp_enable_auth_support(int argc, VALUE* argv, VALUE self){
-  int fileno;
+  sctp_sock_t fileno;
   socklen_t size;
   sctp_assoc_t assoc_id;
   struct sctp_assoc_value assoc_value;
@@ -2617,7 +2691,7 @@ static VALUE rsctp_enable_auth_support(int argc, VALUE* argv, VALUE self){
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   size = sizeof(struct sctp_assoc_value);
 
   if(NIL_P(v_assoc_id))
@@ -2628,7 +2702,7 @@ static VALUE rsctp_enable_auth_support(int argc, VALUE* argv, VALUE self){
   assoc_value.assoc_id = assoc_id;
   assoc_value.assoc_value = 1;
 
-  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_AUTH_SUPPORTED, (void*)&assoc_value, size) < 0)
+  if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_AUTH_SUPPORTED, (void*)&assoc_value, size) < 0)
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   return self;
@@ -2642,7 +2716,7 @@ static VALUE rsctp_enable_auth_support(int argc, VALUE* argv, VALUE self){
  * Returns true if auth support is enabled, false otherwise.
  */
 static VALUE rsctp_get_auth_support(int argc, VALUE* argv, VALUE self){
-  int fileno;
+  sctp_sock_t fileno;
   socklen_t size;
   sctp_assoc_t assoc_id;
   struct sctp_assoc_value assoc_value;
@@ -2652,7 +2726,7 @@ static VALUE rsctp_get_auth_support(int argc, VALUE* argv, VALUE self){
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   size = sizeof(struct sctp_assoc_value);
 
   if(NIL_P(v_assoc_id))
@@ -2662,7 +2736,7 @@ static VALUE rsctp_get_auth_support(int argc, VALUE* argv, VALUE self){
 
   assoc_value.assoc_id = assoc_id;
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTH_SUPPORTED, (void*)&assoc_value, &size) < 0)
+  if(sctp_sys_opt_info(fileno, assoc_id, SCTP_AUTH_SUPPORTED, (void*)&assoc_value, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
   if(assoc_value.assoc_value)
@@ -2698,7 +2772,7 @@ static VALUE rsctp_get_auth_support(int argc, VALUE* argv, VALUE self){
  *  otherwise this will set a key on the endpoint.
 */
 static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
-  int fileno;
+  sctp_sock_t fileno;
   size_t len;
   char* key;
   uint keynum;
@@ -2711,7 +2785,7 @@ static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   key = StringValuePtr(v_key);
   len = RSTRING_LEN(v_key); // Use Ruby's string length, not strlen
 
@@ -2737,7 +2811,7 @@ static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
   auth_key->sca_keylength = len;
   memcpy(auth_key->sca_key, key, len);
 
-  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_AUTH_KEY, (void*)auth_key, size) < 0) {
+  if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_AUTH_KEY, (void*)auth_key, size) < 0) {
     int err = errno;
     free(auth_key);
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(err));
@@ -2754,7 +2828,7 @@ static VALUE rsctp_set_shared_key(int argc, VALUE* argv, VALUE self){
  * Gets the active shared key to be used to build the association shared key.
  */
 static VALUE rsctp_get_active_shared_key(int argc, VALUE* argv, VALUE self){
-  int fileno;
+  sctp_sock_t fileno;
   socklen_t size;
   struct sctp_authkeyid authkey;
   sctp_assoc_t assoc_id;
@@ -2773,7 +2847,7 @@ static VALUE rsctp_get_active_shared_key(int argc, VALUE* argv, VALUE self){
   if(keynum < 0)
     rb_raise(rb_eArgError, "invalid keynum value");
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
 
   if(NIL_P(v_assoc_id))
     assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
@@ -2785,7 +2859,7 @@ static VALUE rsctp_get_active_shared_key(int argc, VALUE* argv, VALUE self){
 
   size = sizeof(struct sctp_authkeyid);
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_AUTH_ACTIVE_KEY, (void*)&authkey, &size) < 0)
+  if(sctp_sys_opt_info(fileno, assoc_id, SCTP_AUTH_ACTIVE_KEY, (void*)&authkey, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
   return INT2NUM(authkey.scact_keynumber);
@@ -2814,7 +2888,7 @@ static VALUE rsctp_get_active_shared_key(int argc, VALUE* argv, VALUE self){
  * By default, the association_id is the result of SCTP::Socket#association_id.
  */
 static VALUE rsctp_set_active_shared_key(int argc, VALUE* argv, VALUE self){
-  int fileno;
+  sctp_sock_t fileno;
   socklen_t size;
   struct sctp_authkeyid authkey;
   sctp_assoc_t assoc_id;
@@ -2830,7 +2904,7 @@ static VALUE rsctp_set_active_shared_key(int argc, VALUE* argv, VALUE self){
   if(keynum < 0)
     rb_raise(rb_eArgError, "invalid keynum value");
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
 
   if(NIL_P(v_assoc_id))
     assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
@@ -2841,7 +2915,7 @@ static VALUE rsctp_set_active_shared_key(int argc, VALUE* argv, VALUE self){
   authkey.scact_keynumber = (uint)keynum;
   size = sizeof(struct sctp_authkeyid);
 
-  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_AUTH_ACTIVE_KEY, (void*)&authkey, size) < 0)
+  if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_AUTH_ACTIVE_KEY, (void*)&authkey, size) < 0)
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   return self;
@@ -2873,7 +2947,7 @@ static VALUE rsctp_set_active_shared_key(int argc, VALUE* argv, VALUE self){
  * otherwise this will delete the key from the endpoint.
  */
 static VALUE rsctp_delete_shared_key(int argc, VALUE* argv, VALUE self){
-  int fileno;
+  sctp_sock_t fileno;
   socklen_t size;
   struct sctp_authkeyid authkey;
   sctp_assoc_t assoc_id;
@@ -2886,7 +2960,7 @@ static VALUE rsctp_delete_shared_key(int argc, VALUE* argv, VALUE self){
 
   bzero(&authkey, sizeof(authkey));
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   keynum = NUM2UINT(v_keynum);
 
   if(NIL_P(v_assoc_id))
@@ -2899,7 +2973,7 @@ static VALUE rsctp_delete_shared_key(int argc, VALUE* argv, VALUE self){
 
   size = sizeof(struct sctp_authkeyid);
 
-  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_AUTH_DELETE_KEY, (void*)&authkey, size) < 0)
+  if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_AUTH_DELETE_KEY, (void*)&authkey, size) < 0)
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   return INT2NUM(authkey.scact_keynumber);
@@ -2919,17 +2993,18 @@ static VALUE rsctp_delete_shared_key(int argc, VALUE* argv, VALUE self){
  * a no-op.
  */
 static VALUE rsctp_map_ipv4(VALUE self, VALUE v_bool){
-  int fileno, boolean;
+  sctp_sock_t fileno;
+  int boolean;
 
   CHECK_SOCKET_CLOSED(self);
 
   boolean = 0;
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
 
   if(v_bool == Qtrue)
     boolean = 1;
 
-  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_I_WANT_MAPPED_V4_ADDR, (void*)&boolean, sizeof(boolean)) < 0)
+  if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_I_WANT_MAPPED_V4_ADDR, (void*)&boolean, sizeof(boolean)) < 0)
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   return v_bool;
@@ -2943,18 +3018,18 @@ static VALUE rsctp_map_ipv4(VALUE self, VALUE v_bool){
  * for PF_INET6 sockets. Returns true if mapping is enabled, false otherwise.
  */
 static VALUE rsctp_get_map_ipv4(VALUE self){
-  int fileno;
+  sctp_sock_t fileno;
   socklen_t size;
   sctp_assoc_t assoc_id;
   int value;
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   assoc_id = NUM2INT(rb_iv_get(self, "@association_id"));
   size = sizeof(int);
 
-  if(sctp_opt_info(fileno, assoc_id, SCTP_I_WANT_MAPPED_V4_ADDR, (void*)&value, &size) < 0)
+  if(sctp_sys_opt_info(fileno, assoc_id, SCTP_I_WANT_MAPPED_V4_ADDR, (void*)&value, &size) < 0)
     rb_raise(rb_eSystemCallError, "sctp_opt_info: %s", strerror(errno));
 
   if(value)
@@ -2988,7 +3063,7 @@ static VALUE rsctp_get_map_ipv4(VALUE self){
  */
 static VALUE rsctp_set_default_send_params(VALUE self, VALUE v_options){
   VALUE v_stream, v_ssn, v_flags, v_ppid, v_context, v_ttl, v_tsn, v_cumtsn, v_assoc_id;
-  int fileno;
+  sctp_sock_t fileno;
   sctp_assoc_t assoc_id;
   struct sctp_sndrcvinfo sndrcv;
 
@@ -2999,7 +3074,7 @@ static VALUE rsctp_set_default_send_params(VALUE self, VALUE v_options){
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
 
   v_stream = rb_hash_aref2(v_options, "stream");
   v_ssn = rb_hash_aref2(v_options, "ssn");
@@ -3041,8 +3116,23 @@ static VALUE rsctp_set_default_send_params(VALUE self, VALUE v_options){
   if(!NIL_P(v_cumtsn))
     sndrcv.sinfo_cumtsn = NUM2INT(v_cumtsn);
 
-  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_DEFAULT_SEND_PARAM, &sndrcv, sizeof(sndrcv)) < 0)
+#ifdef HAVE_USRSCTP_H
+  {
+    struct sctp_sndinfo sndinfo;
+    bzero(&sndinfo, sizeof(sndinfo));
+    sndinfo.snd_sid = sndrcv.sinfo_stream;
+    sndinfo.snd_flags = sndrcv.sinfo_flags;
+    sndinfo.snd_ppid = sndrcv.sinfo_ppid;
+    sndinfo.snd_context = sndrcv.sinfo_context;
+    sndinfo.snd_assoc_id = sndrcv.sinfo_assoc_id;
+
+    if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_DEFAULT_SNDINFO, &sndinfo, sizeof(sndinfo)) < 0)
+      rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+  }
+#else
+  if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_DEFAULT_SEND_PARAM, &sndrcv, sizeof(sndrcv)) < 0)
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+#endif
 
   return rb_struct_new(
     v_sctp_default_send_params_struct,
@@ -3082,7 +3172,8 @@ static VALUE rsctp_set_default_send_params(VALUE self, VALUE v_options){
  */
 static VALUE rsctp_set_peer_address_params(VALUE self, VALUE v_options){
   VALUE v_assoc_id, v_address, v_hbinterval, v_pathmaxrxt, v_pathmtu, v_flags, v_ipv6_flowlabel;
-  int fileno, domain;
+  sctp_sock_t fileno;
+  int domain;
   sctp_assoc_t assoc_id;
   struct sctp_paddrparams paddr;
 
@@ -3093,7 +3184,7 @@ static VALUE rsctp_set_peer_address_params(VALUE self, VALUE v_options){
 
   CHECK_SOCKET_CLOSED(self);
 
-  fileno = NUM2INT(rb_iv_get(self, "@fileno"));
+  fileno = NUM_TO_SCTP_FD(rb_iv_get(self, "@fileno"));
   domain = NUM2INT(rb_iv_get(self, "@domain"));
 
   v_assoc_id = rb_hash_aref2(v_options, "association_id");
@@ -3149,7 +3240,7 @@ static VALUE rsctp_set_peer_address_params(VALUE self, VALUE v_options){
   if(!NIL_P(v_ipv6_flowlabel))
     paddr.spp_ipv6_flowlabel = NUM2INT(v_ipv6_flowlabel);
 
-  if(setsockopt(fileno, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &paddr, sizeof(paddr)) < 0)
+  if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &paddr, sizeof(paddr)) < 0)
     rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
 
   return rb_struct_new(
