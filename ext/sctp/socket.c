@@ -623,9 +623,8 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   if(v_reuse_addr == Qtrue){
     on = 1;
 #ifdef HAVE_USRSCTP_H
-    /* usrsctp doesn't support SOL_SOCKET options; use SCTP_REUSE_PORT instead */
-    if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_REUSE_PORT, &on, sizeof(on)) < 0)
-      rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+    /* usrsctp runs in userspace; address reuse is not needed/supported. Silently skip. */
+    (void)on;
 #else
     if(sctp_sys_setsockopt(fileno, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0)
       rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
