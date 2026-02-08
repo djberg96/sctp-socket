@@ -622,8 +622,14 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
 
   if(v_reuse_addr == Qtrue){
     on = 1;
+#ifdef HAVE_USRSCTP_H
+    /* usrsctp doesn't support SOL_SOCKET options; use SCTP_REUSE_PORT instead */
+    if(sctp_sys_setsockopt(fileno, IPPROTO_SCTP, SCTP_REUSE_PORT, &on, sizeof(on)) < 0)
+      rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+#else
     if(sctp_sys_setsockopt(fileno, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0)
       rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+#endif
   }
 
   if(domain == AF_INET6){
@@ -797,6 +803,10 @@ static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
   fileno = NUM_TO_SCTP_FD(v_fileno);
 
   if(!NIL_P(v_linger)){
+#ifdef HAVE_USRSCTP_H
+    /* usrsctp doesn't support SOL_SOCKET options; linger is not available */
+    (void)v_linger;
+#else
     struct linger lin;
     int linger_time = NUM2INT(v_linger);
 
@@ -808,6 +818,7 @@ static VALUE rsctp_close(int argc, VALUE* argv, VALUE self){
 
     if(sctp_sys_setsockopt(fileno, SOL_SOCKET, SO_LINGER, &lin, sizeof(struct linger)) < 0)
       rb_raise(rb_eSystemCallError, "setsockopt: %s", strerror(errno));
+#endif
   }
 
   if(sctp_sys_close(fileno) < 0)
