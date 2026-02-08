@@ -48,11 +48,9 @@ task :create_dummy_links do
     system('sudo ip link set dummy2 up')
     system('ip link show')
   else
-    system("sudo ifconfig lo1 create")
-    system("sudo ifconfig lo1 1.1.1.1/24 up")
-    system("sudo ifconfig lo2 create")
-    system("sudo ifconfig lo2 1.1.1.2/24 up")
-    system("sudo ifconfig -a")
+    system("sudo ifconfig lo0 alias 1.1.1.1/24 up")
+    system("sudo ifconfig lo0 alias 1.1.1.2/24 up")
+    system("sudo ifconfig lo0")
   end
 end
 
