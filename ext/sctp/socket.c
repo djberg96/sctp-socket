@@ -1,4 +1,5 @@
 #include "ruby.h"
+#include <ruby/thread.h>
 #include <string.h>
 #include <errno.h>
 #include <arpa/inet.h>
@@ -1152,6 +1153,80 @@ static VALUE rsctp_sendv(VALUE self, VALUE v_options){
 }
 #endif
 
+/*
+ * GVL-release helpers for blocking receive calls.
+ *
+ * usrsctp_recvv blocks on internal userspace locks, not real system calls,
+ * so Ruby's signal-handling thread never gets a chance to run.  By releasing
+ * the GVL around the blocking call, other Ruby threads (including the signal
+ * thread) can execute.  The UBF (unblock function) is invoked by Ruby when
+ * it needs to interrupt the blocking call (e.g. Ctrl-C).
+ *
+ * For native SCTP we use RUBY_UBF_IO which sends a signal that interrupts
+ * the real recvmsg() syscall.  For usrsctp we shut down the read side of
+ * the socket, which causes usrsctp_recvv to return with an error.
+ */
+
+/* --- recvmsg (sctp_recvmsg / usrsctp_recvv via sctp_sys_recvmsg) --- */
+
+struct recvmsg_nogvl_args {
+  sctp_sock_t fd;
+  void       *buf;
+  size_t      len;
+  struct sockaddr *from;
+  socklen_t       *fromlen;
+  struct sctp_sndrcvinfo *sinfo;
+  int        *msg_flags;
+  ssize_t     result;
+  int         saved_errno;
+};
+
+static void *recvmsg_nogvl(void *arg){
+  struct recvmsg_nogvl_args *a = (struct recvmsg_nogvl_args *)arg;
+  a->result = sctp_sys_recvmsg(a->fd, a->buf, a->len,
+      a->from, a->fromlen, a->sinfo, a->msg_flags);
+  a->saved_errno = errno;
+  return NULL;
+}
+
+#ifdef HAVE_USRSCTP_H
+static void recvmsg_ubf(void *arg){
+  struct recvmsg_nogvl_args *a = (struct recvmsg_nogvl_args *)arg;
+  usrsctp_shutdown(a->fd, SHUT_RD);
+}
+#endif
+
+/* --- recvv (sctp_recvv / usrsctp_recvv via sctp_sys_recvv) --- */
+
+struct recvv_nogvl_args {
+  sctp_sock_t fd;
+  const struct iovec *iov;
+  int          iovcnt;
+  struct sockaddr *from;
+  socklen_t       *fromlen;
+  void            *info;
+  socklen_t       *infolen;
+  unsigned int    *infotype;
+  int             *flags;
+  ssize_t          result;
+  int              saved_errno;
+};
+
+static void *recvv_nogvl(void *arg){
+  struct recvv_nogvl_args *a = (struct recvv_nogvl_args *)arg;
+  a->result = sctp_sys_recvv(a->fd, a->iov, a->iovcnt,
+      a->from, a->fromlen, a->info, a->infolen, a->infotype, a->flags);
+  a->saved_errno = errno;
+  return NULL;
+}
+
+#ifdef HAVE_USRSCTP_H
+static void recvv_ubf(void *arg){
+  struct recvv_nogvl_args *a = (struct recvv_nogvl_args *)arg;
+  usrsctp_shutdown(a->fd, SHUT_RD);
+}
+#endif
+
 #ifdef HAVE_SCTP_RECVV
 /*
  * call-seq:
@@ -1232,17 +1307,27 @@ static VALUE rsctp_recvv(int argc, VALUE* argv, VALUE self){
   infolen = sizeof(struct sctp_rcvinfo);
   infotype = 0;
 
-  bytes = (ssize_t)sctp_sys_recvv(
-    fileno,
-    iov,
-    1,
-    NULL,
-    NULL,
-    &info,
-    &infolen,
-    &infotype,
-    &flags
-  );
+  {
+    struct recvv_nogvl_args recv_args;
+    recv_args.fd       = fileno;
+    recv_args.iov      = iov;
+    recv_args.iovcnt   = 1;
+    recv_args.from     = NULL;
+    recv_args.fromlen  = NULL;
+    recv_args.info     = &info;
+    recv_args.infolen  = &infolen;
+    recv_args.infotype = &infotype;
+    recv_args.flags    = &flags;
+
+#ifdef HAVE_USRSCTP_H
+    rb_thread_call_without_gvl(recvv_nogvl, &recv_args, recvv_ubf, &recv_args);
+#else
+    rb_thread_call_without_gvl(recvv_nogvl, &recv_args, RUBY_UBF_IO, NULL);
+#endif
+
+    bytes = recv_args.result;
+    errno = recv_args.saved_errno;
+  }
 
   if(bytes < 0){
     free(buffer);
@@ -1610,15 +1695,25 @@ static VALUE rsctp_recvmsg(int argc, VALUE* argv, VALUE self){
   bzero(&clientaddr, sizeof(clientaddr));
   bzero(&sndrcvinfo, sizeof(sndrcvinfo));
 
-  bytes = (ssize_t)sctp_sys_recvmsg(
-    fileno,
-    buffer,
-    buffer_size,
-    (struct sockaddr*)&clientaddr,
-    &length,
-    &sndrcvinfo,
-    &flags
-  );
+  {
+    struct recvmsg_nogvl_args recv_args;
+    recv_args.fd       = fileno;
+    recv_args.buf      = buffer;
+    recv_args.len      = buffer_size;
+    recv_args.from     = (struct sockaddr*)&clientaddr;
+    recv_args.fromlen  = &length;
+    recv_args.sinfo    = &sndrcvinfo;
+    recv_args.msg_flags = &flags;
+
+#ifdef HAVE_USRSCTP_H
+    rb_thread_call_without_gvl(recvmsg_nogvl, &recv_args, recvmsg_ubf, &recv_args);
+#else
+    rb_thread_call_without_gvl(recvmsg_nogvl, &recv_args, RUBY_UBF_IO, NULL);
+#endif
+
+    bytes = recv_args.result;
+    errno = recv_args.saved_errno;
+  }
 
   if(bytes < 0){
     free(buffer);
