@@ -108,11 +108,17 @@ static inline int sctp_sys_close(sctp_sock_t fd){
 /* --- sendv wrapper ---
  * Native sctp_sendv uses iov+iovlen; usrsctp_sendv uses buf+len.
  * This wrapper concatenates iov entries if needed.
+ * Note: usrsctp_sendv only supports a single destination address (addrcnt<=1)
+ * on connected sockets, so we cap addrcnt at 1 if addresses are provided.
  */
 static inline ssize_t sctp_sys_sendv(sctp_sock_t fd, const struct iovec* iov, int iovcnt,
     struct sockaddr* addrs, int addrcnt, void* info, socklen_t infolen,
     unsigned int infotype, int flags)
 {
+  /* usrsctp only supports at most one destination address */
+  if(addrcnt > 1)
+    addrcnt = 1;
+
   if(iovcnt == 1){
     return usrsctp_sendv(fd, iov[0].iov_base, iov[0].iov_len,
         addrs, addrcnt, info, infolen, infotype, flags);
