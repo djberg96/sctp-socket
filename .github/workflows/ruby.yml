@@ -37,6 +37,26 @@ jobs:
         bundler-cache: true
     - name: Run Specs
       run: bundle exec rake
+  macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        ruby-version: ['3.2', '3.3', '3.4']
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup usrsctp
+      run: brew install usrsctp
+    - name: Setup loopback aliases
+      run: |
+          sudo ifconfig lo0 alias 1.1.1.1/24 up
+          sudo ifconfig lo0 alias 1.1.1.2/24 up
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ matrix.ruby-version }}
+        bundler-cache: true
+    - name: Run Specs
+      run: bundle exec rake
   freebsd:
     runs-on: ubuntu-latest
     steps:
