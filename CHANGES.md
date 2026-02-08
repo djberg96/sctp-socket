@@ -1,3 +1,7 @@
+## 0.3.0 - 8-Feb-2026
+* Add a compatability layer for libusrsctp. This was mainly for MacOS, but
+  it should work on any platform.
+
 ## 0.2.2 - 7-Jan-2026
 * Added IPv6 support.
 * Some internal refactoring and updates, potential memory leak fixes, etc.
