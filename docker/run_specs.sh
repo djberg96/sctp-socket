@@ -27,4 +27,4 @@ else
   exit 1
 fi
 
-exec bundle exec rake spec
+exec bundle exec rake spec:local
