@@ -21,12 +21,24 @@ suite inside a disposable privileged container. The tasks prefer `podman`
 on Fedora/Linux, falling back to `docker` if podman isn't available:
 
 ```
-bundle exec rake docker:spec
+bundle exec rake spec:compose
 ```
 
 Set `CONTAINER_RUNTIME=docker` to override. The image installs SCTP kernel
 headers/tools and sets up dummy addresses (1.1.1.1 and 1.1.1.2) inside the
 container before running the specs.
+
+Rebuild the test image without cache:
+
+```
+bundle exec rake "docker:build[no-cache]"
+```
+
+Run specs directly on the host (uses your local SCTP setup):
+
+```
+bundle exec rake spec:local
+```
 
 ## Installing the Trusted Cert
 

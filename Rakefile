@@ -63,7 +63,7 @@ namespace :docker do
     sh runtime, 'build', '-f', 'docker/Dockerfile', '-t', 'sctp-socket-test', '.'
   end
 
-  desc "Run specs inside a privileged Docker container with dummy interfaces"
+  desc "Run specs inside a privileged Docker/Podman container with dummy interfaces"
   task :spec => :build do
     image = ENV.fetch('SCTP_SOCKET_IMAGE', 'sctp-socket-test')
     repo_root = File.expand_path(__dir__)
@@ -89,9 +89,17 @@ def container_runtime
   end
 end
 
-RSpec::Core::RakeTask.new do |t|
-  t.rspec_opts = '-f documentation'
+namespace :spec do
+  desc "Run specs locally on this host"
+  RSpec::Core::RakeTask.new(:local) do |t|
+    t.rspec_opts = '-f documentation'
+  end
+
+  desc "Run specs inside the containerized test environment (default)"
+  task :compose => 'docker:spec'
 end
 
-task :spec => :compile
+Rake::Task['spec:local'].enhance([:compile])
+
+task :spec => 'spec:compose'
 task :default => [:clean, :spec]
