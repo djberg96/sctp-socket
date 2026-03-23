@@ -37,7 +37,7 @@ Rake::ExtensionTask.new('socket') do |t|
   t.lib_dir = 'lib/sctp'
 end
 
-desc "Create dummy IP addresses to use for testing"
+desc "Create dummy IP addresses to use for local testing"
 task :create_dummy_links do
   sudo_prefix = Process.uid.zero? ? '' : 'sudo '
 
