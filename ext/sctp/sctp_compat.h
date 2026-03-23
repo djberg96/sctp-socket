@@ -60,16 +60,24 @@ typedef struct socket* sctp_sock_t;
 #define NUM_TO_SCTP_FD(v)    ((sctp_sock_t)(uintptr_t)NUM2LONG(v))
 #define SCTP_FD_INVALID(fd)  ((fd) == NULL)
 
-/* --- Global usrsctp lifecycle --- */
+/* --- Global usrsctp lifecycle (thread-safe) --- */
 
+#ifdef HAVE_PTHREAD_H
+#include <pthread.h>
+static pthread_once_t _usrsctp_once = PTHREAD_ONCE_INIT;
+static void _sctp_sys_usrsctp_init(void){ usrsctp_init(0, NULL, NULL); }
+static inline void sctp_sys_global_init(void){
+  pthread_once(&_usrsctp_once, _sctp_sys_usrsctp_init);
+}
+#else
 static int _usrsctp_initialized = 0;
-
 static inline void sctp_sys_global_init(void){
   if(!_usrsctp_initialized){
     usrsctp_init(0, NULL, NULL);
     _usrsctp_initialized = 1;
   }
 }
+#endif
 
 /* --- Socket operations --- */
 
