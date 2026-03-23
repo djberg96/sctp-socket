@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
 
   spec.files = Dir.glob('**/*', File::FNM_DOTMATCH)
                    .select { |f| File.file?(f) }
-                   .reject { |f| f =~ %r{\A(?:\.git/|test/|spec/|features/|\.github/)} }
+                   .reject { |f| f =~ %r{\A(?:\.git/|test/|spec/|features/|\.github/|docker/|Dockerfile\z)} }
 
   spec.extensions = ['ext/sctp/extconf.rb']
 
