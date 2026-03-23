@@ -6,6 +6,7 @@ RUN apt-get update \
     libsctp-dev \
     lksctp-tools \
     iproute2 \
+    kmod \
     sudo \
  && rm -rf /var/lib/apt/lists/*
 

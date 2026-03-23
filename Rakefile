@@ -71,6 +71,7 @@ namespace :docker do
     runtime = container_runtime
 
     sh runtime, 'run', '--rm', '--privileged', \
+       '--sysctl', 'net.sctp.auth_enable=1', \
        '-v', "#{repo_root}:/app", '-w', '/app', image,
        '/usr/local/bin/run_specs'
   end

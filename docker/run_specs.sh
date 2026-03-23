@@ -8,6 +8,10 @@ if ! bundle check >/dev/null 2>&1; then
   bundle install
 fi
 
+# Enable SCTP and auth support
+modprobe sctp 2>/dev/null || true
+sysctl -w net.sctp.auth_enable=1 >/dev/null 2>&1 || true
+
 # Set up dummy interfaces for multihoming tests
 if command -v ip >/dev/null 2>&1; then
   ip link show dummy1 >/dev/null 2>&1 || ip link add dummy1 type dummy
