@@ -17,7 +17,7 @@ CLEAN.include(
 )
 
 namespace :gem do
-  desc "Create the sys-uname gem"
+  desc "Create the sctp-socket gem"
   task :create => [:clean] do
     require 'rubygems/package'
     spec = Gem::Specification.load('sctp-socket.gemspec')
@@ -25,7 +25,7 @@ namespace :gem do
     Gem::Package.build(spec)
   end
 
-  desc "Install the sys-uname gem"
+  desc "Install the sctp-socket gem"
   task :install => [:create] do
     file = Dir["*.gem"].first
     sh "gem install -l #{file}"
