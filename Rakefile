@@ -42,10 +42,10 @@ task :create_dummy_links do
   sudo_prefix = Process.uid.zero? ? '' : 'sudo '
 
   if RbConfig::CONFIG['host_os'] =~ /linux/i
-    system("#{sudo_prefix}ip link add dummy1 type dummy")
-    system("#{sudo_prefix}ip link add dummy2 type dummy")
-    system("#{sudo_prefix}ip addr add 1.1.1.1/24 dev dummy1")
-    system("#{sudo_prefix}ip addr add 1.1.1.2/24 dev dummy2")
+    system("#{sudo_prefix}ip link show dummy1 >/dev/null 2>&1 || #{sudo_prefix}ip link add dummy1 type dummy")
+    system("#{sudo_prefix}ip link show dummy2 >/dev/null 2>&1 || #{sudo_prefix}ip link add dummy2 type dummy")
+    system("#{sudo_prefix}ip addr add 1.1.1.1/24 dev dummy1 2>/dev/null || true")
+    system("#{sudo_prefix}ip addr add 1.1.1.2/24 dev dummy2 2>/dev/null || true")
     system("#{sudo_prefix}ip link set dummy1 up")
     system("#{sudo_prefix}ip link set dummy2 up")
     system("#{sudo_prefix}ip link show")
