@@ -8,9 +8,9 @@ Gem::Specification.new do |spec|
   spec.license     = 'Apache-2.0'
   spec.cert_chain  = ['certs/djberg96_pub.pem']
 
-  spec.files = `git ls-files -z`.split("\x0").reject do |f|
-    f.match(%r{^(test|spec|features|.github)/})
-  end
+  spec.files = Dir.glob('**/*', File::FNM_DOTMATCH)
+                   .select { |f| File.file?(f) }
+                   .reject { |f| f =~ %r{\A(?:\.git/|test/|spec/|features/|\.github/|docker/|Dockerfile\z)} }
 
   spec.extensions = ['ext/sctp/extconf.rb']
 

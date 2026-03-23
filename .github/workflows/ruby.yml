@@ -36,7 +36,7 @@ jobs:
         ruby-version: ${{ matrix.ruby-version }}
         bundler-cache: true
     - name: Run Specs
-      run: bundle exec rake
+      run: bundle exec rake spec:local
   macos:
     runs-on: macos-latest
     strategy:
@@ -56,7 +56,7 @@ jobs:
         ruby-version: ${{ matrix.ruby-version }}
         bundler-cache: true
     - name: Run Specs
-      run: bundle exec rake
+      run: bundle exec rake spec:local
   freebsd:
     runs-on: ubuntu-latest
     steps:
@@ -78,4 +78,4 @@ jobs:
           ifconfig lo2 1.1.1.2/24 up
           gem install bundler --no-document
           bundle install --quiet
-          bundle exec rake
+          bundle exec rake spec:local

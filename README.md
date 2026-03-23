@@ -14,6 +14,32 @@ On some systems, such as RHEL8 or later, you may need to enable the sctp module.
 
 `gem install sctp-socket`
 
+## Running Specs in a Container
+
+If you don't want to add dummy interfaces on your host, you can run the test
+suite inside a disposable privileged container. The tasks prefer `podman`
+on Fedora/Linux, falling back to `docker` if podman isn't available:
+
+```
+bundle exec rake spec:compose
+```
+
+Set `CONTAINER_RUNTIME=docker` to override. The image installs SCTP kernel
+headers/tools and sets up dummy addresses (1.1.1.1 and 1.1.1.2) inside the
+container before running the specs.
+
+Rebuild the test image without cache:
+
+```
+bundle exec rake "docker:build[no-cache]"
+```
+
+Run specs directly on the host (uses your local SCTP setup):
+
+```
+bundle exec rake spec:local
+```
+
 ## Installing the Trusted Cert
 
 `gem cert --add <(curl -Ls https://raw.githubusercontent.com/djberg96/sctp-socket/main/certs/djberg96_pub.pem)`
