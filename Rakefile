@@ -13,7 +13,8 @@ CLEAN.include(
   '**/Makefile',             # C Makefile
   '**/conftest.dSYM',        # OS X build directory
   "**/*.#{CONFIG['DLEXT']}", # C shared object
-  'tmp'                      # Rake compiler
+  'tmp',                     # Rake compiler
+  'Gemfile.lock'             # Gem lock file
 )
 
 namespace :gem do
