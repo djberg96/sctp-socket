@@ -49,14 +49,16 @@ module SCTP
       @port = port
       @one_to_one = one_to_one
       @backlog = backlog
-      @socket_options = socket_options
+      @reuse_addr = socket_options.key?(:reuse_addr) ? socket_options[:reuse_addr] : true
+      @socket_options = socket_options.dup
+      @socket_options.delete(:reuse_addr)
       @pending_associations = {}
 
       # Create the main server socket
       if one_to_one
-        @socket = SCTP::Socket.new(2, 1)  # AF_INET, SOCK_STREAM
+        @socket = SCTP::Socket.new(::Socket::AF_INET, ::Socket::SOCK_STREAM)
       else
-        @socket = SCTP::Socket.new(2, 5)  # AF_INET, SOCK_SEQPACKET
+        @socket = SCTP::Socket.new(::Socket::AF_INET, ::Socket::SOCK_SEQPACKET)
       end
 
       setup_socket
@@ -161,9 +163,6 @@ module SCTP
       # Apply any socket options provided
       @socket_options.each do |option, value|
         case option
-        when :reuse_addr
-          # SCTP typically doesn't need SO_REUSEADDR like TCP
-          # but we can support it for compatibility
         when :autoclose
           @socket.autoclose = value
         when :nodelay
@@ -192,10 +191,10 @@ module SCTP
 
     def bind_and_listen
       if @addresses && !@addresses.empty?
-        @socket.bindx(port: @port, addresses: @addresses, reuse_addr: true)
+        @socket.bindx(port: @port, addresses: @addresses, reuse_addr: @reuse_addr)
       else
         # Bind to all available addresses
-        @socket.bindx(port: @port, reuse_addr: true)
+        @socket.bindx(port: @port, reuse_addr: @reuse_addr)
       end
 
       @socket.listen(@backlog)

@@ -668,14 +668,21 @@ static VALUE rsctp_bindx(int argc, VALUE* argv, VALUE self){
   }
 
   if(port == 0){
-    struct sockaddr_in sin;
-    socklen_t len = sizeof(sin);
-    bzero(&sin, len);
+    struct sockaddr_storage ss;
+    socklen_t len = sizeof(ss);
+    bzero(&ss, len);
 
-    if(sctp_sys_getsockname(fileno, (struct sockaddr *)&sin, &len) == -1)
+    if(sctp_sys_getsockname(fileno, (struct sockaddr *)&ss, &len) == -1)
       rb_raise(rb_eSystemCallError, "getsockname: %s", strerror(errno));
 
-    port = sin.sin_port;
+    if(ss.ss_family == AF_INET6){
+      struct sockaddr_in6* sin6 = (struct sockaddr_in6*)&ss;
+      port = ntohs(sin6->sin6_port);
+    }
+    else{
+      struct sockaddr_in* sin = (struct sockaddr_in*)&ss;
+      port = ntohs(sin->sin_port);
+    }
   }
 
   rb_iv_set(self, "@port", INT2NUM(port));
