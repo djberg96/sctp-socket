@@ -19,6 +19,12 @@ begin
   # Try a sendv
   p socket.sendv(:message => ["Hello ", "World!"])
 
+  # Or a sendmsg
+  flags = SCTP::Socket::SCTP_UNORDERED | SCTP::Socket::SCTP_SENDALL
+  #p socket.sendmsg(:message => "Hello Again!") # Broken pipe
+  p socket.sendmsg(:message => "Hello Again!", flags: flags)
+
+=begin
   # Send messages on separate streams of the same connection
   arr = []
 
@@ -36,6 +42,7 @@ begin
   end
 
   arr.map(&:join)
+=end
 ensure
   socket.close if socket
 end
