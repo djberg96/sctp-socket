@@ -372,6 +372,8 @@ class MultiStreamChatClient
 
       if @running
         send_message({
+          type: 'presence',
+          username: @username,
           status: 'online'
         }, PRESENCE_STREAM, reliable: false)
       end

@@ -320,6 +320,8 @@ class MultiStreamChatServer
 
     begin
       association_id = @clients[client_id][:association_id]
+      return false unless association_id
+
       options = {
         association_id: association_id,
         stream: stream,
