@@ -231,6 +231,7 @@ class MultiStreamChatClient
 
   def set_presence_status(status)
     send_message({
+      type: 'presence',
       status: status
     }, PRESENCE_STREAM, reliable: false)
 
@@ -239,6 +240,8 @@ class MultiStreamChatClient
 
   def send_typing_indicator(typing)
     send_message({
+      type: 'typing',
+      username: @username,
       typing: typing
     }, TYPING_STREAM, reliable: false)
 
@@ -255,10 +258,14 @@ class MultiStreamChatClient
     return unless @socket && @running
 
     begin
+      assoc = @socket.association_id
       options = {
         message: data.to_json,
-        stream: stream
+        stream: stream,
+        addresses: @server_addresses,
+        port: @port
       }
+      options[:association_id] = assoc if assoc && assoc != 0
 
       # For unreliable messages, set unordered flag
       unless reliable

@@ -113,6 +113,11 @@ module SCTP
       @socket.sendmsg(options.merge(message: data))
     end
 
+    # Vector-send helper delegating to the underlying socket.
+    def sendv(message:, **options)
+      @socket.sendv(message: message, **options)
+    end
+
     # Get local addresses bound to this server.
     #
     # @return [Array<String>] Local addresses

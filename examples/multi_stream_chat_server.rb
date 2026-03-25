@@ -118,24 +118,31 @@ class MultiStreamChatServer
         # Parse and handle the message
         begin
           data = JSON.parse(message)
-          puts "� [Stream #{stream}] #{client_id}: #{data['action'] || data['type'] || 'unknown'}"
-
-          case stream
-          when SYSTEM_STREAM
-            handle_system_message(client_id, data)
-          when CHAT_STREAM
-            handle_chat_message(client_id, data)
-          when FILE_STREAM
-            handle_file_message(client_id, data)
-          when PRESENCE_STREAM
-            handle_presence_message(client_id, data)
-          when TYPING_STREAM
-            handle_typing_message(client_id, data)
-          else
-            puts "⚠️  Unknown stream #{stream} from #{client_id}"
-          end
         rescue JSON::ParserError => e
           puts "❌ Invalid JSON from #{client_id}: #{e.message}"
+          next
+        end
+
+        unless data.is_a?(Hash)
+          puts "⚠️  Ignoring non-object payload from #{client_id}: #{data.inspect}"
+          next
+        end
+
+        puts "� [Stream #{stream}] #{client_id}: #{data['action'] || data['type'] || 'unknown'}"
+
+        case stream
+        when SYSTEM_STREAM
+          handle_system_message(client_id, data)
+        when CHAT_STREAM
+          handle_chat_message(client_id, data)
+        when FILE_STREAM
+          handle_file_message(client_id, data)
+        when PRESENCE_STREAM
+          handle_presence_message(client_id, data)
+        when TYPING_STREAM
+          handle_typing_message(client_id, data)
+        else
+          puts "⚠️  Unknown stream #{stream} from #{client_id}"
         end
 
       rescue => e
@@ -189,6 +196,9 @@ class MultiStreamChatServer
   end
 
   def handle_system_message(client_id, data)
+    return unless @clients[client_id]
+    return unless data.is_a?(Hash)
+
     case data['action']
     when 'set_username'
       old_username = @clients[client_id][:username]
@@ -223,6 +233,8 @@ class MultiStreamChatServer
   end
 
   def handle_chat_message(client_id, data)
+    return unless @clients[client_id]
+    return unless data.is_a?(Hash)
     username = @clients[client_id][:username] || client_id
     room = @clients[client_id][:room]
 
@@ -239,6 +251,8 @@ class MultiStreamChatServer
   end
 
   def handle_file_message(client_id, data)
+    return unless @clients[client_id]
+    return unless data.is_a?(Hash)
     username = @clients[client_id][:username] || client_id
     room = @clients[client_id][:room]
 
@@ -269,6 +283,8 @@ class MultiStreamChatServer
   end
 
   def handle_presence_message(client_id, data)
+    return unless @clients[client_id]
+    return unless data.is_a?(Hash)
     @clients[client_id][:last_seen] = Time.now
     username = @clients[client_id][:username] || client_id
     room = @clients[client_id][:room]
@@ -284,6 +300,8 @@ class MultiStreamChatServer
   end
 
   def handle_typing_message(client_id, data)
+    return unless @clients[client_id]
+    return unless data.is_a?(Hash)
     username = @clients[client_id][:username] || client_id
     room = @clients[client_id][:room]
 
@@ -298,13 +316,15 @@ class MultiStreamChatServer
   end
 
   def send_to_client(client_id, message, stream, reliable: true)
-    return unless @clients[client_id]
+    return false unless @clients[client_id]
 
     begin
       association_id = @clients[client_id][:association_id]
       options = {
         association_id: association_id,
-        stream: stream
+        stream: stream,
+        addresses: @addresses,
+        port: @port
       }
 
       # For unreliable streams, set appropriate flags
@@ -312,44 +332,40 @@ class MultiStreamChatServer
         options[:flags] = SCTP::Socket::SCTP_UNORDERED
       end
 
-      @server.sendmsg(message.to_json, **options)
+      @server.sendv(message: [message.to_json], **options)
+      true
     rescue => e
       puts "❌ Failed to send to #{client_id}: #{e.message}"
-      disconnect_client(client_id)
+      false
     end
   end
 
   def broadcast_to_room(room, message, stream, exclude: nil, reliable: true)
-    @mutex.synchronize do
-      (@rooms[room] || []).each do |client_id|
-        next if client_id == exclude
-        send_to_client(client_id, message, stream, reliable: reliable)
-      end
+    (@rooms[room] || []).each do |client_id|
+      next if client_id == exclude
+      send_to_client(client_id, message, stream, reliable: reliable)
     end
   end
 
   def disconnect_client(client_id)
-    @mutex.synchronize do
-      client = @clients[client_id]
-      return unless client
+    client = @clients[client_id]
+    return unless client
 
-      # Remove from room
-      room = client[:room]
-      @rooms[room]&.delete(client_id)
+    # Remove from room
+    room = client[:room]
+    @rooms[room]&.delete(client_id)
 
-      # Notify others
-      if client[:username]
-        broadcast_to_room(room, {
-          type: 'user_left',
-          username: client[:username],
-          timestamp: Time.now.to_f
-        }, SYSTEM_STREAM)
-      end
-
-      # Remove client (no individual socket to close in one-to-many mode)
-      @clients.delete(client_id)
-      puts "👋 Client disconnected: #{client_id}"
+    # Notify others
+    if client[:username]
+      broadcast_to_room(room, {
+        type: 'user_left',
+        username: client[:username],
+        timestamp: Time.now.to_f
+      }, SYSTEM_STREAM)
     end
+
+    @clients.delete(client_id)
+    puts "👋 Client disconnected: #{client_id}"
   end
 
   def cleanup
