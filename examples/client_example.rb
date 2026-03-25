@@ -17,7 +17,16 @@ begin
   p socket.get_status
 
   # Try a sendv
-  p socket.sendv(:message => ["Hello ", "World!"])
+  #p socket.sendv(:message => ["Hello ", "World!"])
+
+  # Or this
+  p socket.sendmsg(
+    :message   => "Hello, World!",
+    :flags     => SCTP::Socket::SCTP_UNORDERED | SCTP::Socket::SCTP_SENDALL,
+    :stream    => 3,
+    :ttl       => 100,
+    :addresses => addresses
+  )
 
   # Send messages on separate streams of the same connection
   arr = []
